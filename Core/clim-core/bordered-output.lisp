@@ -256,18 +256,30 @@
                                        line-unit
                                        line-thickness
                                        line-cap-shape
-                                       line-dashes)
+                                       line-dashes
+
+                                       left-line-style
+                                       (left-ink   nil left-ink-supplied-p)
+                                       top-line-style
+                                       (top-ink    nil top-ink-supplied-p)
+                                       right-line-style
+                                       (right-ink  nil right-ink-supplied-p)
+                                       bottom-line-style
+                                       (bottom-ink nil bottom-ink-supplied-p))
   (%%adjusting-padding-for-line-style
     (%%adjusting-for-padding
       (let ((ink (or outline-ink
                      (and (not filled)
                           (or ink (medium-ink stream))))))
-        (when ink
-          (draw-rectangle* stream
-                           left top right bottom
-                           :line-style (%%line-style-for-method)
-                           :ink ink
-                           :filled nil))))))
+        (let ((line-style (%%line-style-for-method)))
+          (flet ((line (x1 y1 x2 y2 line-style* ink*)
+                   (draw-line* stream x1 y1 x2 y2
+                               :line-style (or line-style* line-style)
+                               :ink        (or ink* ink))))
+            (when (or (not left-ink-supplied-p) left-ink)   (line left  bottom left  top    left-line-style   left-ink))
+            (when (not top-ink-supplied-p)    (line left  top    right top    top-line-style    top-ink))
+            (when (not right-ink-supplied-p)  (line right top    right bottom right-line-style  right-ink))
+            (when (not bottom-ink-supplied-p) (line right bottom left  bottom bottom-line-style bottom-ink))))))))
 
 (defmethod draw-output-border-under
     ((shape (eql :rectangle)) stream record
