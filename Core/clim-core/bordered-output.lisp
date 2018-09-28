@@ -200,12 +200,12 @@
 
 (defmacro %%line-style-for-method ()
   `(or line-style
-    (let ((mls (medium-line-style stream)))
-      (make-line-style
-       :unit      (or line-unit (line-style-unit mls))
-       :thickness (or line-thickness (line-style-thickness mls))
-       :cap-shape (or line-cap-shape (line-style-cap-shape mls))
-       :dashes    (or line-dashes (line-style-dashes mls))))))
+       (let ((mls (medium-line-style stream)))
+         (make-line-style
+          :unit      (or line-unit (line-style-unit mls))
+          :thickness (or line-thickness (line-style-thickness mls))
+          :cap-shape (or line-cap-shape (line-style-cap-shape mls))
+          :dashes    (or line-dashes (line-style-dashes mls))))))
 
 (defmacro %%adjusting-for-padding (&body body)
   `(let ((left   (- left   padding-left))
