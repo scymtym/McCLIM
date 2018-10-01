@@ -215,12 +215,12 @@
     ,@body))
 
 (defmacro %%adjusting-padding-for-line-style (&body body)
-  `(let ((padding-left   (+ padding-left   (/ (or line-thickness 0) 2)))
-         (padding-right  (+ padding-right  (/ (or line-thickness 0) 2)))
-         (padding-top    (+ padding-top    (/ (or line-thickness 0) 2)))
-         (padding-bottom (+ padding-bottom (/ (or line-thickness 0) 2))))
-    ,@body))
-
+  `(let* ((offset         (/ (or line-thickness 0) 2))
+          (padding-left   (+ padding-left   offset))
+          (padding-right  (+ padding-right  offset))
+          (padding-top    (+ padding-top    offset))
+          (padding-bottom (+ padding-bottom offset)))
+     ,@body))
 
 (defmacro define-border-type (shape arglist &body body)
   (check-type arglist list)
