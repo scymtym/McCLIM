@@ -69,6 +69,7 @@
   specified shape containing the given output record,
   and renders any decorations associated with the shape."))
 
+;; TODO replace the two methods with draw-output-border (shape WHERE stream record ...)
 (defgeneric draw-output-border-under
     (shape stream record &rest drawing-options &key &allow-other-keys)
   (:documentation
@@ -270,16 +271,16 @@
     (%%adjusting-for-padding
       (let ((ink (or outline-ink
                      (and (not filled)
-                          (or ink (medium-ink stream))))))
-        (let ((line-style (%%line-style-for-method)))
-          (flet ((line (x1 y1 x2 y2 line-style* ink*)
-                   (draw-line* stream x1 y1 x2 y2
-                               :line-style (or line-style* line-style)
-                               :ink        (or ink* ink))))
-            (when (or (not left-ink-supplied-p) left-ink)   (line left  bottom left  top    left-line-style   left-ink))
-            (when (not top-ink-supplied-p)    (line left  top    right top    top-line-style    top-ink))
-            (when (not right-ink-supplied-p)  (line right top    right bottom right-line-style  right-ink))
-            (when (not bottom-ink-supplied-p) (line right bottom left  bottom bottom-line-style bottom-ink))))))))
+                          (or ink (medium-ink stream)))))
+            (line-style (%%line-style-for-method)))
+        (flet ((line (x1 y1 x2 y2 line-style* ink*)
+                 (draw-line* stream x1 y1 x2 y2
+                             :line-style (or line-style* line-style)
+                             :ink        (or ink* ink))))
+          (when (or (not left-ink-supplied-p) left-ink)   (line left  bottom left  top    left-line-style   left-ink))
+          (when (not top-ink-supplied-p)    (line left  top    right top    top-line-style    top-ink))
+          (when (not right-ink-supplied-p)  (line right top    right bottom right-line-style  right-ink))
+          (when (not bottom-ink-supplied-p) (line right bottom left  bottom bottom-line-style bottom-ink)))))))
 
 (defmethod draw-output-border-under
     ((shape (eql :rectangle)) stream record
@@ -308,9 +309,7 @@
                              (+ shadow-offset bottom)
                              :ink shadow
                              :filled t))
-          (draw-rectangle* stream
-                           left top
-                           right bottom
+          (draw-rectangle* stream left top right bottom
                            :ink (or background ink +background-ink+)
                            :filled t))))))
 
@@ -335,7 +334,7 @@
     (%%adjusting-for-padding
       (when ink
         (draw-oval* stream
-                    (/ (+ left right) 2) (/ (+  top bottom) 2)
+                    (/ (+ left right) 2) (/ (+ top bottom) 2)
                     (/ (- right left) 2) (/ (- bottom top) 2)
                     :line-style (%%line-style-for-method)
                     :ink (or outline-ink ink)
@@ -358,25 +357,27 @@
     (with-border-edges (stream record)
       (%%adjusting-padding-for-line-style
         (%%adjusting-for-padding
-          (when shadow
-            (draw-oval* stream
-                        (+ shadow-offset (/ (+ left right) 2))
-                        (+ shadow-offset (/ (+ top bottom) 2))
-                        (/ (- right left) 2) (/ (- bottom top) 2)
-                        :ink shadow
-                        :filled t))
-          (draw-oval* stream
-                      (/ (+ left right) 2) (/ (+ top bottom) 2)
-                      (/ (- right left) 2) (/ (- bottom top) 2)
-                      :ink (or background ink +background-ink+)
-                      :filled t))))))
+          (let* ((width/2  (/ (- right left) 2))
+                 (middle-h (+ left width/2))
+                 (height/2 (/ (- bottom top) 2))
+                 (middle-v (+ top height/2)))
+            (when shadow
+              (draw-oval* stream
+                          (+ shadow-offset middle-h)
+                          (+ shadow-offset middle-v)
+                          width/2 height/2
+                          :ink shadow
+                          :filled t))
+            (draw-oval* stream middle-h middle-v width/2 height/2
+                        :ink (or background ink +background-ink+)
+                        :filled t)))))))
 
 ;;; A filled :drop-shadow is almost identical to :rectangle with a
 ;;; :shadow keyword. So, just use :rectangle instead.
 (define-border-type :drop-shadow (stream
                                   left top right bottom
                                   (filled nil)
-                                  (shadow-offset 3)
+                                  (shadow-offset 3) ; TODO *drop-shadow-default-offset*?
                                   outline-ink
                                   background
                                   (ink (medium-ink stream))
@@ -606,25 +607,24 @@
                                      line-dashes)
     (%%adjusting-padding-for-line-style
       (%%adjusting-for-padding
-        (let ((ink (or outline-ink (and (not filled)
+        (when-let ((ink (or outline-ink (and (not filled)
                                         (or ink +foreground-ink+)))))
-          (when ink
-            (let* ((cx (/ (+ right left) 2))
-                   (cy (/ (+ top bottom) 2))
-                   (radius-x (- right  cx))
-                   (radius-y (- bottom cy))
-                   (radius-x (if circle
-                                 (sqrt (+ (* radius-x radius-x)
-                                          (* radius-y radius-y)))
-                                 radius-x))
-                   (radius-y (if circle radius-x radius-y))
-                   (fx (/ radius-x (cos (/ pi 4))))
-                   (fy (/ radius-y (sin (/ pi 4))))
-                   (fx (max fx (or min-radius-x 0)))
-                   (fy (max fy (or min-radius-y 0))))
-              (draw-ellipse* stream cx cy fx 0 0 fy
-                             :filled nil :ink ink
-                             :line-style (%%line-style-for-method))))))))
+          (let* ((cx (/ (+ right left) 2))
+                 (cy (/ (+ top bottom) 2))
+                 (radius-x (- right  cx))
+                 (radius-y (- bottom cy))
+                 (radius-x (if circle
+                               (sqrt (+ (* radius-x radius-x)
+                                        (* radius-y radius-y)))
+                               radius-x))
+                 (radius-y (if circle radius-x radius-y))
+                 (fx (/ radius-x (cos (/ pi 4))))
+                 (fy (/ radius-y (sin (/ pi 4))))
+                 (fx (max fx (or min-radius-x 0)))
+                 (fy (max fy (or min-radius-y 0))))
+            (draw-ellipse* stream cx cy fx 0 0 fy
+                           :filled nil :ink ink
+                           :line-style (%%line-style-for-method)))))))
 
 (defmethod draw-output-border-under
     ((shape (eql :ellipse)) stream record &key
@@ -646,30 +646,28 @@
   (with-border-edges (stream record)
     (%%adjusting-padding-for-line-style
       (%%adjusting-for-padding
-        (let ((ink (or background (and filled (or ink +background-ink+)))))
-          (when ink
-            (let* ((cx (/ (+ right left) 2))
-                   (cy (/ (+ top bottom) 2))
-                   (radius-x (- right  cx))
-                   (radius-y (- bottom cy))
-                   (radius-x (if circle
-                                 (sqrt (+ (* radius-x radius-x)
-                                          (* radius-y radius-y)))
-                                 radius-x))
-                   (radius-y (if circle radius-x radius-y))
-                   (fx (/ radius-x (cos (/ pi 4))))
-                   (fy (/ radius-y (sin (/ pi 4))))
-                   (fx (max fx (or min-radius-x 0)))
-                   (fy (max fy (or min-radius-y 0))) )
-              (when (and shadow shadow-offset)
-                (draw-ellipse* stream (+ cx shadow-offset) (+ cy shadow-offset)
-                               fx 0 0 fy :filled t :ink shadow))
-              (draw-ellipse* stream cx cy fx 0 0 fy
-                             :filled t :ink ink))))))))
+        (when-let ((ink (or background (and filled (or ink +background-ink+)))))
+          (let* ((cx (/ (+ right left) 2)) ; TODO repeated
+                 (cy (/ (+ top bottom) 2))
+                 (radius-x (- right  cx))
+                 (radius-y (- bottom cy))
+                 (radius-x (if circle
+                               (sqrt (+ (* radius-x radius-x)
+                                        (* radius-y radius-y)))
+                               radius-x))
+                 (radius-y (if circle radius-x radius-y))
+                 (fx (/ radius-x (cos (/ pi 4))))
+                 (fy (/ radius-y (sin (/ pi 4))))
+                 (fx (max fx (or min-radius-x 0)))
+                 (fy (max fy (or min-radius-y 0))) )
+            (when (and shadow shadow-offset)
+              (draw-ellipse* stream (+ cx shadow-offset) (+ cy shadow-offset)
+                             fx 0 0 fy :filled t :ink shadow))
+            (draw-ellipse* stream cx cy fx 0 0 fy
+                           :filled t :ink ink)))))))
 
 (defmethod highlight-output-record
     ((record bordered-output-record) stream state)
-  (format *trace-output* "b-o-r ~A ~A ~A~%" record stream state)
   (call-next-method))
 
 (defgeneric highlight-output-record-tree (record stream state))
@@ -722,7 +720,7 @@
                (with-keywords-removed (drawing-options (:background :outline-ink))
                  (redraw
                   (list* :background
-                         (or (and (eql t highlight-background)
+                         (or (and (eql t highlight-background) ; TODO make a function
                                   (highlight-shade
                                    (or background
                                        (getf drawing-options :ink)
