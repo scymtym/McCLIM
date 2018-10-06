@@ -3008,3 +3008,26 @@ it in a layout between two panes that are to be resizeable.  E.g.:
          (event-client event)
          (event-client-id event)
          (event-other-args event)))
+
+;;; PROGRESS-GADGET
+
+#|
+(define-class progress-gadget (value-gadget
+                               value-changed-rpeaint-mixin)
+  ((%description :initarg :description :reader description)))
+
+(defmethod handle-repaint ((sheet progress-gadget) region)
+  ())
+
+(defparameter *grid*
+  (let ((array (make-array '(2 1) :initial-element 0)))
+    (setf (aref array 1 0) 1)
+    (transform-region
+     (compose-transformation-with-rotation (make-scaling-transformation 20 20) (/ pi 4))
+     (make-rectangular-tile (make-pattern array (list clim:+dark-orange+ clim:+dark-grey+)) 2 1))))
+
+(defun clim-user::test (stream)
+  (let ((right 80))
+    (draw-rectangle* stream 0 0 right 20 :ink *grid* :filled t)
+    (draw-rectangle* stream 0 0 200   20             :filled nil)))
+|#
