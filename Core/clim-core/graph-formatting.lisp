@@ -398,8 +398,7 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
 		         (when (or (null node-depth)
                                    (if maximize-generations (> depth node-depth) (< depth node-depth)))
 		           (setf (gethash node depth-hash) depth)
-		           (map nil #'(lambda (child)
-		                        (assign-depth child (1+ depth) (cons node trail)))
+		           (map nil (alexandria:rcurry #'assign-depth (1+ depth) (list* node trail))
 		                (graph-node-children node)))))))
             (map nil #'(lambda (x) (assign-depth x 0 nil))
                  root-nodes))
@@ -429,7 +428,7 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
 					 (graph-node-children node))
 				    (+ sum
 				       (* (max 0 (- n 1)) within-generation-separation))))))))
-            (map nil #'(lambda (x) (compute-dimensions x 0))
+            (map nil #'(lambda (node) (compute-dimensions node 0))
                  root-nodes))
           ;;
           (let ((visited (make-hash-table :test #'eq)))
