@@ -1390,16 +1390,12 @@ which changed during the current execution of CHANGING-SPACE-REQUIREMENTS.
 	       ((panep content)
 		(make-instance 'box-client :pane content))
 	       ;; +fill+
-	       ((or (eql content +fill+)
-		    (eql content '+fill+)
-		    (eql content :fill))
+	       ((typep content `(member :fill +fill+ ,+fill+) )
 		(make-instance 'box-client
 			       :pane nil
 			       :fillp t))
 	       ;; (+fill+ <pane>)
-	       ((and (consp content)
-		     (or (member (car content) '(+fill+ :fill))
-			 (eql (car content) +fill+)))
+	       ((typep content `(cons (member :fill +fill+ ,+fill+) (cons t null)))
 		(make-instance 'box-client
 			       :pane (cadr content)
 			       :fillp t))
