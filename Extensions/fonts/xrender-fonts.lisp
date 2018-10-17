@@ -1,6 +1,6 @@
 ;;; -*- Mode: Lisp; Syntax: Common-Lisp; Package: MCCLIM-TRUETYPE; -*-
 ;;; ---------------------------------------------------------------------------
-;;;     Title: Font matrics, caching, and XRender text support 
+;;;     Title: Font matrics, caching, and XRender text support
 ;;;   Created: 2003-05-25 16:32
 ;;;    Author: Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
 ;;;   License: LGPL (See file COPYING for details).
@@ -83,6 +83,17 @@
 (defmethod clime:port-all-font-families ((port clx-ttf-port) &key invalidate-cache)
   (when (or (null (clim-clx::font-families port)) invalidate-cache)
     (setf (clim-clx::font-families port) nil))
+  (register-all-ttf-fonts port)
+  (clim-clx::font-families port))
+
+#+probably-not-needed (defmethod clim-clx:port-find-all-font-families ((port clim-clx::clx-port) (font-renderer truetype-font-renderer)
+                                                 &key invalidate-cache)
+  (declare (ignore invalidate-cache))
+  ;; Call the next method for effect: it calls RELOAD-FONT-TABLE
+  ;; rebuilding the list of font families, if necessary.
+  (call-next-method)
+  ;; Add true type fonts to the list of font families and return the
+  ;; combined result.
   (register-all-ttf-fonts port)
   (clim-clx::font-families port))
 
@@ -185,14 +196,14 @@ Disabling fixed width optimization for this font. ~A vs ~A" font dx fixed-width)
 
 (defun gcontext-picture (drawable gcontext)
   (flet ((update-foreground (picture)
-           ;; FIXME! This makes assumptions about pixel format, and breaks 
+           ;; FIXME! This makes assumptions about pixel format, and breaks
            ;; on e.g. 16 bpp displays.
            ;; It would be better to store xrender-friendly color values in
-           ;; medium-gcontext, at the same time we set the gcontext 
+           ;; medium-gcontext, at the same time we set the gcontext
            ;; foreground. That way we don't need to know the pixel format.
            (let ((fg (the xlib:card32 (xlib:gcontext-foreground gcontext))))
              (xlib::render-fill-rectangle picture
-                                          :src                                          
+                                          :src
                                           (list (ash (ldb (byte 8 16) fg) 8)
                                                 (ash (ldb (byte 8 8) fg) 8)
                                                 (ash (ldb (byte 8 0) fg) 8)
@@ -202,7 +213,7 @@ Disabling fixed width optimization for this font. ~A vs ~A" font dx fixed-width)
            (picture-info
             (or (getf (xlib:gcontext-plist gcontext) 'picture)
                 (setf (getf (xlib:gcontext-plist gcontext) 'picture)
-                      (let* ((pixmap (xlib:create-pixmap 
+                      (let* ((pixmap (xlib:create-pixmap
                                       :drawable drawable
                                       :depth (xlib:drawable-depth drawable)
                                       :width 1 :height 1))
@@ -443,7 +454,7 @@ The following files should exist:~&~{  ~A~^~%~}"
             (setf (fontconfig-font-name-device-name font-name)
                   (make-device-font-text-style
                    port
-                   (make-truetype-device-font-name 
+                   (make-truetype-device-font-name
                     :font-file (find-fontconfig-font
                                 (format nil "~A-~A~{:~A~}"
                                         (namestring (fontconfig-font-name-string font-name))
