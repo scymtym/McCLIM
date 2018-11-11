@@ -485,14 +485,14 @@ and used to ensure that presentation-translators-caches are up to date.")
                   with modifiers = (if event
                                        (event-modifier-state event)
                                        modifier-state)
-                  for g in gesture
-                  thereis (and (eql modifiers (caddr g))
-                               (or (and button (eql button (cadr g)))
+                  for (nil gesture-device-name gesture-modifiers) in gesture
+                  thereis (and (eql modifiers gesture-modifiers)
+                               (or (and button (eql button gesture-device-name))
                                    (and (null button)
                                         (or (null event)
                                             (eql (pointer-event-button
                                                   event)
-                                                 (cadr g))))))))))
+                                                 gesture-device-name)))))))))
     (and (match-gesture (gesture translator) event modifier-state)
          (or (null (decode-parameters from-type))
              (presentation-typep (presentation-object presentation) from-type))
