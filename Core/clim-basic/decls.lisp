@@ -1050,7 +1050,7 @@ Returns a SPACE-REQUIREMENT object."))
 (defgeneric new-page (stream))
 
 ;;;;
-(defgeneric gadget-value (gadget))
+(defgeneric gadget-value (gadget)) ; TODO maybe &key invoke-callback
 (defgeneric (setf gadget-value) (new-value gadget &key invoke-callback))
 (defgeneric gadget-min-value (gadget))
 (defgeneric gadget-max-value (gadget))

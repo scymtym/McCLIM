@@ -9,14 +9,15 @@
 
 (in-package :clim-internals)
 
+;;; TODO only used in gadgets, menu, bordered output, not here
 ;;; Default Color Scheme Options
 
 #||
-;; Motif-ish
-(defparameter *3d-dark-color*   (make-gray-color .45))
-(defparameter *3d-normal-color* (make-gray-color .75))
-(defparameter *3d-light-color*  (make-gray-color .92))
-(defparameter *3d-inner-color*  (make-gray-color .65))
+;; Motif-ish                            ;
+(defparameter *3d-dark-color*   (make-gray-color .45)) ;
+(defparameter *3d-normal-color* (make-gray-color .75)) ;
+(defparameter *3d-light-color*  (make-gray-color .92)) ;
+(defparameter *3d-inner-color*  (make-gray-color .65)) ;
 ||#
 
 ;; Gtk-ish

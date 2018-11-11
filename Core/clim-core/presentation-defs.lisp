@@ -112,6 +112,18 @@
                                                            type)))))
      type-name)))
 
+#+maybe (define-presentation-method map-over-presentation-type-supertypes
+    (function (type and))
+  (let ((seen '()))
+    (map nil (lambda (supertype)
+               (map-over-presentation-type-supertypes
+                (lambda (type specifier)
+                  (unless (member type seen)
+                    (push type seen)
+                    (funcall function type specifier)))
+                supertype))
+         (decode-parameters type))))
+
 (defun map-over-presentation-type-supertypes (function type)
   (funcall-presentation-generic-function map-over-presentation-type-supertypes
                                          function
