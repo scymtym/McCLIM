@@ -113,21 +113,21 @@
 (defvar *wait-function*)
 
 (defun event-handler (&key display window event-key code state mode time
-                        type width height x y root-x root-y
-                        data override-redirect-p send-event-p hint-p
-                        target property requestor selection
-                        request first-keycode count
-                        &allow-other-keys)
+                           type width height x y root-x root-y
+                           data override-redirect-p send-event-p hint-p
+                           target property requestor selection
+                           request first-keycode count
+                      &allow-other-keys)
   (declare (ignore first-keycode count))
   (when (eql event-key :mapping-notify)
     (xlib:mapping-notify display request 0 0)
     (return-from event-handler (maybe-funcall *wait-function*)))
-  (when-let ((sheet (and window (port-lookup-sheet *clx-port* window))))
+  (alexandria:when-let* ((port *clx-port*)
+                         (sheet (and window (port-lookup-sheet port window))))
     (case event-key
       ((:key-press :key-release)
        (multiple-value-bind (keyname modifier-state keysym-name)
-           (x-event-to-key-name-and-modifiers *clx-port*
-                                              event-key code state)
+           (x-event-to-key-name-and-modifiers port event-key code state)
          (make-instance (if (eq event-key :key-press)
                             'key-press-event
                             'key-release-event)
@@ -139,29 +139,30 @@
                         :sheet (or (frame-properties (pane-frame sheet) 'focus) sheet)
                         :modifier-state modifier-state :timestamp time)))
       ((:button-press :button-release)
-       (let ((modifier-state (clim-xcommon:x-event-state-modifiers *clx-port* state))
-             (button (decode-x-button-code code)))
-         (if (and (eq event-key :button-press)
-                  (member button '(#.+pointer-wheel-up+
-                                   #.+pointer-wheel-down+
-                                   #.+pointer-wheel-left+
-                                   #.+pointer-wheel-right+)))
-             (make-instance 'climi::pointer-scroll-event
-                            :pointer 0
-                            :button button :x x :y y
-                            :graft-x root-x
-                            :graft-y root-y
-                            :sheet sheet
-                            :modifier-state modifier-state
-                            :delta-x (case button
-                                       (#.+pointer-wheel-left+ -1)
-                                       (#.+pointer-wheel-right+ 1)
-                                       (otherwise 0))
-                            :delta-y (case button
-                                       (#.+pointer-wheel-up+ -1)
-                                       (#.+pointer-wheel-down+ 1)
-                                       (otherwise 0))
-                            :timestamp time)
+       (let* ((modifier-state (clim-xcommon:x-event-state-modifiers port state))
+              (button (decode-x-button-code code))
+              (scrollp (member button '(#.+pointer-wheel-up+
+                                        #.+pointer-wheel-down+
+                                        #.+pointer-wheel-left+
+                                        #.+pointer-wheel-right+))))
+         (if scrollp
+             (when (eq event-key :button-press)
+               (make-instance 'climi::pointer-scroll-event
+                              :pointer 0
+                              :button button :x x :y y
+                              :graft-x root-x
+                              :graft-y root-y
+                              :sheet sheet
+                              :modifier-state modifier-state
+                              :delta-x (case button
+                                         (#.+pointer-wheel-left+ -1)
+                                         (#.+pointer-wheel-right+ 1)
+                                         (otherwise 0))
+                              :delta-y (case button
+                                         (#.+pointer-wheel-up+ -1)
+                                         (#.+pointer-wheel-down+ 1)
+                                         (otherwise 0))
+                              :timestamp time))
              (make-instance (if (eq event-key :button-press)
                                 'pointer-button-press-event
                                 'pointer-button-release-event)
@@ -177,7 +178,7 @@
                       :graft-y root-y
                       :sheet sheet
                       :modifier-state (clim-xcommon:x-event-state-modifiers
-                                       *clx-port* state)
+                                       port state)
                       :timestamp time))
       (:leave-notify
        (make-instance (if (eq mode :ungrab)
@@ -189,7 +190,7 @@
                       :graft-y root-y
                       :sheet sheet
                       :modifier-state (clim-xcommon:x-event-state-modifiers
-                                       *clx-port* state)
+                                       port state)
                       :timestamp time))
       (:configure-notify
        (cond ((and (eq (sheet-parent sheet) (graft sheet))
@@ -207,7 +208,7 @@
                   (xlib:translate-coordinates window
                                               0
                                               0
-                                              (clx-port-window *clx-port*))
+                                              (clx-port-window port))
                 (make-instance 'window-configuration-event
                                :sheet sheet
                                :x x
@@ -221,11 +222,11 @@
       (:destroy-notify
        (make-instance 'window-destroy-event :sheet sheet))
       (:motion-notify
-       (let ((modifier-state (clim-xcommon:x-event-state-modifiers *clx-port*
+       (let ((modifier-state (clim-xcommon:x-event-state-modifiers port
                                                                    state)))
          (if hint-p
              (multiple-value-bind (x y same-screen-p child mask
-                                     root-x root-y)
+                                   root-x root-y)
                  (xlib:query-pointer window)
                (declare (ignore mask))
                ;; If not same-screen-p or the child is different
@@ -269,20 +270,20 @@
       ;; port processes selection events synchronously and there is
       ;; no event passed to the rest of the system.
       (:selection-notify
-       (process-selection-notify *clx-port* window target property selection time)
+       (process-selection-notify port window target property selection time)
        (maybe-funcall *wait-function*))
       (:selection-clear
-       (process-selection-clear *clx-port* selection)
+       (process-selection-clear port selection)
        (maybe-funcall *wait-function*))
       (:selection-request
-       (process-selection-request *clx-port* window sheet target property requestor selection time)
+       (process-selection-request port window sheet target property requestor selection time)
        (maybe-funcall *wait-function*))
       (:client-message
        (or (port-client-message sheet time type data)
            (maybe-funcall *wait-function*)))
       (t
-       (unless (xlib:event-listen (clx-port-display *clx-port*))
-         (xlib:display-force-output (clx-port-display *clx-port*)))
+       (unless (xlib:event-listen (clx-port-display port))
+         (xlib:display-force-output (clx-port-display port)))
        (maybe-funcall *wait-function*)))))
 
 
