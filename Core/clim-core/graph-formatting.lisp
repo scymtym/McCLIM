@@ -60,8 +60,11 @@
 (defgeneric generate-graph-nodes (graph-output-record stream root-objects
                                   object-printer inferior-producer
                                   &key duplicate-key duplicate-test))
-(defgeneric layout-graph-nodes (graph-output-record stream arc-drawer arc-drawing-options))
+(defgeneric layout-graph-nodes (graph-output-record stream arc-drawer arc-drawing-options)) ; TODO parameter is called graph?
 (defgeneric layout-graph-edges (graph-output-record stream arc-drawer arc-drawing-options))
+(defgeneric compute-edge-attach-points (graph edge minor-node major-node))
+; TODO (defgeneric compute-edge-label-position (graph edge minor-node major-node))
+
 ;;; NOTE: Which calls which? --GB 2002-08-13
 
 (defgeneric graph-node-parents (graph-node-record))
@@ -493,47 +496,29 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
    (from-node :initarg :from-node :reader from-node)
    (to-node :initarg :to-node :reader to-node)))
 
-(defun layout-edges (graph node stream arc-drawer arc-drawing-options)
-  (dolist (k (graph-node-children node))
-    (layout-edge graph node k stream arc-drawer arc-drawing-options)))
-
 (defun ensure-edge-record (graph major-node minor-node)
   (let ((edges-from (slot-value major-node 'edges-from))
-	(edges-to   (slot-value minor-node 'edges-to)))
+        (edges-to   (slot-value minor-node 'edges-to)))
     (assert (eq (gethash minor-node edges-from)
-		(gethash major-node edges-to)))
+                (gethash major-node edges-to)))
     (or (gethash minor-node edges-from)
-	(let ((record (make-instance 'standard-edge-output-record
-				     :from-node major-node :to-node minor-node)))
-	  (setf (gethash minor-node edges-from) record
-		(gethash major-node edges-to) record)
-	  (add-output-record record graph)
-	  record))))
+        (let ((record (make-instance 'standard-edge-output-record
+                                     :from-node major-node
+                                     :to-node minor-node)))
+          (setf (gethash minor-node edges-from) record
+                (gethash major-node edges-to) record)
+          (add-output-record record graph)
+          record))))
 
 (defun layout-edge-1 (graph major-node minor-node)
   (let ((edge-record (ensure-edge-record graph major-node minor-node)))
     (with-slots (stream arc-drawer arc-drawing-options) edge-record
-      (with-bounding-rectangle* (x1 y1 x2 y2) major-node
-        (with-bounding-rectangle* (u1 v1 u2 v2) minor-node
-          (clear-output-record edge-record)  ;;; FIXME: repaint?
-          (letf (((stream-current-output-record stream) edge-record))
-            (ecase (slot-value graph 'orientation)
-	      ((:horizontal)
-	       (multiple-value-bind (from to) (if (< x1 u1)
-						  (values x2 u1)
-					          (values x1 u2))
-		 (apply arc-drawer stream major-node minor-node
-			from (/ (+ y1 y2) 2)
-			to   (/ (+ v1 v2) 2)
-			arc-drawing-options)))
-	      ((:vertical)
-	       (multiple-value-bind (from to) (if (< y1 v1)
-						  (values y2 v1)
-				                  (values y1 v2))
-		 (apply arc-drawer stream major-node minor-node
-			(/ (+ x1 x2) 2) from
-			(/ (+ u1 u2) 2) to
-			arc-drawing-options))))))))))
+      (multiple-value-bind (x1 y1 x2 y2)
+          (compute-edge-attach-points graph edge-record minor-node major-node)
+        (clear-output-record edge-record) ;;; FIXME: repaint?
+        (letf (((stream-current-output-record stream) edge-record))
+          (apply arc-drawer stream major-node minor-node
+                 x1 y1 x2 y2 arc-drawing-options))))))
 
 (defun layout-edge (graph major-node minor-node stream arc-drawer arc-drawing-options)
   (let ((edge-record (ensure-edge-record graph major-node minor-node)))
@@ -547,16 +532,18 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
   ;; If arc-drawer is unsupplied, the default behavior is to draw a thin line...
   (setf arc-drawer (or arc-drawer #'standard-arc-drawer))
   (with-slots (orientation) graph
-   ;; We tranformed the position of the nodes when we inserted them into
-   ;; output history, so the bounding rectangles queried below will be
-   ;; transformed. Therefore, disable the transformation now, otherwise
-   ;; the transformation is effectively applied twice to the edges.
-   (with-identity-transformation (stream)
-    (traverse-graph-nodes graph
-                          (lambda (node children continuation)
-                            (unless (eq node graph)
-			      (layout-edges graph node stream arc-drawer arc-drawing-options))
-                            (map nil continuation children))))))
+    ;; We tranformed the position of the nodes when we inserted them into
+    ;; output history, so the bounding rectangles queried below will be
+    ;; transformed. Therefore, disable the transformation now, otherwise
+    ;; the transformation is effectively applied twice to the edges.
+    (with-identity-transformation (stream)
+      (traverse-graph-nodes
+       graph
+       (lambda (node children continuation)
+         (unless (eq node graph)
+           (dolist (child (graph-node-children node))
+             (layout-edge graph node child stream arc-drawer arc-drawing-options)))
+         (map nil continuation children))))))
 
 (defmethod layout-graph-edges :around ((graph-output-record digraph-graph-output-record)
                                        stream arc-drawer arc-drawing-options)
@@ -564,6 +551,30 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
   ;; more helpful alternative
   (setf arc-drawer (or arc-drawer #'arrow-arc-drawer))
   (call-next-method graph-output-record stream arc-drawer arc-drawing-options))
+
+(defmethod compute-edge-attach-points (graph edge minor-node major-node)
+  (with-bounding-rectangle* (x1 y1 x2 y2) major-node
+    (with-bounding-rectangle* (u1 v1 u2 v2) minor-node
+      (ecase (slot-value graph 'orientation)
+        ((:horizontal)
+         (multiple-value-bind (from to) (if (< x1 u1)
+                                            (values x2 u1)
+                                            (values x1 u2))
+           (values from (/ (+ y1 y2) 2)
+                   to   (/ (+ v1 v2) 2))))
+        ((:vertical)
+         (multiple-value-bind (from to) (if (< y1 v1)
+                                            (values y2 v1)
+                                            (values y1 v2))
+           (let* ((cx1 (/ (+ x1 x2) 2))
+                  (cy1 (/ (+ y1 y2) 2))
+                  (cx2 (/ (+ u1 u2) 2))
+                  (cy2 (/ (+ v1 v2) 2))
+                  (deviation1 (/ (- (/ pi 2) (atan (- cy2 cy1) (- cx2 cx1))) (/ pi 2)))
+                  (deviation (* (signum deviation1) (abs (expt deviation1 10)))))
+             (when (< (abs deviation) .01) (setf deviation 0))
+             (values (alexandria:lerp (alexandria:clamp (+ 0.5 deviation) .1 .9) x1 x2) from
+                     (/ (+ u1 u2) 2) to))))))))
 
 (defun standard-arc-drawer (stream from-node to-node x1 y1 x2 y2
                             &rest drawing-options
@@ -575,13 +586,32 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
                          &rest drawing-options
                          &key &allow-other-keys)
   (if (eq from-node to-node)
-      (let ((rad 8))
+      (let ((radius 8))
         (apply #'draw-circle*
-               stream (- x1 rad -2) (- y1 rad) rad
+               stream (- x1 radius -2) (- y1 radius) radius
                :filled nil :end-angle (* pi 1.5) drawing-options)
         (apply #'draw-arrow*
-               stream (- x1 rad -2) y1 x1 y1 drawing-options))
-      (apply #'draw-arrow* stream x1 y1 x2 y2 drawing-options)))
+               stream (- x1 radius -2) y1 x1 y1 drawing-options))
+      (let ((dx (- x2 x1))
+            (dy (- y2 y1)))
+        (cond ((or (< (abs dx) 16) (< (abs dy) 16))
+               (apply #'draw-arrow* stream x1 y1 x2 y2 drawing-options))
+              ((and (<= 0 (atan (- y2 y1) (- x2 x1)) pi)
+                    (> (abs dx) (abs dy)))
+               (let* ((deviation1 (/ (- (/ pi 2) (atan (- y2 y1) (- x2 x1))) (/ pi 2)))
+                      (deviation (- (* 0.5 (abs (expt deviation1 10)))))
+                      (my1 (alexandria:lerp (+ 0.5 deviation) y1 y2)))
+                 (apply #'draw-line* stream x1 y1 x1 my1 drawing-options)
+                 (apply #'draw-line* stream x1 my1 x2 my1 drawing-options)
+                 (apply #'draw-arrow* stream x2 my1 x2 y2 drawing-options)))
+              (t
+               (apply #'draw-arrow* stream x1 y1 x2 y2 :ink +red+ drawing-options)
+               #+no (let* ((deviation1 (/ (- (/ pi 2) (atan (- y2 y1) (- x2 x1))) (/ pi 2)))
+                           (deviation (- (/ (round (* 8 (abs (expt deviation1 10)))) 8)))
+                           (my1 (alexandria:lerp (alexandria:clamp (+ 0.5 deviation) .2 .8) y1 y2)))
+                      (apply #'draw-line* stream x1 y1 x1 my1 drawing-options)
+                      (apply #'draw-line* stream x1 my1 x2 my1 drawing-options)
+                      (apply #'draw-arrow* stream x2 my1 x2 y2 drawing-options)))))))
 
 #||
 
