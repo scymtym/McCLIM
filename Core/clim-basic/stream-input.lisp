@@ -212,6 +212,13 @@ keys read."))
 
 
 ;;; Do streams care about any other events?
+;;; Handled events:
+;;; * events for active gadgets
+;;; * key press events
+;;; * pointer button press events
+;;; * pointer scroll events with modifiers
+;;;   (so scroll events without modifiers scroll the view while events
+;;;   with modifiers can be turned into gestures)
 (defun handle-non-stream-event (buffer)
   (let* ((event (event-queue-peek buffer))
          (sheet (and event (event-sheet event))))
@@ -220,9 +227,11 @@ keys read."))
                       (gadget-active-p sheet))
                  (not (and (typep sheet 'clim-stream-pane)
                            (or (typep event 'key-press-event)
-                               (typep event 'pointer-button-press-event))))))
+                               (typep event 'pointer-button-press-event)
+                               (and (typep event 'pointer-scroll-event)
+                                    (plusp (event-modifier-state event))))))))
         (progn
-          (event-queue-read buffer)	;eat it
+          (event-queue-read buffer)     ; eat it
           (handle-event (event-sheet event) event)
           t)
         nil)))
@@ -251,12 +260,20 @@ keys read."))
     (otherwise
      nil)))
 
+(defmethod stream-process-gesture ((stream standard-extended-input-stream)
+                                   (gesture pointer-scroll-event)
+                                   type)
+  (declare (ignore type))
+  (if (zerop (event-modifier-state gesture))
+      (values gesture (type-of gesture))
+      nil))
+
 (defmethod stream-read-gesture ((stream standard-extended-input-stream)
                                 &key timeout peek-p
-                                (input-wait-test *input-wait-test*)
-                                (input-wait-handler *input-wait-handler*)
-                                (pointer-button-press-handler
-                                 *pointer-button-press-handler*))
+                                     (input-wait-test *input-wait-test*)
+                                     (input-wait-handler *input-wait-handler*)
+                                     (pointer-button-press-handler
+                                      *pointer-button-press-handler*))
   (with-encapsulating-stream (estream stream)
     (let ((*input-wait-test* input-wait-test)
           (*input-wait-handler* input-wait-handler)
@@ -306,7 +323,8 @@ keys read."))
            (cond ((null gesture)
                   (go wait-for-char))
                  ((and pointer-button-press-handler
-                       (typep gesture 'pointer-button-press-event))
+                       (typep gesture '(or pointer-button-press-event
+                                           pointer-scroll-event)))
                   (funcall pointer-button-press-handler stream gesture))
                  ((loop for gesture-name in *abort-gestures*
                         thereis (event-matches-gesture-name-p gesture gesture-name))
@@ -478,31 +496,39 @@ known gestures."
     (setq gesture-spec (list gesture-spec)))
   (destructuring-bind (device-name . modifiers)
       gesture-spec
-    (let* ((modifier-state (apply #'make-modifier-state modifiers)))
-      (cond ((and (eq type :keyboard)
-                  (symbolp device-name))
-             (setq device-name (or (cdr (assoc device-name +name-to-char+))
-                                   device-name)))
-            ((and (member type '(:pointer-button
-                                 :pointer-button-press
-                                 :pointer-button-release)
-                          :test #'eq))
-             (let ((real-device-name
-                    (case device-name
-                      (:left       +pointer-left-button+)
-                      (:middle     +pointer-middle-button+)
-                      (:right      +pointer-right-button+)
-                      (:wheel-up   +pointer-wheel-up+)
-                      (:wheel-down +pointer-wheel-down+)
-                      (t (error "~S is not a known button" device-name)))))
-               (setq device-name real-device-name))))
+    (let ((modifier-state (apply #'make-modifier-state modifiers)))
+      (case type
+        (:keyboard
+         (when (symbolp device-name)
+           (setf device-name (or (cdr (assoc device-name +name-to-char+))
+                                 device-name))))
+        ((:pointer-button
+          :pointer-button-press
+          :pointer-button-release)
+         (setf device-name (case device-name
+                             (:left       +pointer-left-button+)
+                             (:middle     +pointer-middle-button+)
+                             (:right      +pointer-right-button+)
+                             (:wheel-up   +pointer-wheel-up+)
+                             (:wheel-down +pointer-wheel-down+)
+                             (t (error "~S is not a known button"
+                                       device-name)))))
+        (:pointer-scroll
+         (when (null modifiers)
+           (error "~S cannot be used without modifiers" type))
+         (setf device-name (case device-name
+                             (:wheel-up   +pointer-wheel-up+)
+                             (:wheel-down +pointer-wheel-down+)
+                             (t (error "~S is not a known wheel direction"
+                                       device-name))))))
       (values type device-name modifier-state))))
 
 (defun add-gesture-name (name type gesture-spec &key unique)
-      (let ((gesture-entry (multiple-value-list (realize-gesture-spec type gesture-spec))))
-        (if unique
-            (setf (gethash name *gesture-names*) (list gesture-entry))
-            (push gesture-entry (gethash name *gesture-names*)))))
+  (let ((gesture-entry (multiple-value-list
+                        (realize-gesture-spec type gesture-spec))))
+    (if unique
+        (setf (gethash name *gesture-names*) (list gesture-entry))
+        (push gesture-entry (gethash name *gesture-names* '())))))
 
 (defgeneric character-gesture-name (name))
 
@@ -546,6 +572,14 @@ known gestures."
        (eql (pointer-event-button event) device-name)
        (eql (event-modifier-state event) modifier-state)))
 
+(defmethod %event-matches-gesture ((event pointer-scroll-event)
+                                   type
+                                   device-name
+                                   modifier-state)
+  (and (eql type :pointer-scroll)
+       (eql (pointer-event-button event) device-name)
+       (eql (event-modifier-state event) modifier-state)))
+
 (defmethod %event-matches-gesture ((event pointer-button-release-event)
                                    type
                                    device-name
@@ -580,10 +614,10 @@ known gestures."
   ;; special-case literal 'physical' gesture specs of the form (type device-name
   ;; modifier-state).  The CLIM spec requires neither of these things.
   (let ((gesture-entry
-         (typecase gesture-name
-           (character (list (multiple-value-list (realize-gesture-spec :keyboard gesture-name))))
-           (cons (list gesture-name)) ; Literal physical gesture
-           (t (gethash gesture-name *gesture-names*)))))
+          (typecase gesture-name
+            (character (list (multiple-value-list (realize-gesture-spec :keyboard gesture-name))))
+            (cons (list gesture-name))  ; Literal physical gesture
+            (t (gethash gesture-name *gesture-names*)))))
     (loop for (type device-name modifier-state) in gesture-entry
           do (when (%event-matches-gesture event
                                            type
