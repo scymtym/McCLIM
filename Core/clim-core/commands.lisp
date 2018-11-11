@@ -15,8 +15,8 @@
 ;;; Library General Public License for more details.
 ;;;
 ;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the 
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+;;; License along with this library; if not, write to the
+;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
 (in-package :clim-internals)
@@ -121,9 +121,9 @@ designator) inherits menu items."
     (or (inherit-keystrokes command-table)
         (eq inherit-menu :menu))))
 
-(defparameter *command-tables* (make-hash-table :test #'eq))
+(defvar *command-tables* (make-hash-table :test #'eq))
 
-(defparameter *command-parser-table* (make-hash-table)
+(defvar *command-parser-table* (make-hash-table)
   "Mapping from command names to argument parsing functions.")
 
 (defvar *unsupplied-argument-marker* '%unsupplied-argument-marker%)
@@ -211,17 +211,28 @@ designator) inherits menu items."
 (defun make-command-table (name &key inherit-from menu inherit-menu (errorp t))
   (unless inherit-from
     (setq inherit-from '(global-command-table)))
-  (if (and name errorp (gethash name *command-tables*))
-      (error 'command-table-already-exists :command-table-name name)
-      (let ((result (make-instance 'standard-command-table :name name
-	                 :inherit-from inherit-from
-                         :inherit-menu inherit-menu
-	                 :menu (menu-items-from-list menu))))
-        (when name
-          (setf (gethash name *command-tables*) result))
-        result)))
-
-(make-command-table 'user-command-table)
+  (labels ((make-new ()
+             (make-instance 'standard-command-table
+                            :name name
+                            :inherit-from inherit-from
+                            :inherit-menu inherit-menu
+                            :menu (menu-items-from-list menu)))
+           (make-or-update (existing)
+             (cond ((not existing)
+                    (make-new))
+                   (errorp
+                    (error 'command-table-already-exists
+                           :command-table-name name))
+                   (t
+                    (reinitialize-instance
+                     existing
+                     :inherit-from inherit-from
+                     :inherit-menu inherit-menu
+                     :menu (menu-items-from-list menu))))))
+    (if name
+        (let ((tables *command-tables*))
+          (setf (gethash name tables) (make-or-update (gethash name tables))))
+        (make-new))))
 
 (defmacro define-command-table (name &key (inherit-from '(global-command-table))
                                           (menu nil menu-supplied-p)
@@ -246,7 +257,7 @@ designator) inherits menu items."
     (if (null item)
 	(when errorp
 	  (error 'command-not-present :command-table-name (command-table-name command-table)))
-	(progn 
+	(progn
 	  (when (typep item '%menu-item)
 	    (remove-menu-item-from-command-table table
 						 (command-menu-item-name item)
@@ -261,7 +272,7 @@ designator) inherits menu items."
 				     &key name menu keystroke (errorp t)
 				     (menu-command (and menu
 							`(,command-name))))
-  
+
   (let ((table (find-command-table command-table))
 	(name (cond ((stringp name)
 		     name)
@@ -301,7 +312,7 @@ designator) inherits menu items."
 	  (setf (gethash name (command-line-names table)) command-name))
 	(when menu
 	  (%add-menu-item table item after))))))
-						  
+
 
 (defun apply-with-command-table-inheritance (fun command-table)
   (funcall fun command-table)
@@ -630,7 +641,7 @@ examine the type of the command menu item to see if it is
                           (declare (ignore foo))
                           *unsupplied-argument-marker*)
                       (required-args parser))))))
-  
+
 ;;; XXX The spec says that GESTURE may be a gesture name, but also that the
 ;;; default test is event-matches-gesture-name-p.  Uh...
 
@@ -673,7 +684,7 @@ examine the type of the command menu item to see if it is
 		      :initarg :argument-unparser)
    (required-args :accessor required-args :initarg :required-args)
    (keyword-args :accessor keyword-args :initarg :keyword-args))
-  
+
   (:documentation "A container for a command's parsing functions and
   data for unparsing"))
 
@@ -754,7 +765,7 @@ examine the type of the command menu item to see if it is
     (return-from make-key-acceptors nil))
   (setq keyword-args (mapcar #'(lambda (arg)
 				 (cons (make-keyword (car arg)) (cdr arg)))
-			     keyword-args))  
+			     keyword-args))
   (let ((key-possibilities (gensym "KEY-POSSIBILITIES"))
 	(member-ptype (gensym "MEMBER-PTYPE"))
 	(key-result (gensym "KEY-RESULT"))
@@ -794,9 +805,9 @@ examine the type of the command menu item to see if it is
 			  keyword-args))))
 	       (setq ,key-results (list* ,key-result
 					 ,val-result
-					 ,key-results)))	     
+					 ,key-results)))
 	     (eat-delimiter-or-activator))))
-       
+
        ,key-results)))
 
 (defun make-argument-accept-fun (name required-args keyword-args)
@@ -897,7 +908,7 @@ examine the type of the command menu item to see if it is
 	 for (arg ptype-form) in key-args
 	 for arg-key = (make-keyword arg)
 	 collect `(,arg-key
-		   
+
 		   (format ,stream "~C:~A~C"
 			   ,seperator
 			   ,(keyword-arg-name-from-symbol arg)
@@ -1233,7 +1244,7 @@ examine the type of the command menu item to see if it is
     ;; commands to work ] works really badly if (frame-command-table
     ;; *application-frame*) is set/bound to the dispatching
     ;; command-table itself.
-    ;; 
+    ;;
     ;; Instead we now use the knowledge of how disabled commands are
     ;; implemented to satisfy the constraint that only enabeled
     ;; commands are acceptable (with the "accessible" constraint being
@@ -1504,4 +1515,3 @@ examine the type of the command menu item to see if it is
 	      (accept 'form :stream stream :view view :prompt nil :history 'command-or-form)))
       (t
        (funcall (cdar *input-context*) object type event options)))))
-
