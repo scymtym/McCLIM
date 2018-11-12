@@ -1808,6 +1808,8 @@ and must never be nil.")
                  (progn
                    (draw-circle* pane (1+ x) (1+ y) 8.0 :filled t :ink *3d-light-color*)
                    (draw-circle* pane x y 8.0 :filled t :ink *3d-dark-color*))))
+           (draw-label (label x1 y1)
+             (draw-text* pane label x1 y1))
            (draw-value (x y)
              (let ((text (format-value (gadget-value pane)
                                        (slider-decimal-places pane))))
@@ -1820,33 +1822,45 @@ and must never be nil.")
                                  :ink *3d-dark-color*))))))
       (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region pane))
         (display-gadget-background pane background-color 0 0 (- x2 x1) (- y2 y1))
-        (ecase (gadget-orientation pane)
-          ((:vertical)
-           (let ((middle (round (- x2 x1) 2)))
-             (draw-bordered-polygon pane
-                                    (polygon-points
-                                     (make-rectangle*
-                                      (- middle 2) (+ y1 slider-button-half-short-dim)
-                                      (+ middle 2) (- y2 slider-button-half-short-dim)))
-                                    :style :inset
-                                    :border-width 2)
-             (draw-knob middle position)
-             (when (gadget-show-value-p pane)
-               (draw-value (+ middle 10.0)
-                           (- y2 slider-button-short-dim)))))
-          ((:horizontal)
-           (let ((middle (round (- y2 y1) 2)))
-             (draw-bordered-polygon pane
-                                    (polygon-points
-                                     (make-rectangle*
-                                      (+ x1 slider-button-half-short-dim) (- middle 2)
-                                      (- x2 slider-button-half-short-dim) (+ middle 2)))
-                                    :style :inset
-                                    :border-width 2)
-             (draw-knob position middle)
-             (when (gadget-show-value-p pane)
-               (draw-value (+ x1 slider-button-short-dim)
-                           (- middle 10.0))))))))))
+        (let* ((label (gadget-label pane))
+               (label-space-requirements (when label
+                                           (compose-label-space pane)))
+               (label-width (if label-space-requirements
+                                (space-requirement-width label-space-requirements)
+                                0)))
+          (ecase (gadget-orientation pane)
+            ((:vertical)
+             (let* ((middle (round (- x2 x1) 2))
+                    (text-x (+ middle 10.0))
+                    (text-y (- y2 slider-button-short-dim)))
+               (draw-bordered-polygon pane
+                                      (polygon-points
+                                       (make-rectangle*
+                                        (- middle 2) (+ y1 slider-button-half-short-dim)
+                                        (+ middle 2) (- y2 slider-button-half-short-dim)))
+                                      :style :inset
+                                      :border-width 2)
+               (draw-knob middle position)
+               (when label
+                 (draw-label label text-x text-y))
+               (when (gadget-show-value-p pane)
+                 (draw-value (+ text-x label-width) text-y))))
+            ((:horizontal)
+             (let* ((middle (round (- y2 y1) 2))
+                    (text-x (+ x1 slider-button-short-dim))
+                    (text-y (- middle 10.0)))
+               (draw-bordered-polygon pane
+                                      (polygon-points
+                                       (make-rectangle*
+                                        (+ x1 slider-button-half-short-dim) (- middle 2)
+                                        (- x2 slider-button-half-short-dim) (+ middle 2)))
+                                      :style :inset
+                                      :border-width 2)
+               (draw-knob position middle)
+               (when label
+                 (draw-label label text-x text-y))
+               (when (gadget-show-value-p pane)
+                 (draw-value (+ text-x label-width) text-y))))))))))
 
 (flet ((compute-dims (slider)
          (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region slider))
