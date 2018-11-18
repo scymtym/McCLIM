@@ -557,6 +557,8 @@
 		     text-style text-family text-face text-size)
   (declare (ignore ink clipping-region transformation
 		   text-style text-family text-face text-size))
+  (when (alexandria:emptyp string)
+    (cerror "still continue" "Trying to draw an empty string - this may crash your X server"))
   (with-medium-options (sheet args)
     (multiple-value-bind (x y) (point-position point)
       (multiple-value-bind (toward-x toward-y)
@@ -577,6 +579,8 @@
 		     text-style text-family text-face text-size)
   (declare (ignore ink clipping-region transformation
 		   text-style text-family text-face text-size))
+  (when (alexandria:emptyp string)
+    (cerror "still continue" "Trying to draw an empty string - this may crash your X server"))
   (with-medium-options (sheet args)
     (medium-draw-text* medium string x y
 		       start end
