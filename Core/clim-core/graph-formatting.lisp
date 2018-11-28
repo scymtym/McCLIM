@@ -153,7 +153,7 @@
     (multiple-value-bind (cursor-old-x cursor-old-y)
         (stream-cursor-position stream)
       (let ((graph-output-record
-             (labels ((cont (stream graph-output-record)
+              (labels ((cont (stream graph-output-record)
                         (with-output-recording-options (stream :draw nil :record t)
                           (generate-graph-nodes graph-output-record stream root-objects
                                                 object-printer inferior-producer
@@ -166,9 +166,9 @@
                       (find-graph-type graph-type)
                       graph-options))))
         (setf (output-record-position graph-output-record)
-          (values cursor-old-x cursor-old-y))
+              (values cursor-old-x cursor-old-y))
         (when (and (stream-drawing-p stream)
-                   (output-record-ancestor-p (stream-output-history stream)
+                   #+no (output-record-ancestor-p (stream-output-history stream)
                                              graph-output-record))
           (with-output-recording-options (stream :draw t :record nil)
             (replay graph-output-record stream)))
