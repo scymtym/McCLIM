@@ -92,7 +92,7 @@
 	      (setf (port-pointer-sheet port) pointer-sheet))
 	     (t
 	      nil)))
-	  (t	 
+	  (t
 	   (call-next-method)))))))
 
 (defmethod distribute-event ((port standard-event-port-mixin) (event pointer-event))
@@ -109,8 +109,8 @@
                       (sheet-mirrored-ancestor (event-sheet event)))
             (multiple-value-bind (cx cy)
                 (untransform-position (sheet-delta-transformation (sheet-mirrored-ancestor sheet) nil)
-                                      (slot-value new-event 'climi::graft-x)
-                                      (slot-value new-event 'climi::graft-y))
+                                      (climi::pointer-event-native-graft-x new-event)
+                                      (climi::pointer-event-native-graft-y new-event))
               (setf (slot-value new-event 'climi::x) cx
                     (slot-value new-event 'climi::y) cy)))
           (dispatch-event destination new-event)))))
