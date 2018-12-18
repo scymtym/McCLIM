@@ -30,7 +30,18 @@
 	   (slot-value port 'climi::sheet->mirror)))
 
 (defmethod destroy-port :before ((port raster-image-port))
- (%destroy-all-mirrors port))
+  (%destroy-all-mirrors port))
+
+(defmacro with-raster-image-port ((port-var server width height) &body body)
+  `(invoke-with-raster-image-port
+    (lambda (,port-var) ,@body) ,server ,width ,height))
+
+(defun invoke-with-raster-image-port (cont server width height)
+  (let* ((path (list server :width width :height height))
+         (port (find-port :server-path path)))
+    (unwind-protect
+         (funcall cont port)
+      (destroy-port port))))
 
 ;;; server path
 
@@ -40,16 +51,16 @@
 ;;; Port-Graft methods
 
 (defmethod make-graft ((port raster-image-port) &key (orientation :default) (units :device))
-  (let ((graft (make-instance 'raster-image-graft
-			      :port port
-			      :mirror nil
-			      :orientation orientation
-			      :units units
-			      :width (raster-image-port-width port)
-			      :height (raster-image-port-height port))))
-    (climi::%%set-sheet-region (make-bounding-rectangle 0 0
-                                                        (raster-image-port-width port)
-                                                        (raster-image-port-height port))
+  (let* ((width (raster-image-port-width port))
+         (height (raster-image-port-height port))
+         (graft (make-instance 'raster-image-graft
+                               :port port
+                               :mirror nil
+                               :orientation orientation
+                               :units units
+                               :width width
+                               :height height)))
+    (climi::%%set-sheet-region (make-bounding-rectangle 0 0 width height)
                                graft)
     (push graft (port-grafts port))
     graft))
@@ -74,8 +85,6 @@
 (defmethod port-set-mirror-transformation ((port raster-image-port) mirror transformation)
   (declare (ignore port mirror transformation))
   nil)
-
-
 
 (defgeneric make-raster-top-level-sheet (port format))
 
