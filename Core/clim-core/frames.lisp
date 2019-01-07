@@ -1306,7 +1306,7 @@ alive.")
 	    (%stream% stream)
 	    (%doc-state% frame-documentation-state)
 	    (%event% event))
-	(declare (special %input-context% %stream% %doc-state% %event&))
+	(declare (special %input-context% %stream% %doc-state% %event&)) ; TODO type?
 	(if (and documentation-record
                  (output-record-parent documentation-record))
 	    (redisplay documentation-record *pointer-documentation-output*)
