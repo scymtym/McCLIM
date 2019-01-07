@@ -476,7 +476,7 @@ and used to ensure that presentation-translators-caches are up to date.")
 
 (defun test-presentation-translator
     (translator presentation context-type frame window x y
-     &key event (modifier-state 0) for-menu button
+     &rest args &key event (modifier-state 0) for-menu button &allow-other-keys
      &aux (from-type (from-type translator)))
   (flet ((match-gesture (gesture event modifier-state)
            (or (eq gesture t)
@@ -497,9 +497,11 @@ and used to ensure that presentation-translators-caches are up to date.")
          (or (null (decode-parameters from-type))
              (presentation-typep (presentation-object presentation) from-type))
          (or (null (tester translator))
-             (funcall (tester translator) (presentation-object presentation)
-                      :presentation presentation :context-type context-type
-                      :frame frame :window window :x x :y y :event event))
+             (apply (tester translator) (presentation-object presentation)
+                    :presentation presentation :context-type context-type
+                    :frame frame :window window :x x :y y
+                    (alexandria:remove-from-plist
+                     args :modifier-state :for-menu :button)))
          (or (tester-definitive translator)
              (null (decode-parameters context-type))
              (presentation-typep

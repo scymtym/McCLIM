@@ -1650,7 +1650,9 @@ have a `pointer-documentation-pane' as pointer documentation,
 			     (test-presentation-translator translator
 							   presentation
 							   context-type frame
-							   window x y))
+							   window x y
+                                                           :from-object *dragged-object*
+                                                           :from-presentation *dragged-presentation*))
 		   do (return-from find-dest-translator translator))
 	     nil)
 	   (do-feedback (window x y state)
