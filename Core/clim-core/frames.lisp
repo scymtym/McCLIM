@@ -1699,10 +1699,10 @@ have a `pointer-documentation-pane' as pointer documentation,
 	        x y)))
 	  (:pointer-motion (&key event window x y)
 	    (multiple-value-call #'do-feedback (last-point) :unhighlight)
-	    (setq feedback-activated t
-		  last-event event)
+	    (setq feedback-activated t)
 	    (do-hilite last-presentation (last-point) :unhighlight)
-	    (setq last-presentation nil)
+	    (setq last-event event
+                  last-presentation nil)
 	    (do-feedback window x y :highlight)
 	    (document-drag-n-drop translator nil
 				  context-type frame event window
