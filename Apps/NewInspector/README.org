@@ -1,0 +1,46 @@
+#+TITLE:    New Inspector README
+#+AUTHOR:   Jan Moringen
+#+EMAIL:    jmoringe@techfak.uni-bielefeld.de
+#+LANGUAGE: en
+
+#+OPTIONS: n:nil
+
+* Quick Start
+
+  Start your Lisp system and load the inspector system:
+
+  #+BEGIN_SRC lisp :exports both :results silent
+    (asdf:load-system :new-inspector)
+  #+END_SRC
+
+  Then inspect an object:
+
+  #+BEGIN_SRC lisp :exports code
+    (new-inspector:inspector (find-class 'class))
+  #+END_SRC
+
+  A window containing the following should open:
+
+  #+BEGIN_SRC lisp :exports results :results output file
+    (mcclim-raster-image::with-raster-image-port (port :rgb-image 1000 1000)
+      (let* ((tls (mcclim-raster-image::make-raster-top-level-sheet port :png))
+             (ins (make-instance 'new-inspector::inspector-pane
+                                 :port port
+                                 :root (find-class 'class))))
+        (clim:sheet-adopt-child tls ins)
+        (clim:realize-mirror port tls)
+        (setf (clim:sheet-region tls) (make-rectangle* 0 0 1000 1000))
+        (clim:with-output-recording-options (ins :record nil :draw nil)
+          (new-inspector::present-inspected-object-graph (new-inspector::state ins) ins)
+          (setf (new-inspector::slot-style (new-inspector::state (new-inspector::root-place (new-inspector::state ins)))) :by-class))
+        (clim:with-output-recording-options (ins :record nil :draw t)
+          (setf (clim:stream-cursor-position ins) (values 0 0))
+          (new-inspector::present-inspected-object-graph (new-inspector::state ins) ins))
+        (climi::write-bitmap-file
+         (mcclim-raster-image::image-mirror-image (clim:sheet-mirror tls))
+         "screenshot.png" :format :png)))
+    (princ "screenshot.png")
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:screenshot.png]]
