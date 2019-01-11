@@ -2689,13 +2689,6 @@ SCROLLER-PANE appear on the ergonomic left hand side, or leave set to
       (change-space-requirements stream)
       (redisplay-frame-pane *application-frame* stream))))
 
-(defmethod redisplay-frame-pane ((frame application-frame)
-				 (pane symbol)
-				 &key force-p)
-  (let ((actual-pane (get-frame-pane frame pane)))
-    (when actual-pane
-      (redisplay-frame-pane frame actual-pane :force-p force-p))))
-
 (define-presentation-method presentation-type-history-for-stream
     ((type t) (stream clim-stream-pane))
   (funcall-presentation-generic-function presentation-type-history type))

@@ -407,6 +407,12 @@ documentation produced by presentations.")
 (defmacro with-possible-double-buffering ((frame pane) &body body)
   `(invoke-with-possible-double-buffering ,frame ,pane (lambda () ,@body)))
 
+(defmethod redisplay-frame-pane ((frame application-frame) ; TODO same thing in :around method?
+                                 (pane symbol)
+                                 &key force-p)
+  (when-let ((actual-pane (get-frame-pane frame pane)))
+    (redisplay-frame-pane frame actual-pane :force-p force-p)))
+
 (defmethod redisplay-frame-pane :around ((frame application-frame) pane
 					 &key force-p)
   (let ((pane-object (if (typep pane 'pane)
@@ -430,14 +436,14 @@ documentation produced by presentations.")
             (unless (or (eq redisplayp :command-loop) (eq redisplayp :no-clear))
               (setf (pane-needs-redisplay pane-object) nil))))
       (clear-pane-try-again ()
-       :report "Clear the output history of the pane and reattempt forceful redisplay."
-       (window-clear pane)
-       (redisplay-frame-pane frame pane :force-p t))
+        :report "Clear the output history of the pane and reattempt forceful redisplay."
+        (window-clear pane)
+        (redisplay-frame-pane frame pane :force-p t))
       (clear-pane ()
-       :report "Clear the output history of the pane, but don't redisplay."
-       (window-clear pane))
+        :report "Clear the output history of the pane, but don't redisplay."
+        (window-clear pane))
       (skip-redisplay ()
-       :report "Skip this redisplay."))))
+        :report "Skip this redisplay."))))
 
 (defmethod run-frame-top-level ((frame application-frame)
 				&key &allow-other-keys)
