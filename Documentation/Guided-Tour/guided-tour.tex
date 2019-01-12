@@ -6,24 +6,25 @@
 %\usepackage{epsfig}
 \title{\Huge A Guided Tour of CLIM, \\ Common Lisp Interface Manager}
 \author{
-2006 Update \\ 
-Clemens Fruhwirth \texttt{<clemens@endorphin.org>} \\ The McCLIM Project 
+2006 Update \\
+Clemens Fruhwirth \texttt{<clemens@endorphin.org>} \\ The McCLIM Project
 \bigskip \\
 \begin{tabular}{ll}
-\multicolumn{2}{c}{Original article\footnote{Published in Lisp Pointers 1991}} \\ 
+\multicolumn{2}{c}{Original article\footnote{Published in Lisp Pointers 1991}} \\
 Ramana Rao \texttt{<rao@xerox.com>} &  Xerox Palo Alto Research Center \\
 William M. York \texttt{<york@ila.com>} & International Lisp Associates, Inc. \\
-Dennis Doughty \texttt{<doughty@ila.com>} &  International Lisp Associates, Inc. 
+Dennis Doughty \texttt{<doughty@ila.com>} &  International Lisp Associates, Inc.
 \end{tabular}
 }
 
 \def\VRfont{\sffamily}
 
 \lstset{%
-   basicstyle=\small\sffamily,
-   keywordstyle=\small\sffamily,
-   stringstyle=\rmfamily,
-   commentstyle=\rmfamily\itshape,
+   basicstyle=\verbatim@font,
+   keywordstyle=\small\ttfamily,
+   stringstyle=\ttfamily,
+   commentstyle=\ttfamily\itshape,
+   columns=fullflexible,
    frame=lines,
    language=Lisp }
 
@@ -65,7 +66,7 @@ present a series of examples that illustrates \CLIM{}'s power. The
 article originally appeared in Lisp Pointers in 1991 and was updated
 in 2006 by Clemens Fruhwirth.\footnote{The CLIM 2 specification
   changed significant parts of \CLIM{} rendering legacy code
-  unusable. Clemens Fruhwirth has rewritten all examples and the 
+  unusable. Clemens Fruhwirth has rewritten all examples and the
   corresponding text sections for the \CLIM{} 2 specification. In
   addition, he has restructured the whole article, adding sections
   to provide additional insights into \CLIM{} concepts.} All examples
@@ -177,7 +178,7 @@ implementing sheets (windows and other window-like objects).
 
 \paragraph*{Extended Streams} \CLIM{} integrates the Common Lisp
 Stream I/O functionality with the \CLIM{} graphics, windowing, and
-panes facilities. 
+panes facilities.
 % I believe that this was what was intended [2006/03/14:rpg]
 In addition to ordinary text, the programmer can send a
 button, a picture or any other arbitrary widget to a \CLIM{} output
@@ -199,7 +200,7 @@ semantics with output, such that Lisp objects may be retrieved later
 via user gestures (e.g.{} mouse clicks) on their displayed
 representation. This context sensitive input is modularly layered on
 top of the output recording facility and is integrated with the Common
-Lisp type system. 
+Lisp type system.
 % I understand this, but I suspect it's not going to be obvious to the
 % ordinary reader why type coercion provides the basis for a user
 % interface... [2006/03/14:rpg]
@@ -333,7 +334,7 @@ constructor for panes.\footnote{See Section 29.2 ``Basic Pane
 \code{make-instance} especially made for pane classes.  Let us have a
 look at the definition of \class{hello-world-pane}.
 
-\lstset{style=inlinestyle} \lstinputlisting{hello-world-defclass} 
+\lstset{style=inlinestyle} \lstinputlisting{hello-world-defclass}
 
 The one and only superclass of \class{hello-world-pane} is
 \class{clim-stream-pane}.\footnote{See Section 29.4 ``CLIM Stream
@@ -346,9 +347,9 @@ inherited from \class{clim-stream-pane}:\footnote{Internal classes
 
 \lstset{style=inlinestyle}
 \begin{lstlisting}
-CLIM-USER> (describe (find-class 
+CLIM-USER> (describe (find-class
                       'clim-stream-pane))
-DIRECT-SUPERCLASSES: 
+DIRECT-SUPERCLASSES:
 PERMANENT-MEDIUM-SHEET-OUTPUT-MIXIN
 STANDARD-REPAINTING-MIXIN
 STANDARD-EXTENDED-INPUT-STREAM
@@ -442,7 +443,7 @@ transformation is affine when every straight line remains straight
 after transformation. Transformations can be composed arbitrarily. The
 programmer can attach transformations to mediums and panes. In layout
 panes, \CLIM{} uses transformations to map the coordinates of child
-panes to the coordinate system of their parents. 
+panes to the coordinate system of their parents.
 
 % This was attached to the previous paragraph, but doesn't seem to
 % have anything to do with its topic.  I'm inclined to think that this
@@ -452,7 +453,7 @@ All drawing settings can be changed either permanently, or temporarily
 in the context of the \macro{with-drawing-options} macro.
 
 
-\subsection{The Windowing Substrate} 
+\subsection{The Windowing Substrate}
 
 \CLIM{} does not directly talk to the window system. Instead, \CLIM{}
 is layered on top of a windowing substrate.\footnote{formerly known as Silica.}
@@ -601,21 +602,21 @@ in Chapters 10-14 of \cite{clim-spec}.
 
 \CLIM{} lives in an idealized world in terms of graphics operations. A
 \CLIM{} programmer can use an infinitely long and wide drawing pane
-with arbitrarily precise resolution and continuously variable 
+with arbitrarily precise resolution and continuously variable
 opacity. As rendering devices with these properties are rare,
 we need to render the idealized graphic description to a device
 with finite size and a fixed drawing precision. The rendering rules
 are specified in Section 12.4 ``Rendering Conventions for Geometric
 Shapes''of \cite{clim-spec}.
 
-\section{Building Applications} 
+\section{Building Applications}
 
 In this section, we explain a number of the necessary ingredients for
 building applications in \CLIM{}. We will illustrate frames, panes,
 and simple commands with two examples: a color editor and a simple
 line and text drawing program.
 
-\subsection{Application Frames} 
+\subsection{Application Frames}
 
 Frames are the central abstraction defined by the \CLIM{} interface
 for presenting an application's user interface. Many of the high level
@@ -654,11 +655,11 @@ a blocking read request. He does not have to take care of
 asynchronously handling confirmation or cancel button clicks.  For
 instance, the programmer requests a string from the user and the user
 is presented with a prompt, an editable text field, and two buttons
-for confirmation and canceling. 
+for confirmation and canceling.
 The string requesting function returns only after the user hits the
 confirmation button.  The
 programmer can directly use the function's return value which is the
-string provided by the user. 
+string provided by the user.
 % Is the following rewrite correct?   Seems like in the actual code an
 % abort-gesture is signaled, but it is handled by invoking an abort,
 % if no abort-gesture handler is found.  [2006/03/14:rpg]
@@ -758,8 +759,8 @@ Panes and sheets as defined by the windowing substrate have in common
 that they are associated with a region on screen, a parent, and
 optional children. They differ in their usage of the input and output
 capabilities. A sheet is passive and intended to be used by other,
-active components, 
-while a pane already contains this active part. 
+active components,
+while a pane already contains this active part.
 For this reason,
 panes are implemented as subclasses of \class{basic-sheet}
 augmenting the class with an active part. For instance, a button-pane
@@ -978,10 +979,10 @@ greater detail.
 
 We can invoke the color-editor with the regular
 \method{run-frame-top-level}/\method{make-application-frame}
-combination.  
+combination.
 \lstset{style=inlinestyle}
 \begin{lstlisting}
-(run-frame-top-level 
+(run-frame-top-level
   (make-application-frame 'color-editor))
 \end{lstlisting}
 
@@ -1027,7 +1028,7 @@ class. Passing \constant{t} to this option (its default) generates a
 command definer named
 \macro{define-\texttt{<}frame-name\texttt{>}-command}. We can use the
 command-defining macro as a convenience macro for
-\method{define-command} which is used to define frame commands, and 
+\method{define-command} which is used to define frame commands, and
 will see it in action before long. \keyword{:top-level} specifies a
 special form that is used as top level command loop. The top level is
 responsible for dequeuing and executing commands that have been
@@ -1090,7 +1091,7 @@ draw pane. After every command, we update the drawing pane via the
 auxiliary method \method{update-draw-pane}.\footnote{An experienced
 \CLIM{} programmer would define a display-function for
 \class{draw-pane}. This function is run after a command is
-executed, and causes the display pane to be updated with any changes. We 
+executed, and causes the display pane to be updated with any changes. We
 will save this technique for later examples.}
 
 At this point, we can actually use the application; although not very
@@ -1109,7 +1110,7 @@ But drawing by typing coordinates is not convenient. Therefore, we
 attach these commands to other user interactions.  Figure
 \ref{fig-draw-interfacing} defines input methods (methods for
 \code{handle-event}) for pointer button
-presses as well as key presses on the draw pane.  
+presses as well as key presses on the draw pane.
 Each handler invokes a tracking function (\code{track-line-drawing} and
 \code{track-text-drawing}) that uses \macro{tracking-pointer} to
 bypass the regular input distribution channels and to dispatch events
@@ -1120,7 +1121,7 @@ to user defined handlers.
 % bypass the regular input distribution channels and to dispatch events
 % to user defined handlers.
 
-For \class{pointer-button-press-event}, which is used to draw lines, 
+For \class{pointer-button-press-event}, which is used to draw lines,
 the input loop manages a
 ``rubber-banding'' line. %
 % what is pointer-motion here?  Is it an event?  And it's not really
@@ -1156,17 +1157,17 @@ draw-pane or typing in the interactor pane) and the code for command
 execution (code bodies of \method{define-command}).
 
 % \section{Shaping concepts}
-% 
+%
 % \subsection{The Extended Input Stream vs. The Event-Based Input Protocol of Sheets}
-% 
+%
 % \hrulefill
-% 
+%
 % Usually, UI toolkits are event driven from design as most windowing
 % systems use an event-driven design on their own. \CLIM{} supports a
 % different style of programming. The difference command-inversion
 % makes becomes mostly visible from the coding style of input
 % processing (performing output is rarely an asynchronus operation).
-% 
+%
 % The \CLIM{} programmer can treat the input as if they are coming
 % from an stream. The extendend-input-stream even provides blocking
 % read methods. The regular stream classes focus on character based
@@ -1174,44 +1175,44 @@ execution (code bodies of \method{define-command}).
 % \method{stream-read-line}, while the extended stream input class
 % provides reading of mouse clicks and keyboard presses of the pane
 % stream.
-% 
+%
 % Later, when we talk about presentation-type, we will present a way
 % to request objects with a special semantic from the user. For
 % instance, we require the user to provide a file pathname, or
 % clicking on a weekday item in a calendar. But more of
 % command-inversion and presentations later.
-% 
+%
 % \hrulefill
-% 
+%
 % Even when you are familar with event-based GUI programming, this
 % section is likely to be new to you. As said earlier, a \CLIM{}
 % programmer can persue a different programming style with the
 % extended input stream facilities. Any event-handler or command code
 % can query an input stream for information.
-% 
+%
 % \method{handle-event} from accept-demo shows an event handler for
 % pointer release events. The handler calls two stream reading
 % function \method{stream-read-line} and \method{stream-read-accept}.
 % Notice that both functions are blocking.  The argument to
 % \method{stream-read-accept} signals that the predefined presentation
 % type 'pathname' is requested.
-% 
+%
 % \lstinputlisting{accept-demo-handle-event} For the second pathname
 % prompt, the user can either type a character-based representation of
 % the pathname into the query window or he can select a pathname that
 % is already present on screen with the pointer. accept-demo doesn't
 % show any pathnames, so that is only a theoretical option, but we
 % will see more about this option later in the presentation type demo.
-% 
+%
 % The evaluation of both format forms is block by the evaluation of
 % one of its argument, the stream-reading functions. Only after
 % further interaction with the user, the accept call returns. In many
 % other GUI toolkits, such a programming style is not possible as
 % event handlers would not be allowed to block and therefore stall the
 % event-handling thread.
-% 
+%
 
-\section{High Level Facilities} 
+\section{High Level Facilities}
 
 In this section, we explain a number of higher level facilities
 provided by \CLIM{}, including output recording, formatted output,
@@ -1261,13 +1262,13 @@ information about the packages in the Lisp environment:
 \lstset{style=inlinestyle}
 \begin{lstlisting}
 (defun show-package-info (stream)
- (dolist (package (list-all-packages)) 
-   (write-string (package-name package) 
+ (dolist (package (list-all-packages))
+   (write-string (package-name package)
      stream)
-   (write-string "  " stream) 
-   (format stream "~D" 
-           (count-package-symbols 
-            package)) 
+   (write-string "  " stream)
+   (format stream "~D"
+           (count-package-symbols
+            package))
    (terpri stream)))
 \end{lstlisting}
 Any attempt to fix this function to produce tabular output by building
@@ -1287,8 +1288,8 @@ formatted table for any set of package names.
         (formatting-cell (stream)
           (write-string (package-name package) stream))
 
-        ;; The second color contains the symbol count, aligned with the right 
-	;; edge of the column 
+        ;; The second color contains the symbol count, aligned with the right
+	;; edge of the column
         (formatting-cell (stream :align-x ':right)
           (format stream "~D" (count-package-symbols-package)))))))
 \end{lstlisting}
@@ -1361,10 +1362,10 @@ output. The following example shows how the pathname object could be
 associated with some graphics that were displayed on the screen.
 
 \begin{lstlisting}
-(with-output-as-presentation 
+(with-output-as-presentation
     (:object path
-     :type 'pathname 
-     :stream s) 
+     :type 'pathname
+     :stream s)
   (draw-rectangle* s 0 0 30 30))
 \end{lstlisting}
 
@@ -1614,7 +1615,7 @@ illustrates how an application with interesting UI behavior can be
 constructed from a high-level specification of its functionality.
 
 % \section{The benefits of the extended output stream}
-% 
+%
 % At the first glance, the extended output stream facilities does not
 % look more exciting than the output capabilities of sheets. In fact,
 % the output streams use the output facility of sheets to do their
@@ -1622,23 +1623,23 @@ constructed from a high-level specification of its functionality.
 % of the lower facility. But an output stream helps to organize output
 % can do many things, we are not able to achieve that easy with the
 % low-level output tools.
-% 
+%
 % Output Recording, Table/Graph Formatting,and Incremental Redisplay
 % are tools that are built on top of the stream characteristic in the
 % extended output stream. We have already seen Table Formatting at
 % work in the scheduler example.
-% 
+%
 % \begin{figure*}
 % \hrulefill
 % \begin{lstlisting}
-% (let (a-string 
+% (let (a-string
 %       sum-of-ints
 %       (input-stream (frame-standard-input *application-frame*)))
 %   (accepting-values (input-stream :own-window t)
 %     (setq a-string (accept 'string :prompt "1st string" :stream input-stream))
 %     (terpri input-stream)
-%     (setq sum-of-ints 
-%      (+ (prog1 (or (accept 'integer :prompt "1st integer" :stream input-stream) 0) 
+%     (setq sum-of-ints
+%      (+ (prog1 (or (accept 'integer :prompt "1st integer" :stream input-stream) 0)
 %                (terpri input-stream))
 %         (prog1 (or (accept 'integer :prompt "2nd integer" :stream input-stream) 0)
 %                (terpri input-stream))))))
@@ -1646,14 +1647,14 @@ constructed from a high-level specification of its functionality.
 % \hrulefill
 % \caption{Hairy example of accepting-values demonstrating the use of the blocking \method{accept} method}\label{accepting-values-example}
 % \end{figure*}
-% 
+%
 % With the \macro{accepting-values} even more is possible.
 % \figurename~\ref{accepting-values-example} demonstrates that it is
 % possible to build up a whole dialog window simply by requesting a
 % series of input types. It does that via \method{accepting-values}
 % which brings up a seperate dialog window to request a string and two
 % integers from the user.
-% 
+%
 % The trick of \method{accepting-value} is dual-evaluation. Its body
 % is evaluated twice. First to collect all accept calls and build up a
 % dialog. The second evaluation happens after the user has entered all
@@ -1669,7 +1670,7 @@ constructed from a high-level specification of its functionality.
 % \figurename~\ref{accepting-values-example}. Nonetheless it is shown
 % to give the reader an insight how this sudden violation of
 % evaluation sequence is implemented.
-% 
+%
 % We should emphasize that only the body of accepting-values is
 % evaluated twice. The \method{let} statement in
 % \figurename~\ref{accepting-values-example} does not return before
