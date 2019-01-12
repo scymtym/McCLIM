@@ -3,4 +3,6 @@
 ;; slots
 ;; direct methods
 
+;; finalize, finalized badge
+
 ;; add/remove slots
