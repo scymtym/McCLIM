@@ -44,7 +44,7 @@
     (error (condition)
       (funcall undo-thunk)
       (let ((stream (frame-standard-output *application-frame*)))
-        (with-drawing-options (stream :ink +dark-red+)
+        (with-style (stream :error)
           (format stream "~&~@<~?: ~A~@:>~%"
                   (or format-control "Error executing command")
                   format-arguments
@@ -91,7 +91,42 @@
     (object)
   (list object))
 
-;;; TODO com-copy-place-value
+(define-command (com-copy-place-value :command-table inspector
+                                      :name          t)
+    ((from-place 'place :prompt "From place")
+     (to-place   'place :prompt "To place"))
+  (let ((old-value (value to-place))
+        (new-value (value from-place)))
+    (with-command-error-handling
+        ("Could not copy value from ~A to ~A" from-place to-place)
+        (progn
+          (setf (value to-place) new-value
+                (state to-place) (make-object-state new-value to-place)))
+      (setf (value to-place) old-value))))
+
+(define-drag-and-drop-translator drag-copy-place-value
+    (place command place inspector
+     :gesture :select
+     :tester ((object from-object)
+              (cond ((not from-object)
+                     (valuep object)) ; TODO should work for unbound?
+                    ((eq from-object object)
+                     nil)
+                    ((valuep from-object)
+                     (ignore-errors ; TODO do this properly
+                      (and (supportsp object 'setf)
+                           (accepts-value-p object (value from-object)))))
+                    (t
+                     (supportsp object 'remove-value))))
+     :pointer-documentation ((object destination-object stream)
+                             (if destination-object
+                                 (format stream "Copy value of ~A into ~A"
+                                         object destination-object)
+                                 (format stream "Drag onto place to ~
+                                                 copy value of ~A"
+                                         object))))
+    (object destination-object)
+  (list 'com-copy-place-value object destination-object))
 
 (define-command (com-swap-place-values :command-table inspector
                                        :name          t)
@@ -103,7 +138,7 @@
   (let ((old-value-1 (value place-1))
         (old-value-2 (value place-2)))
     (with-command-error-handling
-        ("Could not swap places ~A and ~A" place-1 place-2)
+        ("Could not swap ~A and ~A" place-1 place-2)
         (progn
           (setf (value place-1) old-value-2
                 (value place-2) old-value-1)
@@ -112,11 +147,11 @@
       (setf (value place-1) old-value-1
             (value place-2) old-value-2))))
 
-(define-gesture-name :swap :pointer-button-press (:left :shift))
+(define-gesture-name :swap :pointer-button-press (:left :control))
 
-(clim:define-drag-and-drop-translator drag-swap-place-values
-    (place clim:command place inspector
-     :gesture :delete
+(define-drag-and-drop-translator drag-swap-place-values
+    (place command place inspector
+     :gesture :swap
      :tester ((object from-object)
               (cond ((not from-object)
                      (valuep object)) ; TODO should work for unbound?

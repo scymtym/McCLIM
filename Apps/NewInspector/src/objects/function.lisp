@@ -70,21 +70,13 @@
   ;; Traced
   (when (tracedp object)
     (write-string " " stream)
-    (surrounding-output-with-border (stream :shape      :rounded
-                                            :background +light-blue+
-                                            :radius     2
-                                            :padding    2)
-      (with-drawing-options (stream :text-face :roman :text-size :smaller)
-        (write-string "traced" stream))))
+    (with-output-as-badge (stream)
+      (write-string "traced" stream)))
   ;; Interpreted
   (unless (compiled-function-p object)
     (write-string " " stream)
-    (surrounding-output-with-border (stream :shape      :rounded
-                                            :background +light-blue+
-                                            :radius     2
-                                            :padding    2)
-      (with-drawing-options (stream :text-face :roman :text-size :smaller)
-        (write-string "interpreted" stream)))))
+    (with-output-as-badge (stream)
+      (write-string "interpreted" stream))))
 
 (defmethod inspect-object-using-state ((object function)
                                        (state  inspected-function)
@@ -118,8 +110,7 @@
             (formatting-cell (stream) (present stream)))
           (formatting-cell (stream) (inspect stream))))))
   ;; Documentation
-  (with-preserved-cursor-x (stream)
-    (print-documentation object stream)))
+  (print-documentation object stream))
 
 (defmethod inspect-object-using-state ((object generic-function)
                                        (state  inspected-generic-function)

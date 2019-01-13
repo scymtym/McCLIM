@@ -34,32 +34,28 @@
 
 (defmethod inspect-place ((place t) (stream t))
   (if (not (valuep place))
-      (with-drawing-options (stream :text-face :italic :ink +dark-gray+) ; TODO make a presentation type
+      (with-style (stream :unbound)
         (write-string "unbound" stream))
       (handler-case
           (let ((value   (value place))
                 (*place* place))
             (inspect-object value stream))
         (nil (condition)
-          (with-drawing-options (stream :text-face :italic :ink +dark-red+) ; TODO make a presentation type or something; should be same as with-command-error-handling
+          (with-style (stream :error)
             (format stream "Could not inspect place: ~A" condition))))))
 
 (defmethod inspect-object ((object t) (stream t))
-  (let* ((place   *place*)
-         (state   (ensure-state object place
-                                (lambda ()
-                                  (make-object-state object place))))
-         (style   (style state)))
+  (let* ((place *place*)
+         (state (ensure-state object place
+                              (lambda ()
+                                (make-object-state object place))))
+         (style (style state)))
     (with-output-as-presentation (stream state (presentation-type-of state)
                                          :single-box t)
       (let ((*place*        nil)
             (*parent-place* place))
         (inspect-object-using-state object state style stream)))
     state))
-
-;;; Backward compatibility
-
-(defgeneric inspect-object-briefly (object stream))
 
 ;;; Inspector state protocol
 
@@ -81,3 +77,7 @@
          (*place*     root-place))
     (setf (stream-default-view stream) view) ; TODO restore old default view?
     (inspect-object root-object stream)))
+
+;;; Backward compatibility
+
+(defgeneric inspect-object-briefly (object stream))

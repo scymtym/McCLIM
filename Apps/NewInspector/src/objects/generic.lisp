@@ -1,13 +1,5 @@
 (cl:in-package #:new-inspector)
 
-;;; Utilities
-
-(defun call-with-safe-and-terse-printing (thunk)
-  (let ((*print-circle* t)
-        (*print-length* 3)
-        (*print-level*  3))
-    (funcall thunk)))
-
 ;;;
 
 (defmethod inspect-object-using-state ((object t)
@@ -23,8 +15,8 @@
                                                (state  inspected-object)
                                                (style  (eql :expanded))
                                                (stream t))
-  (surrounding-output-with-border (stream :shape :rectangle)
-    (call-next-method)))
+  (with-object-border (stream 0)
+    (call-next-method object state style stream)))
 
 (defmethod inspect-object-using-state ((object t)
                                        (state  inspected-object)
@@ -32,11 +24,13 @@
                                        (stream t))
   (formatting-table (stream)
     (formatting-column (stream)
-      (formatting-cell (stream)
-        (with-drawing-options (stream :text-face :bold)
-          (inspect-object-using-state object state :expanded-header stream)))
-      (formatting-cell (stream)
-        (inspect-object-using-state object state :expanded-body stream)))))
+      (formatting-row (stream)
+        (formatting-cell (stream)
+          (with-style (stream :header)
+            (inspect-object-using-state object state :expanded-header stream))))
+      (formatting-row (stream)
+        (formatting-cell (stream)
+          (inspect-object-using-state object state :expanded-body stream))))))
 
 (defmethod inspect-object-using-state ((object t)
                                        (state  inspected-object)
@@ -52,14 +46,14 @@
 
 ;;;
 
-(defun print-documentation (object pane)
-  "Print OBJECT's documentation, if any, to PANE"
+(defun print-documentation (object stream)
   (when-let ((documentation (handler-case (documentation object t)
                               (error ())
                               (warning ()))))
-    (surrounding-output-with-border (pane :shape      :rectangle
-                                          :padding    2
-                                          :background +beige+
-                                          :outline-ink +light-goldenrod+
-                                          :filled     t)
-      (write-string documentation pane))))
+    (with-preserved-cursor-x (stream)
+      (surrounding-output-with-border (stream :shape      :rectangle
+                                              :padding    2
+                                              :background +beige+
+                                              :outline-ink +light-goldenrod+
+                                              :filled     t)
+        (write-string documentation stream)))))

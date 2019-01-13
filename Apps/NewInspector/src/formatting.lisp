@@ -13,14 +13,33 @@
   (check-type stream symbol)
   `(call-with-preserved-cursor-x (lambda (,stream) ,@body) ,stream))
 
+(defun call-with-preserved-cursor-y (thunk stream)
+  (let ((old-y (nth-value 1 (stream-cursor-position stream))))
+    (prog1
+        (funcall thunk stream)
+      (setf (stream-cursor-position stream)
+            (values (stream-cursor-position stream) old-y)))))
+
+(defmacro with-preserved-cursor-y ((stream) &body body)
+  (check-type stream symbol)
+  `(call-with-preserved-cursor-y (lambda (,stream) ,@body) ,stream))
+
+(defun call-with-safe-and-terse-printing (thunk)
+  (let ((*print-circle* t)
+        (*print-length* 3)
+        (*print-level*  3))
+    (funcall thunk)))
+
 ;;; Styles
 
 (defmacro with-style ((stream style &rest extra-drawing-options &key)
                       &body body)
   (let ((args (ecase style
-                (:header    '(:text-face :bold))
+                (:header    '(                   :text-face :bold))
                 (:changable '(:ink +dark-violet+))
-                (:slot-like '(:ink +dark-orange+ :text-size :small)))))
+                (:slot-like '(:ink +dark-orange+                    :text-size :small))
+                (:unbound   '(:ink +dark-gray+   :text-face :italic))
+                (:error     '(:ink +dark-red+    :text-face :italic)))))
     `(with-drawing-options (,stream ,@args ,@extra-drawing-options)
        ,@body)))
 
@@ -48,79 +67,38 @@
          (t      title)))
     ,stream))
 
-;;; Formatting places
+;;; Badges
 
-(defun call-with-place-inspector (thunk state place-class stream)
-  (flet ((make-place (cell)
-           (make-instance place-class :container state :cell cell))
-         (present-place (place)
-           (present place 'place :stream stream))
-         (inspect-place (place)
-           (let ((*place* place))
-             (inspect-object (value place) stream))))
-    (funcall thunk #'make-place #'present-place #'inspect-place)))
+(defun call-with-output-as-badge (thunk stream)
+  (with-preserved-cursor-y (stream)
+   (surrounding-output-with-border (stream :shape      :rounded
+                                           :background +light-blue+
+                                           :radius     2
+                                           :padding    2)
+     (with-drawing-options (stream :text-face :roman :text-size :smaller)
+       (funcall thunk stream)))))
 
-(defmacro with-place-inspector ((state place-class stream) (make inspect present) &body body)
-  (with-gensyms (make-var inspect-var present-var)
-    `(call-with-place-inspector
-      (lambda (,make-var ,inspect-var ,present-var)
-        (flet ((,make (cell)
-                 (funcall ,make-var cell))
-               (,inspect (place)
-                 (funcall ,inspect-var place))
-               (,present (place)
-                 (funcall ,present-var place)))
-          ,@body))
-      ,state ,place-class ,stream)))
+(defmacro with-output-as-badge ((stream) &body body)
+  (check-type stream symbol)
+  `(call-with-output-as-badge (lambda (,stream) ,@body) ,stream))
 
-(defmacro formatting-place-list ((container place-class stream &rest args &key) &body body)
-  (once-only (container place-class stream)
-    `(formatting-item-list (stream ,@args)
-       (macrolet ((formatting-place-cell (stream-var cell place-var inspect present)
-                      `(formatting-cell (,stream-var)
-                         (let ((,place-var (ensure-child ,cell ,place-class *parent-place*
-                                                         (lambda ()
-                                                           (make-instance place-class
-                                                                          :container ,container
-                                                                          :cell      ,cell)))))
-                           (flet ((,present (stream)
-                                    (present ,place-var 'place :stream stream))
-                                  (,inspect (stream)
-                                    (let ((*place* ,place-var))
-                                      (inspect-object )))))))))
-         ,@body))))
+;;; Object border
 
-(defmacro formatting-place-cell ((stream &rest args)
-                                 (container place-class cell present inspect
-                                  &key (place-var (gensym "PLACE")))
-                                 &body body)
-  (once-only (container place-class stream)
-    `(formatting-cell (,stream ,@args)
-       (let ((,place-var (ensure-child ,cell ,place-class *parent-place*
-                                       (lambda ()
-                                         (make-instance ,place-class
-                                                        :container ,container
-                                                        :cell      ,cell)))))
-         (flet ((,present (&optional (stream ,stream))
-                  (present ,place-var 'place :stream stream))
-                (,inspect (&optional (stream ,stream))
-                  (let ((*place* ,place-var))
-                    (inspect-object (value ,place-var) stream))))
-           ,@body)))))
+(defun color-for-bar (depth)
+  (let ((limit (contrasting-inks-limit nil)))
+    (make-contrasting-inks limit (mod depth limit))))
 
-(defmacro formatting-place ((stream container place-class cell present inspect
-                             &key (place-var (gensym "PLACE")))
-                            &body body)
-  (once-only (container place-class stream)
-    `(let ((,place-var (ensure-child ,cell ,place-class *parent-place*
-                                     (lambda ()
-                                       (make-instance ,place-class
-                                                      :container ,container
-                                                      :cell      ,cell)))))
-       (flet (,@(when present
-                  `((,present (&optional (stream ,stream))
-                              (present ,place-var 'place :stream stream))))
-              ,@(when inspect
-                  `((,inspect (&optional (stream ,stream))
-                              (inspect-place ,place-var stream)))))
-         ,@body))))
+(defun call-with-object-border (thunk stream depth)
+  (surrounding-output-with-border
+      (stream :padding        2
+              :shape          :rectangle
+              :line-thickness 2
+              :line-dashes    '(1 1)
+              :left-ink       (color-for-bar (1- depth))
+              :top-ink        nil
+              :right-ink      nil
+              :bottom-ink     nil)
+    (funcall thunk stream)))
+
+(defmacro with-object-border ((stream depth) &body body)
+  `(call-with-object-border (lambda (,stream) ,@body) ,stream ,depth))

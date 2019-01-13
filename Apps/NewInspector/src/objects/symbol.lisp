@@ -93,11 +93,7 @@
 
     ;; type
     )
-  ;; name
-  ;; package
   ;; plist
-  ;; function value
-  ;; value
   )
 
 ;; TODO style symbols as table

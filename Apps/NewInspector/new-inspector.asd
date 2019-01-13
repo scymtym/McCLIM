@@ -12,11 +12,14 @@
                  :pathname   "src"
                  :serial     t
                  :components ((:file       "package")
+
+                              (:file       "formatting")
+
                               (:file       "protocol")
 
                               (:file       "place")
+                              (:file       "place-formatting")
 
-                              (:file       "formatting")
                               (:file       "presentations")
                               (:file       "commands")
 
@@ -33,6 +36,7 @@
                  :depends-on ("base")
                  :serial     t
                  :components ((:file       "generic")
+                              (:file       "number")
                               (:file       "symbol")
                               (:file       "list")
                               (:file       "array")

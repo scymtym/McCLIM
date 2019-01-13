@@ -8,9 +8,6 @@
 (defmethod supportsp ((place slot-place) (operator (eql 'setf)))
   t) ; TODO read-only structure slots
 
-(defmethod supportsp ((place slot-place) (operator (eql 'remove-value)))
-  t) ; TODO read-only structure slots
-
 (flet ((slot-name (place)
          (c2mop:slot-definition-name (cell place))))
 
@@ -46,7 +43,7 @@
 
 ;;; Presentation types
 
-(define-presentation-type inspected-instance () ; TODO needed?
+(define-presentation-type inspected-instance ()
   :inherit-from 'inspected-object)
 
 ;;; Object inspection methods
@@ -54,15 +51,15 @@
 (defun inspect-slot (slot object stream)
   (formatting-place (stream object 'slot-place slot present inspect
                             :place-var place)
-    (let ((name (c2mop:slot-definition-name (cell place))))
+    (let* ((name (c2mop:slot-definition-name (cell place))))
       (formatting-row (stream)
         (formatting-cell (stream :align-y :center) ; TODO must be able to inspect slot
           (with-style (stream :slot-like)
             (write-string (symbol-name name) stream)))
         (formatting-cell (stream :align-x :center :align-y :center)
-          (present))
+          (present stream))
         (formatting-cell (stream :align-y :center)
-          (inspect))))))
+          (inspect stream))))))
 
 (defmethod inspect-slots ((object t)
                           (style  (eql nil))
@@ -74,29 +71,24 @@
   (let ((class (class-of object)))
     (formatting-table (stream)
       (map nil (rcurry #'inspect-slot object stream)
-           (c2mop:class-slots class)))))
+           (c2mop:class-slots class))))) ; TODO finalize?
 
 (defmethod inspect-slots ((object t)
                           (style  (eql :by-class))
                           (stream t))
-  (let* ((class           (class-of object))
-         (effective-slots (c2mop:class-slots class))
-         (seen-slots      (make-hash-table :test #'eq)))
-    (loop :with initial-x = (stream-cursor-position stream)
-          :for super :in (c2mop:class-precedence-list class)
-          :for super-slots = (loop :for super-slot :in (c2mop:class-direct-slots super)
-                                   :for effective-slot = (find (c2mop:slot-definition-name super-slot)
-                                                               effective-slots
-                                                               :test #'eq :key #'c2mop:slot-definition-name)
-                                   :unless (gethash effective-slot seen-slots)
-                                   :do (setf (gethash effective-slot seen-slots) t)
-                                   :and :collect effective-slot)
+  (let ((class (class-of object))
+        (slots (make-hash-table :test #'eq)))
+    (loop :for super :in (c2mop:class-precedence-list class)
+          :for super-slots = (loop :for slot :in (c2mop:class-direct-slots super)
+                                   :unless (gethash slot slots)
+                                   :do (setf (gethash slot slots) t)
+                                   :and :collect slot)
           :when super-slots
           :do (with-section (stream)
                   (with-drawing-options (stream :text-size :smaller)
                     (if (eq super class)
-                        (format stream "Direct slots")
-                        (format stream "Inherited from ~A" (class-name super)))) ; TODO inspectable
+                        (format stream "Direct slots~%")
+                        (format stream "Inherited from ~A~%" (class-name super)))) ; TODO inspectable
                 (formatting-table (stream)
                   (map nil (rcurry #'inspect-slot object stream) super-slots))))))
 
@@ -126,10 +118,10 @@
                             (not (eq (slot-style object) :flat))))
      :priority -1
      :documentation "Flat list of slots"
-     :pointer-documentation ((object stream)
-                             (format stream "~@<Present slots of ~A as ~
-                                             a flat list.~@:>"
-                                     (object object))))
+     :pointer-documentation
+     ((object stream)
+      (format stream "~@<Present slots of ~A as a flat list.~@:>"
+              (object object))))
     (object)
   (list object))
 
@@ -145,17 +137,17 @@
                    (not (eq (slot-style object) :by-class))))
      :priority -1
      :documentation "Organize slots by class"
-     :pointer-documentation ((object stream)
-                             (format stream "~@<Present slots of ~A ~
-                                             organized by superclass.~@:>"
-                                     (object object))))
+     :pointer-documentation
+     ((object stream)
+      (format stream "~@<Present slots of ~A organized by superclass.~@:>"
+              (object object))))
     (object)
   (list object))
 
 (define-command (com-change-class :command-table inspector
                                   :name          "Change class")
     ((object    'inspected-instance)
-     (new-class '(or symbol class inspected-object) :prompt "new class")) ; TODO should accept inspected-class presentations
+     (new-class '(or symbol class inspected-class) :prompt "new class"))
   (with-command-error-handling
       ("Could not change class of ~A to ~A" object new-class)
       (let ((new-class (typecase new-class
@@ -169,4 +161,4 @@
      :priority -1
      :documentation "Change the class of the object")
     (object)
-  (list object (accept '(or symbol class inspected-object) :prompt "new class")))
+  (list object (accept '(or symbol class inspected-class) :prompt "new class")))

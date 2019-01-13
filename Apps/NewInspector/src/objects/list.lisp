@@ -133,14 +133,14 @@
                 (with-style (stream :slot-like)
                   (formatting-place-cell (stream :align-y :center)
                       (object 'alist-key-place cell present inspect)
-                    (present)
-                    (inspect)))
+                    (present stream)
+                    (inspect stream)))
                 (formatting-place
                     (stream object 'alist-value-place cell present inspect)
                   (formatting-cell (stream :align-x :center :align-y :center)
-                    (present))
+                    (present stream))
                   (formatting-cell (stream :align-y :center)
-                    (inspect)))))))
+                    (inspect stream)))))))
 
 (defmethod inspect-object-using-state ((object cons)
                                        (state  inspected-proper-list)
@@ -157,7 +157,7 @@
           :do (formatting-place-cell (stream)
                   (object 'list-element-place cell present inspect)
                 (present)
-                (write-char #\space stream)
+                (write-char #\Space stream)
                 (inspect)))))
 
 (defmethod inspect-object-using-state ((object cons)

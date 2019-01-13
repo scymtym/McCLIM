@@ -63,17 +63,14 @@
   t)
 
 (defmethod make-unbound ((place adjustable-vector-element-place))
-  (handler-case
-      (let* ((container (container place))
-             (length    (array-total-size container))
-             (index     (cell place)))
-        (minf (fill-pointer container) (1- length))
-        (when (> length 1)
-          (loop :for i :from index :to (- length 2)
-                :do (setf (aref container i) (aref container (1+ i)))))
-        (adjust-array container (1- length)))
-    (error (c)
-      (princ c *trace-output*))))
+  (let* ((container (container place))
+         (length    (array-total-size container))
+         (index     (cell place)))
+    (minf (fill-pointer container) (1- length))
+    (when (> length 1)
+      (loop :for i :from index :to (- length 2)
+            :do (setf (aref container i) (aref container (1+ i)))))
+    (adjust-array container (1- length))))
 
 ;;; Object inspection methods
 
@@ -124,7 +121,7 @@
           (formatting-item-list (stream :n-columns 1)
             (loop :for i :from 0 :below (array-total-size object)
                   :if (and fill-pointer (>= i fill-pointer))
-                  :do (with-drawing-options (stream :ink +light-gray+)
+                  :do (with-drawing-options (stream :ink +light-gray+) ; TODO style
                         (format-element stream i))
                   :else
                   :do (format-element stream i))))))))
