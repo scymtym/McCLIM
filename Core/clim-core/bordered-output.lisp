@@ -277,9 +277,12 @@
                  (draw-line* stream x1 y1 x2 y2
                              :line-style (or line-style* line-style)
                              :ink        (or ink* ink))))
-          (when (or (not left-ink-supplied-p) left-ink)   (line left  bottom left  top    left-line-style   left-ink))
-          (when (not top-ink-supplied-p)    (line left  top    right top    top-line-style    top-ink))
-          (when (not right-ink-supplied-p)  (line right top    right bottom right-line-style  right-ink))
+          (when (or (not left-ink-supplied-p) left-ink)
+            (line left  bottom left  top    left-line-style   left-ink))
+          (when (not top-ink-supplied-p)
+            (line left  top    right top    top-line-style    top-ink))
+          (when (or (not right-ink-supplied-p) right-ink)
+            (line right top    right bottom right-line-style  right-ink))
           (when (not bottom-ink-supplied-p) (line right bottom left  bottom bottom-line-style bottom-ink)))))))
 
 (defmethod draw-output-border-under
