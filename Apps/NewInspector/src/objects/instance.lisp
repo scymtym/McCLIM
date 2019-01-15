@@ -33,7 +33,7 @@
 (defclass inspected-instance (inspected-object)
   ((%slot-style :initarg  :slot-style
                 :accessor slot-style
-                :initform :flat)))
+                :initform :by-class)))
 
 (defmethod make-object-state ((object standard-object) (place t))
   (make-instance 'inspected-instance :place place))
