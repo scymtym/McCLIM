@@ -38,11 +38,11 @@
 (defmethod make-unbound ((place alist-element-place))
   (delete (cell place) (container place)))
 
-(defclass alist-key-place (alist-element-place
-                           car-place)
+(defclass alist-key-place (key-place
+                           alist-element-place)
   ())
 
-(defclass alist-value-place (key-value-place
+(defclass alist-value-place (value-place
                              cdr-place
                              alist-element-place)
   ())

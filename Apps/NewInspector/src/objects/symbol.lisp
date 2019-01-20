@@ -121,20 +121,21 @@
           (formatting-cell (stream) (write-string "Value" stream))
           (formatting-cell (stream) (write-string "Function" stream))))
       (do-symbols (symbol object)
-        (let ((symbol symbol))
-          (formatting-row (stream)
-            (formatting-place (stream object 'pseudo-place symbol nil inspect* :place-var place)
-              (formatting-cell (stream) (inspect* stream))
+        (when (eq (symbol-package symbol) object)
+          (let ((symbol symbol))
+            (formatting-row (stream)
+              (formatting-place (stream object 'pseudo-place symbol nil inspect* :place-var place)
+                (formatting-cell (stream) (inspect* stream))
 
-              (let ((*parent-place* place)) ; TODO this is not
+                (let ((*parent-place* place)) ; TODO this is not
                                         ; acceptable
-                ;; value
-                (formatting-place (stream symbol 'symbol-value-place nil present inspect)
-                  ;; (formatting-cell (stream) (present stream))
-                  (formatting-cell (stream) (present stream) (inspect stream)))
+                  ;; value
+                  (formatting-place (stream symbol 'symbol-value-place nil present inspect)
+                    ;; (formatting-cell (stream) (present stream))
+                    (formatting-cell (stream) (present stream) (inspect stream)))
 
-                (formatting-place (stream symbol 'symbol-function-place nil present inspect)
-                  ;; (formatting-cell (stream) (present stream))
-                  (formatting-cell (stream) (present stream) (inspect stream)))))))))))
+                  (formatting-place (stream symbol 'symbol-function-place nil present inspect)
+                    ;; (formatting-cell (stream) (present stream))
+                    (formatting-cell (stream) (present stream) (inspect stream))))))))))))
 
 ;; TODO command: trace all symbols

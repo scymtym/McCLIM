@@ -87,8 +87,8 @@
           :do (with-section (stream)
                   (with-drawing-options (stream :text-size :smaller)
                     (if (eq super class)
-                        (format stream "Direct slots~%")
-                        (format stream "Inherited from ~A~%" (class-name super)))) ; TODO inspectable
+                        (format stream "Direct slots")
+                        (format stream "Inherited from ~A" (class-name super)))) ; TODO inspectable
                 (formatting-table (stream)
                   (map nil (rcurry #'inspect-slot object stream) super-slots))))))
 
