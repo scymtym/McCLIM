@@ -873,7 +873,7 @@ documentation produced by presentations.")
             (intern (concatenate 'string
                                  (symbol-name '#:define-)
                                  (symbol-name name)
-                                 (symbol-name '#:-command)))))
+                                 (symbol-name '#:-command))))) ; TODO symbolicate
     (when (or (and pane panes)
               (and pane layouts))
       (error ":pane cannot be specified along with either :panes or :layouts"))
