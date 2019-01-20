@@ -115,7 +115,11 @@
                                           concrete-pane-class)))
       (multiple-value-bind (class-symbol foundp)
           (alexandria:ensure-symbol
-           (alexandria:symbolicate (class-gensym fm) "-" (symbol-name concrete-pane-class-symbol))
+           (alexandria:symbolicate (class-gensym fm)
+                                   "-"
+                                   (package-name (symbol-package concrete-pane-class-symbol))
+                                   ":"
+                                   (symbol-name concrete-pane-class-symbol))
            :clim-clx)
         (unless foundp
           (eval
