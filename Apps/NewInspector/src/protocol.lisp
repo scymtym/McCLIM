@@ -59,9 +59,13 @@
 
 ;;; Inspector state protocol
 
-(defgeneric root (inspector-state))
+(defgeneric root-place (inspector-state &key run-hook?))
 
-#+no (defgeneric object-state (inspector-state))
+(defgeneric (setf root-place) (new-value inspector-state &key run-hook?))
+
+(defgeneric root-object (inspector-state &key run-hook?))
+
+(defgeneric (setf root-object) (new-value inspector-state &key run-hook?))
 
 ;;;
 
@@ -71,7 +75,10 @@
     (state stream
      &key
      (view (make-instance 'inspector-view)))
-  (let* ((root-place  (root-place state))
+  (setf (stream-default-view stream) view) ; TODO restore old default view?
+  (inspect-place (root-place state) stream)
+
+  #+old (let* ((root-place  (root-place state))
          (root-object (value root-place))
          (*state*     state)
          (*place*     root-place))

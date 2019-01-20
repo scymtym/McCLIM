@@ -40,10 +40,12 @@
 ;;; `root-place'
 
 (defclass root-place (basic-place)
-  ((%container :initform nil)))
+  ((%container :initform nil)
+   (%cell      :reader   value
+               :writer   (setf value))))
 
-(defmethod value ((place root-place))
-  (cell place))
+(defmethod valuep ((place root-place))
+  (slot-boundp place '%cell))
 
 (defmethod (setf state) :after ((new-value t) (place root-place))
   (setf (style new-value) :expanded))
