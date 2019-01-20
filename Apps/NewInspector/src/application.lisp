@@ -17,7 +17,8 @@
    (default
     (vertically ()
       (scrolling (:scroll-bars :horizontal
-                  :height 0) history)
+                  :height      0)
+        history)
       (:fill (scrolling () inspector))
       (make-pane 'clime:box-adjuster-gadget)
       (1/16 interactor))))
