@@ -58,7 +58,7 @@
       (with-style (stream :changable) (call-next-method))
       (call-next-method)))
 
-(define-presentation-method present ((object basic-place)
+(define-presentation-method present ((object basic-place) ; TODO macro
                                      (type   place)
                                      (stream t)
                                      (view   inspector-view)
@@ -70,14 +70,21 @@
                                      (stream t)
                                      (view   inspector-view)
                                      &key)
-  (write-char #\▶ stream))
+  (write-char #\⁃ stream))
 
 (define-presentation-method present ((object key-place)
                                      (type   place)
                                      (stream t)
                                      (view   inspector-view)
                                      &key)
-  (write-char #\▶ stream))
+  (write-char #\• stream))
+
+(define-presentation-method present ((object value-place)
+                                     (type   place)
+                                     (stream t)
+                                     (view   inspector-view)
+                                     &key)
+  (write-char #\→ stream))
 
 ;;; `inspected-object'
 
