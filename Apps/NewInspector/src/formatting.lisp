@@ -99,6 +99,10 @@
   (check-type stream symbol)
   `(call-with-output-as-badge (lambda (,stream) ,@body) ,stream))
 
+(defun badge (stream string)
+  (with-output-as-badge (stream)
+    (write-string string stream)))
+
 ;;; Object border
 
 (defun color-for-bar (depth)
