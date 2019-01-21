@@ -51,6 +51,8 @@
                  :depends-on ("base")
                  :serial     t
                  :components ((:file       "generic")
+                              (:file       "documentation")
+
                               (:file       "number")
                               (:file       "symbol")
                               (:file       "list")

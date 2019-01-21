@@ -60,17 +60,3 @@
                                        (state  inspected-object)
                                        (style  (eql :expanded-body))
                                        (stream t)))
-
-;;;
-
-(defun print-documentation (object stream)
-  (when-let ((documentation (handler-case (documentation object t)
-                              (error ())
-                              (warning ()))))
-    (with-preserved-cursor-x (stream)
-      (surrounding-output-with-border (stream :shape      :rectangle
-                                              :padding    2
-                                              :background +beige+
-                                              :outline-ink +light-goldenrod+
-                                              :filled     t)
-        (write-string documentation stream)))))
