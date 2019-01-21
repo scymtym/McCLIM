@@ -182,46 +182,118 @@
   ;; plist
   )
 
+(defun package-symbols (package &key filter)
+  (let ((result (make-array 100 :adjustable t :fill-pointer 0)))
+    (do-symbols (symbol package)
+      (when (and (eq (symbol-package symbol) package)
+                 (or (not filter)
+                     (funcall filter symbol)))
+        (vector-push-extend symbol result)))
+    (sort result #'string-lessp :key #'symbol-name)))
+
+(defmethod inspect-object-using-state ((object package)
+                                       (state  inspected-object)
+                                       (style  (eql :expanded-header))
+                                       (stream t))
+  (call-next-method)
+  (when (package-locked? object)
+    (write-char #\Space stream)
+    (badge stream "locked")))
+
+;; TODO use list
+;; TODO used-by list
+;; TODO locked
+;; TODO nicknames
 ;; TODO style symbols as table
 ;; TODO style symbols grouped by external etc.
 (defmethod inspect-object-using-state ((object package)
-                                       (state  inspected-object)
+                                       (state  inspected-package)
                                        (style  (eql :expanded-body))
                                        (stream t))
-  (formatting-table (stream)
-    (formatting-row (stream)
-      (formatting-place (stream object 'pseudo-place (package-name object) present inspect)
-        (with-style (stream :slot-like)
-          (formatting-cell (stream) (write-string "Name" stream))
-          (formatting-cell (stream) (present stream)))
-        (formatting-cell (stream) (inspect stream)))))
+  (with-preserved-cursor-x (stream)
+    (formatting-table (stream)
+      (formatting-row (stream)
+        (formatting-place (stream object 'pseudo-place (package-name object) present inspect)
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Name" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream)))
+        #+sbcl (formatting-place (stream object 'pseudo-place (package-locked? object) present inspect)
+                 (with-style (stream :slot-like)
+                   (formatting-cell (stream) (write-string "Locked" stream))
+                   (formatting-cell (stream) (present stream)))
+                 (formatting-cell (stream) (inspect stream))))))
 
   (print-documentation object stream)
-  (terpri stream)
 
-  (with-section (stream) "Symbols"
-    (formatting-table (stream)
-      (with-drawing-options (stream :text-face :bold)
-        (formatting-row (stream)
-          (formatting-cell (stream) (write-string "Symbol" stream))
-          (formatting-cell (stream) (write-string "Value" stream))
-          (formatting-cell (stream) (write-string "Function" stream))))
-      (do-symbols (symbol object)
-        (when (eq (symbol-package symbol) object)
-          (let ((symbol symbol))
-            (formatting-row (stream)
-              (formatting-place (stream object 'pseudo-place symbol nil inspect* :place-var place)
-                (formatting-cell (stream) (inspect* stream))
+  (let ((cell (list nil nil nil nil nil)))
+    (with-section (stream)
+        (setf (third cell)
+              (updating-output (stream :unique-id :symbol-count)
+                (format stream "Symbols (~:D total, ~:D shown)" (fourth cell) (fifth cell))))
+      (with-preserved-cursor-x (stream) ; TODO should not be needed
+        ;; (write-string "Sort by" stream)
+        (with-preserved-cursor-y (stream)
+          (with-output-as-gadget (stream)
+            (make-pane 'toggle-button :background +white+ :label "Exported")))
+        (with-preserved-cursor-y (stream)
+          (with-output-as-gadget (stream)
+            (make-pane 'toggle-button :background +white+ :label "Documented")))
+        (with-preserved-cursor-y (stream)
+          (with-output-as-gadget (stream)
+            (make-pane 'toggle-button :background +white+ :label "Function")))
+        (with-preserved-cursor-y (stream)
+          (with-output-as-gadget (stream)
+            (make-pane 'toggle-button :background +white+ :label "Value")))
+        (write-string "Filter " stream)
+        (with-output-as-gadget (stream)
+          (make-pane 'text-field
+                     :width 200
+                     :background +beige+
+                     :value-changed-callback (lambda (gadget value)
+                                               (declare (ignore gadget))
+                                               (let ((string (string-upcase value)))
+                                                 (setf (symbol-filter state)
+                                                       (lambda (symbol)
+                                                         (search string (symbol-name symbol)))))
+                                               (when (first cell)
+                                                 (let ((*parent-place* (first cell)))
+                                                   (redisplay (second cell) stream)))
+                                               (when (third cell)
+                                                 (redisplay (third cell) stream))))))
 
-                (let ((*parent-place* place)) ; TODO this is not
-                                        ; acceptable
-                  ;; value
-                  (formatting-place (stream symbol 'symbol-value-place nil present inspect)
-                    ;; (formatting-cell (stream) (present stream))
-                    (formatting-cell (stream) (present stream) (inspect stream)))
+      (setf (first cell) *parent-place*
+            (second cell)
+            (updating-output (stream :unique-id :symbol-table)
 
-                  (formatting-place (stream symbol 'symbol-function-place nil present inspect)
-                    ;; (formatting-cell (stream) (present stream))
-                    (formatting-cell (stream) (present stream) (inspect stream))))))))))))
+              (with-drawing-options (stream :text-size :smaller)
+                (formatting-table (stream)
+                  (with-drawing-options (stream :text-face :bold)
+                    (formatting-row (stream)
+                      (formatting-cell (stream) (write-string "Symbol" stream))
+                      (formatting-cell (stream) (write-string "Value" stream))
+                      (formatting-cell (stream) (write-string "Function" stream))
+                      (formatting-cell (stream) (write-string "Type" stream))))
+
+                  ;; TODO should be able to use updating-output here
+                  (setf (fifth cell) 0)
+                  (flet ((symbol-row (symbol)
+                           (incf (fifth cell))
+                           (formatting-row (stream)
+                             (formatting-place (stream object 'pseudo-place symbol nil inspect* :place-var place)
+                               (formatting-cell (stream) (inspect* stream))
+
+                               (let ((*parent-place* place)) ; TODO this is not good
+                                 ;; Value slot
+                                 (formatting-place (stream symbol 'symbol-value-place nil present inspect)
+                                   (formatting-cell (stream) (present stream) (inspect stream)))
+                                 ;; Function slot
+                                 (formatting-place (stream symbol 'symbol-function-place nil present inspect)
+                                   (formatting-cell (stream) (present stream) (inspect stream)))
+                                 ;; Type slot
+                                 (formatting-place (stream symbol 'symbol-type-place nil present inspect)
+                                   (formatting-cell (stream) (present stream) (inspect stream))))))))
+                    (map nil #'symbol-row (package-symbols object :filter (symbol-filter state))))
+                  )))))))
 
 ;; TODO command: trace all symbols
