@@ -2787,7 +2787,8 @@ if INVOKE-CALLBACK is given."))
         (move-sheet (gadget record) x y)))))
 
 (defmethod note-output-record-lost-sheet ((record gadget-output-record) sheet)
-  (sheet-disown-child sheet (gadget record)))
+  (when (sheet-parent (gadget record)) ; TODO hack
+    (sheet-disown-child sheet (gadget record))))
 
 ;; This is as good a place as any other to handle moving the position of the
 ;; gadget if the output record has moved. This is consistent with other
