@@ -30,11 +30,13 @@
                :accessor state
                :initform nil)))
 
-(defmethod ensure-child ((cell  t)
-                         (class t)
-                         (place basic-place)
-                         (thunk function))
-  (symbol-macrolet ((by-class (gethash cell (children place))))
+(defmethod ensure-child ((container t)
+                         (cell      t)
+                         (class     t)
+                         (place     basic-place)
+                         (thunk     function))
+  (symbol-macrolet ((by-class (gethash cell (or (gethash container (children place))
+                                                (setf (gethash container (children place)) (make-hash-table :test #'eql))))))
     (or (assoc-value by-class class :test #'eq)
         (setf (assoc-value by-class class :test #'eq) (funcall thunk)))))
 

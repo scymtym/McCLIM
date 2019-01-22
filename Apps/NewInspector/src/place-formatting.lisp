@@ -63,7 +63,7 @@
                                  &body body)
   (once-only (container place-class stream)
     `(formatting-cell (,stream ,@args)
-       (let ((,place-var (ensure-child ,cell ,place-class *parent-place*
+       (let ((,place-var (ensure-child ,container ,cell ,place-class *parent-place*
                                        (lambda ()
                                          (make-instance ,place-class
                                                         :container ,container
@@ -79,7 +79,7 @@
                              &key (place-var (gensym "PLACE")))
                             &body body)
   (once-only (container place-class stream)
-    `(let ((,place-var (ensure-child ,cell ,place-class *parent-place*
+    `(let ((,place-var (ensure-child ,container ,cell ,place-class *parent-place*
                                      (lambda ()
                                        (make-instance ,place-class
                                                       :container ,container
