@@ -98,16 +98,29 @@
          (t      title)))
     ,stream))
 
+;;; Tables
+
+(defmacro formatting-header ((stream) &body columns)
+  (check-type stream symbol)
+  `(with-style (,stream :header)
+     (formatting-row (,stream)
+       ,@(map 'list (lambda (column)
+                      `(formatting-cell (,stream)
+                         ,(typecase column
+                            (string `(write-string ,column ,stream))
+                            (t      column))))
+              columns))))
+
 ;;; Badges
 
 (defun call-with-output-as-badge (thunk stream)
   (with-preserved-cursor-y (stream)
-   (surrounding-output-with-border (stream :shape      :rounded
-                                           :background +light-blue+
-                                           :radius     2
-                                           :padding    2)
-     (with-drawing-options (stream :text-face :roman :text-size :smaller)
-       (funcall thunk stream)))))
+    (surrounding-output-with-border (stream :shape      :rounded
+                                            :background +light-blue+
+                                            :radius     2
+                                            :padding    2)
+      (with-drawing-options (stream :text-face :roman :text-size :smaller)
+        (funcall thunk stream)))))
 
 (defmacro with-output-as-badge ((stream) &body body)
   (check-type stream symbol)

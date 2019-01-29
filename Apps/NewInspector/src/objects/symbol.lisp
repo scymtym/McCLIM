@@ -287,12 +287,7 @@
 
               (with-drawing-options (stream :text-size :smaller)
                 (formatting-table (stream)
-                  (with-drawing-options (stream :text-face :bold)
-                    (formatting-row (stream)
-                      (formatting-cell (stream) (write-string "Symbol" stream))
-                      (formatting-cell (stream) (write-string "Value" stream))
-                      (formatting-cell (stream) (write-string "Function" stream))
-                      (formatting-cell (stream) (write-string "Type" stream))))
+                  (formatting-header (stream) "Symbol" "Value" "Function" "Type")
 
                   ;; TODO should be able to use updating-output here
                   (setf (fifth cell) 0)
