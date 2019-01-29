@@ -58,6 +58,8 @@
     (format stream "~:[not~;~] finalized"
             (c2mop:class-finalized-p object))))
 
+(defvar *hack-cache* (make-hash-table :test #'equal))
+
 (defmethod inspect-object-using-state ((object class)
                                        (state  inspected-object)
                                        (style  (eql :expanded-body))
@@ -91,6 +93,38 @@
           (formatting-cell (stream) (inspect stream))))))
 
   (print-documentation object stream)
+
+  (when (c2mop:class-finalized-p object)
+    (with-section (stream) "Effective slots"
+      (formatting-table (stream)
+        (formatting-header (stream) "Name" "Allocation" "Type" "Initargs" "Readers" "Writers" "Initform" "Direct slots")
+        (map nil (lambda (slot)
+                   (let ((name (c2mop:slot-definition-name slot)))
+                     (formatting-row (stream)
+                       (formatting-cell (stream)
+                         (princ name stream))
+                       (formatting-cell (stream)
+                         )
+                       (formatting-cell (stream)
+                         )
+                       (formatting-cell (stream)
+                         )
+                       (formatting-cell (stream)
+                         )
+                       (formatting-cell (stream)
+                         )
+                       (formatting-cell (stream)
+                         )
+                       (formatting-cell (stream)
+                         (let ((contributing (ensure-gethash
+                                              (cons object name) *hack-cache*
+                                              (loop :for super :in (c2mop:class-precedence-list object)
+                                                    :for super-slot = (find name (c2mop:class-direct-slots super)
+                                                                            :key #'c2mop:slot-definition-name)
+                                                    :when super-slot :collect (cons super super-slot)))))
+                           (formatting-place (stream object 'pseudo-place contributing present inspect)
+                             (inspect stream)))))))
+             (c2mop:class-slots object)))))
 
   (call-next-method)
   )
