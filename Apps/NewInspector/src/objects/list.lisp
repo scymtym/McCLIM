@@ -41,6 +41,9 @@
                               car-place)
   ())
 
+(defmethod supportsp ((place list-element-place) (operation (eql 'remove-value)))
+  t)
+
 (defmethod make-unbound ((place list-element-place))
   (loop :for predecessor :on (container place)
         :for middle = (rest predecessor)
