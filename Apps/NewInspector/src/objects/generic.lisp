@@ -23,8 +23,9 @@
                                        (state  inspected-object)
                                        (style  (eql :brief))
                                        (stream t))
-  (call-with-safe-and-terse-printing
-   (lambda () (prin1 object stream))))
+  (with-print-error-handling (stream)
+    (call-with-safe-and-terse-printing
+     (lambda () (prin1 object stream)))))
 
 ;;; Expanded
 
@@ -53,8 +54,9 @@
                                        (state  inspected-object)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (call-with-safe-and-terse-printing
-   (lambda () (prin1 object stream))))
+  (with-print-error-handling (stream) ; TODO do this around everything?
+    (call-with-safe-and-terse-printing
+     (lambda () (prin1 object stream)))))
 
 (defmethod inspect-object-using-state ((object t)
                                        (state  inspected-object)

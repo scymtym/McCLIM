@@ -51,6 +51,16 @@
         (*print-pprint-dispatch* *standard-pprint-dispatch*))
     (funcall thunk)))
 
+(defun call-with-print-error-handling (thunk stream)
+  (handler-case
+      (funcall thunk)
+    (error ()
+      (with-style (stream :error)
+        (write-string "error printing object" stream)))))
+
+(defmacro with-print-error-handling ((stream) &body body)
+  `(call-with-print-error-handling (lambda () ,@body) ,stream))
+
 ;;; Styles
 
 (defmacro with-style ((stream style &rest extra-drawing-options &key)

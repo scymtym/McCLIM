@@ -30,9 +30,9 @@
     (inspected-object com-expand inspector
      :tester ((object) (not (eq (style object) :expanded)))
      :documentation "Expand object"
-     :pointer-documentation
-     ((object stream)
-      (format stream "Expand ~A" (ignore-errors (object object))))) ; TODO make a safe printer; use here and for brief style
+     :pointer-documentation ((object stream)
+                             (with-print-error-handling (stream)
+                               (format stream "Expand ~A" (object object)))))
     (object)
   (list object))
 
@@ -45,9 +45,9 @@
     (inspected-object com-collapse inspector
      :tester ((object) (eq (style object) :expanded))
      :documentation "Collapse object"
-     :pointer-documentation
-     ((object stream)
-      (format stream "Collapse ~A" (ignore-errors (object object))))) ;TODO
+     :pointer-documentation ((object stream)
+                             (with-print-error-handling (stream)
+                               (format stream "Collapse ~A" (object object)))))
     (object)
   (list object))
 
