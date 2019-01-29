@@ -59,21 +59,45 @@
 
 ;;; Object state
 
-(defmethod make-object-state ((object hash-table)
-                              (place  t))
-  (make-instance 'inspected-object :place place))
+(defclass inspected-hash-table (inspected-object)
+  ())
+
+(defmethod make-object-state ((object hash-table) (place t))
+  (make-instance 'inspected-hash-table :place place))
 
 ;;; Object inspection methods
 
 (defmethod inspect-object-using-state ((object hash-table)
-                                       (state  inspected-object)
+                                       (state  inspected-hash-table)
                                        (style  (eql :expanded-header))
                                        (stream t))
   (with-style (stream :header)
     (princ (class-name (class-of object)) stream)))
 
+(defun draw-hash-table-diagram (stream hash-table)
+  (let* ((width                  300)
+         (height                 16)
+         (size                   (hash-table-size hash-table))
+         (rehash-size            (hash-table-rehash-size hash-table))
+         (rehash-threshold       (hash-table-rehash-threshold hash-table))
+         (max                    (max size
+                                      (* size rehash-size)
+                                      (* size rehash-threshold)))
+         (size-ratio             (/ size max))
+         (rehash-size-ratio      (/ (* size rehash-size) max))
+         (rehash-threshold-ratio (/ (* size rehash-threshold) max))
+         (count-ratio            (/ (hash-table-count hash-table) max)))
+    (draw-rectangle* stream 0 0 (* count-ratio width) height :ink (make-contrasting-inks 2 0))
+
+    (draw-rectangle* stream 0 0 (* rehash-size-ratio width) height :filled nil :line-dashes #(2 2))
+
+    (draw-rectangle* stream 0 0 (* size-ratio width) height :filled nil)
+
+    (draw-line* stream (* rehash-threshold-ratio width) 0 (* rehash-threshold-ratio width) height
+                :ink (make-contrasting-inks 2 1))))
+
 (defmethod inspect-object-using-state ((object hash-table)
-                                       (state  inspected-object)
+                                       (state  inspected-hash-table)
                                        (style  (eql :expanded-body))
                                        (stream t))
   (with-preserved-cursor-x (stream)
@@ -111,6 +135,10 @@
             (formatting-cell (stream) (write-string "Rehash Threshold" stream))
             (formatting-cell (stream) (present stream)))
           (formatting-cell (stream) (inspect stream))))))
+
+  (with-room-for-graphics (stream)
+    (draw-hash-table-diagram stream object))
+
   (with-section (stream) "Entries"
     (formatting-table (stream)
       (maphash
@@ -126,3 +154,21 @@
              (formatting-cell (stream :align-y :center) (present))
              (formatting-cell (stream :align-y :center) (inspect)))))
        object))))
+
+;;; Commands
+
+(define-command (com-clear-hash-table :command-table inspector
+                                      :name          "Clear Hash-table")
+    ((object inspected-hash-table))
+  (clrhash (object object)))
+
+(define-presentation-to-command-translator inspected-hash-table->com-clear-hash-table
+    (inspected-hash-table com-clear-hash-table inspector
+     :tester ((object) (plusp (hash-table-count (object object))))
+     :priority -1
+     :documentation "Clear hash-table entries"
+     :pointer-documentation ((object stream)
+                             (format stream "~@<Clear all entries of ~A~@:>"
+                                     (object object))))
+    (object)
+  (list object))
