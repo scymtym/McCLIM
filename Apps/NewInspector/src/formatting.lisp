@@ -41,10 +41,14 @@
   (check-type stream symbol)
   `(call-with-preserved-cursor-y (lambda (,stream) ,@body) ,stream))
 
+;; TODO can we make this constant?
+(defvar *standard-pprint-dispatch* (with-standard-io-syntax *print-pprint-dispatch*))
+
 (defun call-with-safe-and-terse-printing (thunk)
-  (let ((*print-circle* t)
-        (*print-length* 3)
-        (*print-level*  3))
+  (let ((*print-circle*          t)
+        (*print-length*          3)
+        (*print-level*           3)
+        (*print-pprint-dispatch* *standard-pprint-dispatch*))
     (funcall thunk)))
 
 ;;; Styles
