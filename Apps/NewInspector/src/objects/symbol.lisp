@@ -78,10 +78,12 @@
   (fboundp (container place)))
 
 (defmethod value ((place symbol-function-place))
-  (symbol-function (container place)))
+  ;; (symbol-function (container place))
+  (fdefinition (container place)))
 
 (defmethod (setf value) ((new-value function) (place symbol-function-place))
-  (setf (symbol-function (container place)) new-value))
+  ;; (setf (symbol-function (container place)) new-value)
+  (setf (fdefinition (container place)) new-value))
 
 (defmethod make-unbound ((place symbol-function-place))
   (fmakunbound (container place)))
@@ -204,6 +206,7 @@
 ;; TODO used-by list
 ;; TODO locked
 ;; TODO nicknames
+;; TODO local nicknames
 ;; TODO style symbols as table
 ;; TODO style symbols grouped by external etc.
 (defmethod inspect-object-using-state ((object package)
@@ -218,11 +221,27 @@
             (formatting-cell (stream) (write-string "Name" stream))
             (formatting-cell (stream) (present stream)))
           (formatting-cell (stream) (inspect stream)))
+        (formatting-place (stream object 'pseudo-place (package-nicknames object) present inspect)
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Nicknames" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream)))
         #+sbcl (formatting-place (stream object 'pseudo-place (package-locked? object) present inspect)
                  (with-style (stream :slot-like)
                    (formatting-cell (stream) (write-string "Locked" stream))
                    (formatting-cell (stream) (present stream)))
-                 (formatting-cell (stream) (inspect stream))))))
+                 (formatting-cell (stream) (inspect stream))))
+      (formatting-row (stream)
+        (formatting-place (stream object 'pseudo-place (package-use-list object) present inspect)
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Uses" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream)))
+        (formatting-place (stream object 'pseudo-place (package-used-by-list object) present inspect)
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Used by" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream))))))
 
   (print-documentation object stream)
 
