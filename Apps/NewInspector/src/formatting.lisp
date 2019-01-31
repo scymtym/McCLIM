@@ -126,9 +126,9 @@
   (check-type stream symbol)
   `(call-with-output-as-badge (lambda (,stream) ,@body) ,stream))
 
-(defun badge (stream string)
+(defun badge (stream format-control &rest format-arguments)
   (with-output-as-badge (stream)
-    (write-string string stream)))
+    (apply #'format stream format-control format-arguments)))
 
 ;;; Object border
 

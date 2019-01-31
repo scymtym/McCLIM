@@ -54,9 +54,12 @@
       (write-string "anonymous" stream)))
 
   (write-char #\Space stream)
-  (with-output-as-badge (stream)
-    (format stream "~:[not~;~] finalized"
-            (c2mop:class-finalized-p object))))
+  (badge stream "~:[not ~;~]finalized" (c2mop:class-finalized-p object))
+
+  (when (not (eq (class-of object)
+                 (load-time-value (find-class 'standard-class))))
+    (write-char #\Space stream)
+    (badge stream "non-default metaclass")))
 
 (defvar *hack-cache* (make-hash-table :test #'equal))
 

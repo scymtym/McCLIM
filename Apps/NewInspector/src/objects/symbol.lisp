@@ -137,9 +137,8 @@
     (cond ((null package)
            (badge stream "uninterned"))
           (t
-           (with-output-as-badge (stream)
-             (let ((state (nth-value 1 (find-symbol (symbol-name object) package)))) ; TODO ugly
-               (write-string (string-downcase state) stream)))))))
+           (let ((state (nth-value 1 (find-symbol (symbol-name object) package)))) ; TODO ugly
+             (badge stream "~(~A~)" state ))))))
 
 (defmethod inspect-object-using-state ((object symbol)
                                        (state  inspected-object)

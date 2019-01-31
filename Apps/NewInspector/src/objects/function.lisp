@@ -87,13 +87,11 @@
   ;; Traced
   (when (tracedp object)
     (write-string " " stream)
-    (with-output-as-badge (stream)
-      (write-string "traced" stream)))
+    (badge stream "traced"))
   ;; Interpreted
   (unless (compiled-function-p object)
     (write-string " " stream)
-    (with-output-as-badge (stream)
-      (write-string "interpreted" stream))))
+    (badge stream "interpreted")))
 
 (defmethod inspect-object-using-state ((object function)
                                        (state  inspected-function)
