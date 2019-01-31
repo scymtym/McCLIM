@@ -201,10 +201,6 @@
     (write-char #\Space stream)
     (badge stream "locked")))
 
-;; TODO use list
-;; TODO used-by list
-;; TODO locked
-;; TODO nicknames
 ;; TODO local nicknames
 ;; TODO style symbols as table
 ;; TODO style symbols grouped by external etc.

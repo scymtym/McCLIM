@@ -140,6 +140,8 @@
   (with-section (stream) "Methods"
     (let ((methods (c2mop:generic-function-methods object)))
       (formatting-table (stream)
+        (formatting-row (stream)
+          (formatting-header (stream) "Qualifiers" "Specializers"))
         (map nil (lambda (method)
                    (formatting-place (stream object 'method-place method present inspect
                                              :place-var place)
@@ -149,9 +151,10 @@
                            (format-items (qualifiers place) :stream stream))
                          (map nil (lambda (specializer)
                                     (formatting-cell (stream)
-                                      (typecase specializer
-                                        (class (princ (class-name specializer) stream))
-                                        (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream)))))
+                                      (with-print-error-handling (stream)
+                                        (typecase specializer
+                                          (class (princ (class-name specializer) stream))
+                                          (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream))))))
                               (specializers place)))
                        (formatting-cell (stream)
                          (present))
