@@ -41,26 +41,6 @@
   (check-type stream symbol)
   `(call-with-preserved-cursor-y (lambda (,stream) ,@body) ,stream))
 
-;; TODO can we make this constant?
-(defvar *standard-pprint-dispatch* (with-standard-io-syntax *print-pprint-dispatch*))
-
-(defun call-with-safe-and-terse-printing (thunk)
-  (let ((*print-circle*          t)
-        (*print-length*          3)
-        (*print-level*           3)
-        (*print-pprint-dispatch* *standard-pprint-dispatch*))
-    (funcall thunk)))
-
-(defun call-with-print-error-handling (thunk stream)
-  (handler-case
-      (funcall thunk)
-    (error ()
-      (with-style (stream :error)
-        (write-string "error printing object" stream)))))
-
-(defmacro with-print-error-handling ((stream) &body body)
-  `(call-with-print-error-handling (lambda () ,@body) ,stream))
-
 ;;; Styles
 
 (defmacro with-style ((stream style &rest extra-drawing-options &key)
@@ -150,3 +130,25 @@
 
 (defmacro with-object-border ((stream depth) &body body)
   `(call-with-object-border (lambda (,stream) ,@body) ,stream ,depth))
+
+;;; Safety
+
+;; TODO can we make this constant?
+(defvar *standard-pprint-dispatch* (with-standard-io-syntax *print-pprint-dispatch*))
+
+(defun call-with-safe-and-terse-printing (thunk)
+  (let ((*print-circle*          t)
+        (*print-length*          3)
+        (*print-level*           3)
+        (*print-pprint-dispatch* *standard-pprint-dispatch*))
+    (funcall thunk)))
+
+(defun call-with-print-error-handling (thunk stream)
+  (handler-case
+      (funcall thunk)
+    (error ()
+      (with-style (stream :error)
+        (write-string "error printing object" stream)))))
+
+(defmacro with-print-error-handling ((stream) &body body)
+  `(call-with-print-error-handling (lambda () ,@body) ,stream))
