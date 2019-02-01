@@ -37,6 +37,11 @@
 
 ;;; Object inspection methods
 
+(defun safe-finalized-p (class)
+  ;; This may be called, for example, on the prototype instance of
+  ;; CLASS in which all slots are unbound.
+  (ignore-errors (c2mop:class-finalized-p class)))
+
 (defun anonymous-class-p (class)
   (let ((name (class-name class)))
     (or (not name)
@@ -54,7 +59,7 @@
       (prin1 (class-name object) stream))
 
   (write-char #\Space stream)
-  (badge stream "~:[not ~;~]finalized" (c2mop:class-finalized-p object))
+  (badge stream "~:[not ~;~]finalized" (safe-finalized-p object))
 
   (when (not (eq (class-of object)
                  (load-time-value (find-class 'standard-class))))
@@ -153,7 +158,7 @@
 
 (define-presentation-to-command-translator inspected-class->com-finalize
     (inspected-class com-finalize inspector
-     :tester ((object) (not (c2mop:class-finalized-p (object object))))
+     :tester ((object) (not (safe-finalized-p (object object))))
      :priority -1
      :documentation "Finalize class"
      :pointer-documentation ((object stream)
