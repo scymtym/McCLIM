@@ -132,13 +132,18 @@
                                        (style  (eql :expanded-header))
                                        (stream t))
   (call-next-method)
+
   (write-char #\Space stream)
   (let ((package (symbol-package object)))
     (cond ((null package)
            (badge stream "uninterned"))
           (t
            (let ((state (nth-value 1 (find-symbol (symbol-name object) package)))) ; TODO ugly
-             (badge stream "~(~A~)" state ))))))
+             (badge stream "~(~A~)" state)))))
+
+  (when-let ((kind (sb-cltl2:variable-information object)))
+    (write-char #\Space stream)
+    (badge stream "~(~A~)" kind)))
 
 (defmethod inspect-object-using-state ((object symbol)
                                        (state  inspected-object)
