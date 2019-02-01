@@ -140,20 +140,24 @@
     (draw-hash-table-diagram stream object))
 
   (with-section (stream) "Entries"
-    (formatting-table (stream)
-      (maphash
-       (lambda (key value)
-         (declare (ignore value))
-         (formatting-row (stream)
-           (formatting-place-cell (stream)
-               (object 'hash-table-key-place key present inspect)
-             (with-style (stream :slot-like)
-               (present stream)
-               (inspect stream)))
-           (formatting-place (stream object 'hash-table-value-place key present inspect)
-             (formatting-cell (stream :align-y :center) (present))
-             (formatting-cell (stream :align-y :center) (inspect)))))
-       object))))
+    (with-placeholder-if-emtpy (stream)
+      ((zerop (hash-table-count object)) ; TODO don't call count twice
+       "No entries~%")
+      (t
+       (formatting-table (stream)
+         (maphash
+          (lambda (key value)
+            (declare (ignore value))
+            (formatting-row (stream)
+              (formatting-place-cell (stream)
+                  (object 'hash-table-key-place key present inspect)
+                (with-style (stream :slot-like)
+                  (present stream)
+                  (inspect stream)))
+              (formatting-place (stream object 'hash-table-value-place key present inspect)
+                (formatting-cell (stream :align-y :center) (present))
+                (formatting-cell (stream :align-y :center) (inspect)))))
+          object))))))
 
 ;;; Commands
 

@@ -78,6 +78,30 @@
          (t      title)))
     ,stream))
 
+(defun call-with-placeholder-if-empty (test-thunks empty-thunks non-empty-thunk stream)
+  (or (some (lambda (test-thunk empty-thunk)
+              (when (funcall test-thunk)
+                (with-style (stream :unbound)
+                  (funcall empty-thunk stream))
+                t))
+            test-thunks empty-thunks)
+      (funcall non-empty-thunk stream)))
+
+(defmacro with-placeholder-if-emtpy ((stream) &body clauses)
+  (check-type stream symbol)
+  (loop :for (test . body) :in clauses
+        :unless (eq test t)
+          :collect `(lambda () ,test) :into test-thunks
+          :and :collect `(lambda (,stream)
+                           ,@(typecase body
+                               ((cons string) `((format ,stream ,(first body))))
+                               (t             body)))
+                 :into empty-thunks
+        :finally (return `(call-with-placeholder-if-empty
+                           (list ,@test-thunks) (list ,@empty-thunks)
+                           (lambda (,stream) ,@body)
+                           ,stream))))
+
 ;;; Tables
 
 (defmacro formatting-header ((stream) &body columns)
