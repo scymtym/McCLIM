@@ -112,14 +112,15 @@
                                       :name          t)
     ((from-place 'place :prompt "From place")
      (to-place   'place :prompt "To place"))
-  (let ((old-value (value to-place))
+  (let (; (old-value (value to-place)) TODO wrong if unbound
         (new-value (value from-place)))
     (with-command-error-handling
         ("Could not copy value from ~A to ~A" from-place to-place)
         (progn
           (setf (value to-place) new-value
                 (state to-place) (make-object-state new-value to-place)))
-      (setf (value to-place) old-value))))
+      ; (setf (value to-place) old-value)
+      )))
 
 (define-drag-and-drop-translator drag-copy-place-value
     (place command place inspector
