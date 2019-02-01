@@ -113,8 +113,13 @@
                                        (state  inspected-instance)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (prin1 (class-name (class-of object)) stream)
-  (print-unreadable-object (object stream :identity t)))
+  (prin1 (class-name (class-of object)) stream) ; TODO make a function
+
+  (write-char #\Space stream)
+  (let ((string (with-output-to-string (stream) ; TODO make a function
+                  (print-unreadable-object (object stream :identity t)))))
+    (with-drawing-options (stream :ink +dark-slate-blue+ :text-size :smaller) ; TODO with-style
+      (format stream "@~A" (string-trim "#<>{} " string)))))
 
 (defmethod inspect-object-using-state ((object t)
                                        (state  inspected-instance)

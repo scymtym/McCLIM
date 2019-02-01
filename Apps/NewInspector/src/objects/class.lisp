@@ -46,12 +46,12 @@
                                        (state  inspected-object)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (call-next-method)
+  (prin1 (class-name (class-of object)) stream)
 
-  (when (anonymous-class-p object)
-    (write-char #\Space stream)
-    (with-output-as-badge (stream)
-      (write-string "anonymous" stream)))
+  (write-char #\Space stream)
+  (if (anonymous-class-p object)
+      (badge stream "anonymous")
+      (prin1 (class-name object) stream))
 
   (write-char #\Space stream)
   (badge stream "~:[not ~;~]finalized" (c2mop:class-finalized-p object))
