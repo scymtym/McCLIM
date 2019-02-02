@@ -268,20 +268,18 @@ xmin ymin xmax ymax."))
                                  :align-x align-x :align-y align-y :direction direction)
       (values xmin ymin xmax ymax))))
 
-(defmethod climb:text-size (medium string &key text-style (start 0) end
-                            &aux
-                              (string (string string))
-                              (end (or end (length string)))
-                              (text-style (clim:merge-text-styles text-style
-                                                                  (clim:medium-merged-text-style medium))))
-  (when (= start end)
-    (return-from climb:text-size (values 0 0 0 0 (clim:text-style-ascent text-style medium))))
-  (let ((text (string string))
-        (font (climb:text-style-to-font (clim:port medium) text-style)))
-    (multiple-value-bind (xmin ymin xmax ymax
-                               left top width height
-                               ascent descent linegap
-                               cursor-dx cursor-dy)
-        (climb:font-text-extents font text :start start :end end)
-      (declare (ignore xmin ymin xmax ymax left top descent linegap))
-      (values width height cursor-dx cursor-dy ascent))))
+(defmethod text-size (medium string &key text-style (start 0) end
+                      &aux
+                      (text-style (clim:merge-text-styles text-style
+                                                          (clim:medium-merged-text-style medium))))
+  (climi::with-string-subseq (string start end emptyp)
+    (when emptyp
+      (return-from text-size (values 0 0 0 0 (clim:text-style-ascent text-style medium))))
+    (let ((font (climb:text-style-to-font (clim:port medium) text-style)))
+      (multiple-value-bind (xmin ymin xmax ymax
+                            left top width height
+                            ascent descent linegap
+                            cursor-dx cursor-dy)
+          (climb:font-text-extents font string :start start :end end)
+        (declare (ignore xmin ymin xmax ymax left top descent linegap))
+        (values width height cursor-dx cursor-dy ascent)))))

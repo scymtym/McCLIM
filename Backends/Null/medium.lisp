@@ -13,8 +13,8 @@
 ;;; Library General Public License for more details.
 ;;;
 ;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the 
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+;;; License along with this library; if not, write to the
+;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
 (in-package :clim-null)
@@ -73,7 +73,7 @@
   nil)
 
 (defmethod medium-draw-line* ((medium null-medium) x1 y1 x2 y2)
-  (declare (ignore x1 y1 x2 y2)) 
+  (declare (ignore x1 y1 x2 y2))
   nil)
 
 ;; FIXME: Invert the transformation and apply it here, as the :around
@@ -135,24 +135,22 @@
 
 (defmethod text-size
     ((medium null-medium) string &key text-style (start 0) end)
-  (setf string (etypecase string
-		 (character (string string))
-		 (string string)))
-  (let ((width 0)
-	(height (text-style-height text-style medium))
-	(x (- (or end (length string)) start))
-	(y 0)
-	(baseline (text-style-ascent text-style medium)))
-    (do ((pos (position #\Newline string :start start :end end)
-	      (position #\Newline string :start (1+ pos) :end end)))
-	((null pos) (values width height x y baseline))
-      (let ((start start)
-	    (end pos))
-	(setf x (- end start))
-	(setf y (+ y (text-style-height text-style medium)))
-	(setf width (max width x))
-	(setf height (+ height (text-style-height text-style medium)))
-	(setf baseline (+ baseline (text-style-height text-style medium)))))))
+  (climi::with-string-subseq (string start end nil)
+    (let ((width 0)
+          (height (text-style-height text-style medium))
+          (x (- end start))
+          (y 0)
+          (baseline (text-style-ascent text-style medium)))
+      (do ((pos (position #\Newline string :start start :end end)
+                (position #\Newline string :start (1+ pos) :end end)))
+          ((null pos) (values width height x y baseline))
+        (let ((start start)
+              (end pos))
+          (setf x (- end start))
+          (setf y (+ y (text-style-height text-style medium)))
+          (setf width (max width x))
+          (setf height (+ height (text-style-height text-style medium)))
+          (setf baseline (+ baseline (text-style-height text-style medium))))))))
 
 (defmethod climb:text-bounding-rectangle*
     ((medium null-medium) string &key text-style (start 0) end align-x align-y direction)
@@ -200,4 +198,3 @@
 
 (defmethod medium-miter-limit ((medium null-medium))
   0)
-

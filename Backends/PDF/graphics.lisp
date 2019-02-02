@@ -225,15 +225,13 @@ is T."
 
 (defmethod text-size ((medium pdf-medium) string
                       &key text-style (start 0) end)
-  (when (characterp string) (setq string (string string)))
-  (unless end (setq end (length string)))
-  (let* ((font-name (text-style-mapping (port medium)
-                                        (merge-text-styles text-style
-                                                           (medium-merged-text-style medium))))
-         (size (clim-postscript-font:font-name-size font-name))
-         (metrics-key (clim-postscript-font:font-name-metrics-key font-name)))
-    (clim-postscript-font:text-size-in-font metrics-key size
-                                            string start (or end (length string)))))
+  (climi::with-string-subseq (string start end nil)
+    (let* ((text-style (merge-text-styles text-style
+                                          (medium-merged-text-style medium)))
+           (font-name (text-style-mapping (port medium) text-style))
+           (size (clim-postscript-font:font-name-size font-name))
+           (metrics-key (clim-postscript-font:font-name-metrics-key font-name)))
+      (clim-postscript-font:text-size-in-font metrics-key size string start end))))
 
 (defun medium-font (medium)
   (text-style-mapping (port medium) (medium-merged-text-style medium)))
@@ -242,35 +240,36 @@ is T."
                               start end
                               align-x align-y
                               toward-x toward-y transform-glyphs)
-  (pdf:with-saved-state
-    (pdf:in-text-mode
-      (pdf-actualize-graphics-state medium :text-style :color)
-      (let ((sheet-transformation (sheet-native-transformation (medium-sheet medium)))
-            (medium-transformation (medium-transformation medium)))
-        (multiple-value-bind (total-width total-height
-                                          final-x final-y baseline)
-            (let* ((font-name (medium-font medium))
-                   (font (clim-postscript-font:font-name-metrics-key font-name))
-                   (size (clim-postscript-font:font-name-size font-name)))
-              (clim-postscript-font:text-size-in-font font size string 0 nil))
-          (declare (ignore final-x final-y))
-          (let  ((x (ecase align-x
-                      (:left x)
-                      (:center (- x (/ total-width 2)))
-                      (:right (- x total-width))))
-                 (y (ecase align-y
-                      (:baseline y)
-                      (:top (+ y baseline))
-                      (:center (- y (- (/ total-height 2)
-                                       baseline)))
-                      (:bottom (- y (- total-height baseline))))))
-            (multiple-value-bind (mxx mxy myx myy tx ty)
-                (climi::get-transformation
-                 (clim:compose-transformations sheet-transformation
-                                               medium-transformation))
-              (pdf:set-transform-matrix mxx mxy myx myy tx ty))
-            (pdf:set-text-matrix 1 0 0 -1 x y)
-            (pdf:draw-text string)))))))
+  (climi::with-string-subseq (string start end nil :subseq :only)
+    (pdf:with-saved-state
+      (pdf:in-text-mode
+        (pdf-actualize-graphics-state medium :text-style :color)
+        (let ((sheet-transformation (sheet-native-transformation (medium-sheet medium)))
+              (medium-transformation (medium-transformation medium)))
+          (multiple-value-bind (total-width total-height
+                                final-x final-y baseline)
+              (let* ((font-name (medium-font medium))
+                     (font (clim-postscript-font:font-name-metrics-key font-name))
+                     (size (clim-postscript-font:font-name-size font-name)))
+                (clim-postscript-font:text-size-in-font font size string 0 nil))
+            (declare (ignore final-x final-y))
+            (let  ((x (ecase align-x
+                        (:left x)
+                        (:center (- x (/ total-width 2)))
+                        (:right (- x total-width))))
+                   (y (ecase align-y
+                        (:baseline y)
+                        (:top (+ y baseline))
+                        (:center (- y (- (/ total-height 2)
+                                         baseline)))
+                        (:bottom (- y (- total-height baseline))))))
+              (multiple-value-bind (mxx mxy myx myy tx ty)
+                  (climi::get-transformation
+                   (clim:compose-transformations sheet-transformation
+                                                 medium-transformation))
+                (pdf:set-transform-matrix mxx mxy myx myy tx ty))
+              (pdf:set-text-matrix 1 0 0 -1 x y)
+              (pdf:draw-text string))))))))
 
 ;;; Postscript path functions
 

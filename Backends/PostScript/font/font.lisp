@@ -163,7 +163,7 @@
                         (error "Unknown font ~S." font-name)))
          (size (font-name-size font-name)))
     (* (/ size 1000) (font-info-ascent font-info))))
-	 
+
 
 (defmethod text-style-descent (text-style (medium postscript-font-medium))
   (let* ((font-name (text-style-mapping (port medium)
@@ -197,7 +197,7 @@
   (unless text-style (setf text-style (medium-text-style medium)))
   (let* ((font-name
           (text-style-mapping (port medium)
-                              (merge-text-styles 
+                              (merge-text-styles
                                text-style
                                (medium-merged-text-style medium))))
          (metrics-key (font-name-metrics-key font-name))
@@ -269,15 +269,13 @@
 
 (defmethod text-size ((medium postscript-font-medium) string
                       &key text-style (start 0) end)
-  (when (characterp string) (setq string (string string)))
-  (unless end (setq end (length string)))
-  (let* ((font-name (text-style-mapping (port medium)
-                                        (merge-text-styles text-style
-                                                           (medium-merged-text-style medium))))
-         (size (font-name-size font-name))
-         (metrics-key (font-name-metrics-key font-name)))
-    (text-size-in-font metrics-key size
-                       string start (or end (length string)))))
+  (climi::with-string-subseq (string start end nil)
+    (let* ((text-style (merge-text-styles text-style
+                                          (medium-merged-text-style medium)))
+           (font-name (text-style-mapping (port medium) text-style))
+           (size (font-name-size font-name))
+           (metrics-key (font-name-metrics-key font-name)))
+      (text-size-in-font metrics-key size string start end))))
 
 (defmethod invoke-with-text-style :around
     ((medium postscript-font-medium)

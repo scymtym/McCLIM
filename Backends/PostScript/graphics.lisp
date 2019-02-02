@@ -72,7 +72,7 @@
 % base-font-name new-font-name encoding-vector ReEncode -->
 /ReEncode
 {
-  5 dict 
+  5 dict
   begin
     /newencoding exch def
     /newfontname exch def
@@ -80,10 +80,10 @@
 
     /basefontdict basefontname findfont def
     /newfont basefontdict maxlength dict def
-    
+
     basefontdict
-    { 
-      exch dup dup /FID ne exch /Encoding ne and 
+    {
+      exch dup dup /FID ne exch /Encoding ne and
       { exch newfont 3 1 roll put }
       { pop pop }
       ifelse
@@ -103,7 +103,7 @@
   (dotimes (i 256)
     (format sink "  dup ~3D /~A put~%" i (or (aref *iso-latin-1-symbolic-names* i) ".notdef")))
   (format sink "pop~%~%")
-  
+
   (dolist (k '("Times-Roman" "Times-Italic" "Times-Bold" "Times-BoldItalic"
 	       "Helvetica" "Helvetica-Oblique" "Helvetica-Bold" "Helvetica-BoldOblique"
 	       "Courier" "Courier-Oblique" "Courier-Bold" "Courier-BoldOblique"))
@@ -579,38 +579,36 @@ setmatrix")
                               start end
                               align-x align-y
                               toward-x toward-y transform-glyphs)
-  (setq string (if (characterp string)
-                   (make-string 1 :initial-element string)
-                   (subseq string start end)))
-  (let ((sheet-transformation (sheet-native-transformation (medium-sheet medium)))
-        (medium-transformation (medium-transformation medium)))
-    (let ((file-stream (postscript-medium-file-stream medium)))
-      (postscript-actualize-graphics-state file-stream medium :color :text-style)
-      (with-graphics-state ((medium-sheet medium))
-        (multiple-value-bind (total-width total-height
-                                          final-x final-y baseline)
-            (let* ((font-name (medium-font medium))
-                   (font (clim-postscript-font:font-name-metrics-key font-name))
-                   (size (clim-postscript-font:font-name-size font-name)))
-              (clim-postscript-font:text-size-in-font font size string 0 nil))
-          (declare (ignore final-x final-y))
-          ;; Only one line?
-          (let ((x (ecase align-x
-                     (:left x)
-                     (:center (- x (/ total-width 2)))
-                     (:right (- x total-width))))
-                (y (ecase align-y
-                     (:top (+ y baseline))
-                     (:center (+ y baseline (- (/ total-height 2))))
-                     (:baseline y)
-                     (:bottom (+ y (- total-height baseline))))))
-            (multiple-value-bind (mxx mxy myx myy tx ty)
-                (climi::get-transformation (clim:compose-transformations
-                                            sheet-transformation
-                                            medium-transformation))
+  (climi::with-string-subseq (string start end nil :subseq :only)
+    (let ((sheet-transformation (sheet-native-transformation (medium-sheet medium)))
+          (medium-transformation (medium-transformation medium)))
+      (let ((file-stream (postscript-medium-file-stream medium)))
+        (postscript-actualize-graphics-state file-stream medium :color :text-style)
+        (with-graphics-state ((medium-sheet medium))
+          (multiple-value-bind (total-width total-height
+                                final-x final-y baseline)
+              (let* ((font-name (medium-font medium))
+                     (font (clim-postscript-font:font-name-metrics-key font-name))
+                     (size (clim-postscript-font:font-name-size font-name)))
+                (clim-postscript-font:text-size-in-font font size string 0 nil))
+            (declare (ignore final-x final-y))
+            ;; Only one line?
+            (let ((x (ecase align-x
+                       (:left x)
+                       (:center (- x (/ total-width 2)))
+                       (:right (- x total-width))))
+                  (y (ecase align-y
+                       (:top (+ y baseline))
+                       (:center (+ y baseline (- (/ total-height 2))))
+                       (:baseline y)
+                       (:bottom (+ y (- total-height baseline))))))
+              (multiple-value-bind (mxx mxy myx myy tx ty)
+                  (climi::get-transformation (clim:compose-transformations
+                                              sheet-transformation
+                                              medium-transformation))
+                (format file-stream "[~,3F ~,3F ~,3F ~,3F ~,3F ~,3F] concat~%"
+                        mxx mxy myx myy tx ty))
+              (moveto* file-stream x y)
               (format file-stream "[~,3F ~,3F ~,3F ~,3F ~,3F ~,3F] concat~%"
-                      mxx mxy myx myy tx ty))
-            (moveto* file-stream x y)
-            (format file-stream "[~,3F ~,3F ~,3F ~,3F ~,3F ~,3F] concat~%"
-                    1 0 0 -1 0 0)
-            (format file-stream "(~A) show~%" (postscript-escape-string string))))))))
+                      1 0 0 -1 0 0)
+              (format file-stream "(~A) show~%" (postscript-escape-string string)))))))))

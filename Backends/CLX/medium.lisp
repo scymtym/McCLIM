@@ -872,31 +872,27 @@ translated, so they begin at different position than [0,0])."))
                               align-x align-y
                               toward-x toward-y transform-glyphs)
   (declare (ignore toward-x toward-y transform-glyphs))
-  (let ((merged-transform (sheet-device-transformation (medium-sheet medium))))
-    (with-clx-graphics () medium
-      (when (characterp string)
-        (setq string (make-string 1 :initial-element string)))
-      (if (null end)
-          (setq end (length string))
-          (setq end (min end (length string))))
-      (multiple-value-bind (text-width text-height x-cursor y-cursor baseline)
-          (text-size medium string :start start :end end)
-        (declare (ignore x-cursor y-cursor))
-        (unless (and (eq align-x :left) (eq align-y :baseline))
-          (setq x (- x (ecase align-x
-                         (:left 0)
-                         (:center (round text-width 2)) ; worst case
-                         (:right text-width))))         ; worst case
-          (setq y (ecase align-y
-                    (:top (+ y baseline))                              ; OK
-                    (:baseline y)                                      ; OK
-                    (:center (+ y baseline (- (floor text-height 2)))) ; change
-                    (:baseline*  y)                                    ; change
-                    (:bottom (+ y baseline (- text-height)))))))       ; change
-      (multiple-value-bind (x y)
-          (transform-position merged-transform x y)
-        (xlib:draw-glyphs mirror gc (truncate (+ x 0.5)) (truncate (+ y 0.5)) string
-                          :start start :end end :translate #'translate :size 16)))))
+  (climi::with-string-subseq (string start end nil)
+    (let ((merged-transform (sheet-device-transformation (medium-sheet medium))))
+      (with-clx-graphics () medium
+        (multiple-value-bind (text-width text-height x-cursor y-cursor baseline)
+            (text-size medium string :start start :end end)
+          (declare (ignore x-cursor y-cursor))
+          (unless (and (eq align-x :left) (eq align-y :baseline))
+            (setq x (- x (ecase align-x
+                           (:left 0)
+                           (:center (round text-width 2)) ; worst case
+                           (:right text-width))))         ; worst case
+            (setq y (ecase align-y
+                      (:top (+ y baseline))                              ; OK
+                      (:baseline y)                                      ; OK
+                      (:center (+ y baseline (- (floor text-height 2)))) ; change
+                      (:baseline* y)                                     ; change
+                      (:bottom (+ y baseline (- text-height)))))))       ; change
+        (multiple-value-bind (x y)
+            (transform-position merged-transform x y)
+          (xlib:draw-glyphs mirror gc (truncate (+ x 0.5)) (truncate (+ y 0.5)) string
+                            :start start :end end :translate #'translate :size 16))))))
 
 (defmethod medium-buffering-output-p ((medium clx-medium))
   t)

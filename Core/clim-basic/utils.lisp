@@ -617,6 +617,34 @@ index being halfway between INDEX-1 and INDEX-2."
               (slot-value original slot))))
     copy))
 
+;;; String utilities
+
+(defmacro with-string-subseq ((string start end emptyp &key subseq)
+                              &body body)
+  "Establish a binding for EMPTYP and new bindings for STRING, START, END.
+   STRING is bound to a string representation of the original value
+   which may be a string or character. START and END are bound to
+   bounding indices based on the original and the length of
+   STRING. EMPTYP is bound to a Boolean indicating whether the
+   designated subsequence is empty."
+  (check-type string symbol)
+  (check-type start symbol)
+  (check-type end symbol)
+  (check-type emptyp symbol)
+  `(multiple-value-bind (,string ,start ,end ,@(when emptyp `(,emptyp)))
+       (etypecase ,string
+         (character
+          (values (string ,string) 0 1 nil))
+         (string
+          (let ((end (or ,end (length ,string))))
+            (values ,(if subseq
+                         `(subseq ,string ,start end)
+                         string)
+                    ,start end (= ,start end)))))
+     (declare (ignore ,@(when (eq subseq :only) `(,start))
+                      ,@(when (eq subseq :only) `(,end))))
+     ,@body))
+
 (defmacro dolines ((line string &optional result) &body body)
   "Iterates over lines in string separated by #\newline."
   (alexandria:with-gensyms (substr end)

@@ -123,44 +123,39 @@
   (call-next-method))
 
 
-(defmethod climb:text-size ((medium clx-render-medium) string &key text-style (start 0) end
-                            &aux
-                              (string (string string))
-                              (end (or end (length string))))
-  (when (= start end)
-    (return-from text-size (values 0 0 0 0 (text-style-ascent text-style medium))))
-  (let* ((text-style (merge-text-styles text-style
-                                        (medium-merged-text-style medium)))
-         (font (text-style-to-font (port medium) text-style))
-         (text (subseq (string string) start end))
-         (ascent (climb:font-ascent font))
-         (line-height (+ ascent (climb:font-descent font)))
-         (leading (climb:font-leading font))
-         (current-dx 0)
-         (maximum-dx 0)
-         (current-y 0))
-    (dolines (text text)
-      (loop
-         with origin-x fixnum = 0
-         for code across (climb:font-string-glyph-codes font text)
-         do (incf origin-x (climb:font-glyph-dx font code))
-         finally
-           (alexandria:maxf maximum-dx origin-x)
-           (setf current-dx origin-x)
-           (incf current-y leading)))
-    (values maximum-dx (+ current-y line-height (- leading))
-            current-dx (- current-y leading)
-            ascent)))
+(defmethod text-size ((medium clx-render-medium) string &key text-style (start 0) end)
+  (climi::with-string-subseq (string start end emptyp)
+    (when emptyp
+      (return-from text-size (values 0 0 0 0 (text-style-ascent text-style medium))))
+    (let* ((text-style (merge-text-styles text-style
+                                          (medium-merged-text-style medium)))
+           (font (text-style-to-font (port medium) text-style))
+           (text (subseq string start end))
+           (ascent (climb:font-ascent font))
+           (line-height (+ ascent (climb:font-descent font)))
+           (leading (climb:font-leading font))
+           (current-dx 0)
+           (maximum-dx 0)
+           (current-y 0))
+      (dolines (text text)
+        (loop
+          with origin-x fixnum = 0
+          for code across (climb:font-string-glyph-codes font text)
+          do (incf origin-x (climb:font-glyph-dx font code))
+          finally
+             (alexandria:maxf maximum-dx origin-x)
+             (setf current-dx origin-x)
+             (incf current-y leading)))
+      (values maximum-dx (+ current-y line-height (- leading))
+              current-dx (- current-y leading)
+              ascent))))
 
 (defvar *draw-font-lock* (clim-sys:make-lock "draw-font"))
 (defmethod clim:medium-draw-text* ((medium clx-render-medium) string x y
                                    start end
                                    align-x align-y
-                                   toward-x toward-y transform-glyphs
-                                   &aux (end (if (null end)
-                                                 (length string)
-                                                 (min end (length string)))))
-  ;; Possible optimalzaions:
+                                   toward-x toward-y transform-glyphs)
+  ;; Possible optimizations:
   ;;
   ;; * with-clx-graphics already creates appropriate pixmap for us (correct one!) and we have
   ;; medium picture in place - there is no need for gcontext-picture (see xrender-fonts)
@@ -168,34 +163,35 @@
   ;; mirror swaps, use (SHEET-XMIRROR (MEDIUM-SHEET MEDIUM)) instead. It might be a good idea to
   ;; wrap our own (CLX-RENDER-MEDIUM-MIRROR MEDIUM) function.
   (declare (ignore toward-x toward-y))
-  (when (alexandria:emptyp string)
-    (return-from clim:medium-draw-text*))
-  (with-clx-graphics () medium
-    (unless (eq align-y :baseline)
-      (let* ((font (climb:text-style-to-font (port medium) (medium-text-style medium)))
-             (ascent (climb:font-ascent font))
-             (descent (climb:font-descent font))
-             (text-height (+ ascent descent)))
-        (setq y (ecase align-y
-                  (:top (+ y ascent))                              ; OK
-                  #+ (or) (:baseline y)                            ; OK
-                  (:center (+ y ascent (- (/ text-height 2.0s0)))) ; See :around for multiline
-                  (:baseline* y)                                   ; See :around for multiline
-                  (:bottom (- y descent))))))                      ; See :around for multiline
-    (unless (eq align-x :left)
-      ;; This is the worst case - we need to compute whole text width what
-      ;; requires walking all lines char-by char.
-      (let ((text-width (text-size medium string :start start :end end)))
-        (setq x (- (- x 0.5) (ecase align-x
-                               ;;(:left 0)
-                               (:center (/ text-width 2.0s0))
-                               (:right text-width))))))
-    (clim-sys:with-lock-held (*draw-font-lock*)
-      (mcclim-font:draw-glyphs medium mirror gc x y string
-                               :start start :end end
-                               :translate #'translate
-                               :transformation (sheet-device-transformation (medium-sheet medium))
-                               :transform-glyphs transform-glyphs))))
+  (climi::with-string-subseq (string start end emptyp)
+    (when emptyp
+      (return-from clim:medium-draw-text*))
+    (with-clx-graphics () medium
+      (unless (eq align-y :baseline)
+        (let* ((font (climb:text-style-to-font (port medium) (medium-text-style medium)))
+               (ascent (climb:font-ascent font))
+               (descent (climb:font-descent font))
+               (text-height (+ ascent descent)))
+          (setq y (ecase align-y
+                    (:top (+ y ascent))                              ; OK
+                    #+ (or) (:baseline y)                            ; OK
+                    (:center (+ y ascent (- (/ text-height 2.0s0)))) ; See :around for multiline
+                    (:baseline* y)                                   ; See :around for multiline
+                    (:bottom (- y descent))))))                      ; See :around for multiline
+      (unless (eq align-x :left)
+        ;; This is the worst case - we need to compute whole text width what
+        ;; requires walking all lines char-by char.
+        (let ((text-width (text-size medium string :start start :end end)))
+          (setq x (- (- x 0.5) (ecase align-x
+                                 ;;(:left 0)
+                                 (:center (/ text-width 2.0s0))
+                                 (:right text-width))))))
+      (clim-sys:with-lock-held (*draw-font-lock*)
+        (mcclim-font:draw-glyphs medium mirror gc x y string
+                                 :start start :end end
+                                 :translate #'translate
+                                 :transformation (sheet-device-transformation (medium-sheet medium))
+                                 :transform-glyphs transform-glyphs)))))
 
 (defmethod clime:medium-draw-glyph ((medium clx-render-medium) element x y
                                     align-x align-y toward-x toward-y

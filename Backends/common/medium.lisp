@@ -7,25 +7,25 @@
                                            start end
                                            align-x align-y
                                            toward-x toward-y transform-glyphs)
-  (unless (position #\newline string :start start :end end)
-    (return-from clim:medium-draw-text* (call-next-method)))
-  (setq string (subseq string start end))
-  (let* ((font (text-style-to-font (port medium) (medium-text-style medium)))
-         (y-dx (font-leading font)))
-    ;; Single line centering is figured out in the primary method, we just fix
-    ;; the X/Y if it will be different for the supplied positioning and then
-    ;; increase it for each line. -- jd 2018-10-08
-    (case align-y
-      (:center
-       (setq y (- y (/ (* y-dx (count #\newline string)) 2))))
-      ((:bottom :baseline*)
-       (setq y (- y (* y-dx (count #\newline string))))))
-    (dolines (line string)
-      (unless (alexandria:emptyp line)
-        (call-next-method medium line x y 0 (length line)
-                          align-x align-y toward-x toward-y
-                          transform-glyphs))
-      (incf y y-dx))))
+  (climi::with-string-subseq (string start end nil :subseq :only)
+    (unless (position #\newline string)
+      (return-from clim:medium-draw-text* (call-next-method)))
+    (let* ((font (text-style-to-font (port medium) (medium-text-style medium)))
+           (y-dx (font-leading font)))
+      ;; Single line centering is figured out in the primary method, we just fix
+      ;; the X/Y if it will be different for the supplied positioning and then
+      ;; increase it for each line. -- jd 2018-10-08
+      (case align-y
+        (:center
+         (setq y (- y (/ (* y-dx (count #\newline string)) 2))))
+        ((:bottom :baseline*)
+         (setq y (- y (* y-dx (count #\newline string))))))
+      (dolines (line string)
+        (unless (alexandria:emptyp line)
+          (call-next-method medium line x y 0 (length line)
+                            align-x align-y toward-x toward-y
+                            transform-glyphs))
+        (incf y y-dx)))))
 
 ;; For multiline text alignment may change the bbox. For instance longest line
 ;; may start with a character with left-bearing=0 and shorter line starts with a
