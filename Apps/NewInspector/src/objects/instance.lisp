@@ -52,11 +52,11 @@
                 :accessor slot-style
                 :initform :by-class)))
 
-(defmethod make-object-state ((object standard-object) (place t))
-  (make-instance 'inspected-instance :place place))
+(defmethod object-state-class ((object standard-object) (place t))
+  'inspected-instance)
 
-(defmethod make-object-state ((object structure-object) (place t))
-  (make-instance 'inspected-instance :place place))
+(defmethod object-state-class ((object structure-object) (place t))
+  'inspected-instance)
 
 ;;; Presentation types
 

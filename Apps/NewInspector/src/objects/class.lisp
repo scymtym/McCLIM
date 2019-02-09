@@ -32,8 +32,8 @@
 (defclass inspected-class (inspected-instance)
   ())
 
-(defmethod make-object-state ((object class) (place t))
-  (make-instance 'inspected-class :place place))
+(defmethod object-state-class ((object class) (place t))
+  'inspected-class)
 
 ;;; Object inspection methods
 

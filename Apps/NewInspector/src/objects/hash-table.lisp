@@ -62,8 +62,8 @@
 (defclass inspected-hash-table (inspected-object)
   ())
 
-(defmethod make-object-state ((object hash-table) (place t))
-  (make-instance 'inspected-hash-table :place place))
+(defmethod object-state-class ((object hash-table) (place t))
+  'inspected-hash-table)
 
 ;;; Object inspection methods
 

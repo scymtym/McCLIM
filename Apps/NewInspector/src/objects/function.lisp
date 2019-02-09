@@ -53,24 +53,33 @@
 (defclass inspected-function (inspected-object)
   ())
 
-(defmethod make-object-state ((object function) (place t))
-  (make-instance 'inspected-function :place place))
+(defmethod object-state-class ((object function) (place t))
+  'inspected-function)
 
 (defclass inspected-generic-function (inspected-function
                                       inspected-instance)
   ())
 
+(defmethod object-state-class ((object generic-function) (place t))
+  'inspected-generic-function)
+
 (defmethod make-object-state ((object generic-function) (place t))
-  (make-instance 'inspected-generic-function :place place :slot-style nil))
+  (let ((class (object-state-class object place)))
+    (make-instance class :place place :slot-style nil)))
 
 (defclass inspected-method (inspected-instance)
   ())
 
+(defmethod object-state-class ((object method) (place t))
+  'inspected-method)
+
 (defmethod make-object-state ((object method) (place t))
-  (make-instance 'inspected-method :place place :slot-style nil))
+  (let ((class (object-state-class object place)))
+    (make-instance class :place place :slot-style nil)))
 
 (defmethod make-object-state ((object method) (place method-place))
-  (make-instance 'inspected-method :place place :style :class-only :slot-style nil))
+  (let ((class (object-state-class object place)))
+    (make-instance class :place place :style :class-only :slot-style nil)))
 
 ;;; Presentation types
 

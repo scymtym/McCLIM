@@ -41,8 +41,10 @@
         (setf (assoc-value by-class class :test #'eq) (funcall thunk)))))
 
 (defmethod ensure-state ((object t) (place basic-place) (thunk function))
-  (or (state place)
-      (setf (state place) (funcall thunk))))
+  (let ((existing (state place)))
+    (if (and existing (state-applicable-p existing object place))
+        existing
+        (setf (state place) (funcall thunk)))))
 
 (defmethod supportsp ((place basic-place) (operation (eql 'setf)))
   t)

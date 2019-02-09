@@ -122,8 +122,8 @@
                                         (object    inspected-package))
   ())
 
-(defmethod make-object-state ((object package) (place t))
-  (make-instance 'inspected-package :place place))
+(defmethod object-state-class ((object package) (place t))
+  'inspected-package)
 
 ;;; Object inspection methods
 

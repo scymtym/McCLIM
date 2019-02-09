@@ -115,7 +115,14 @@
 (defmethod object ((object inspected-object))
   (value (place object)))
 
+(defmethod state-applicable-p ((state t) (object t) (place t))
+  (eq (class-name (class-of state)) (object-state-class object place))) ; TODO compare the metaobjects?
+
+(defmethod object-state-class ((object t) (place t))
+  'inspected-object)
+
 (defmethod make-object-state ((object t) (place t))
-  (make-instance 'inspected-object :place place))
+  (let ((class (object-state-class object place)))
+    (make-instance class)))
 
 (define-presentation-type inspected-object ()) ; TODO probably not needed

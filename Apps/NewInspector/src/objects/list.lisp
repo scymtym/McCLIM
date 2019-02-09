@@ -78,15 +78,14 @@
 (defclass inspected-alist (inspected-proper-list)
   ())
 
-(defmethod make-object-state ((object cons) (place t))
-  (let ((class (cond ((not (alexandria:proper-list-p object))
-                      'inspected-improper-list)
-                     ((and (not (alexandria:length= 1 object))
-                           (every (alexandria:of-type '(cons (not cons) t)) object))
-                      'inspected-alist)
-                     (t
-                      'inspected-proper-list))))
-    (make-instance class :place place)))
+(defmethod object-state-class ((object cons) (place t))
+  (cond ((not (alexandria:proper-list-p object))
+         'inspected-improper-list)
+        ((and (not (alexandria:length= 1 object))
+              (every (alexandria:of-type '(cons (not cons) t)) object))
+         'inspected-alist)
+        (t
+         'inspected-proper-list)))
 
 ;;; Object inspection methods
 

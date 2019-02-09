@@ -44,6 +44,14 @@
   (:documentation
    "Return the object to which STATE is associated."))
 
+(defgeneric state-applicable-p (state object place)
+  (:documentation
+   "Return true is STATE is suitable for OBJECT in PLACE."))
+
+(defgeneric object-state-class (object place)
+  (:documentation
+   "Return the name of a state class suitable for OBJECT in PLACE."))
+
 (defgeneric make-object-state (object place)
   (:documentation
    "Return a state instance suitable for OBJECT in PLACE."))
