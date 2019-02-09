@@ -31,6 +31,23 @@
 
 (defgeneric make-unbound (place)) ; TODO remove-value?
 
+;;; Object state protocol
+;;;
+;;; An object state instance holds information pertaining to a
+;;; place-object pair.
+
+(defgeneric place (state)
+  (:documentation
+   "Return the place to which STATE is associated."))
+
+(defgeneric object (state)
+  (:documentation
+   "Return the object to which STATE is associated."))
+
+(defgeneric make-object-state (object place)
+  (:documentation
+   "Return a state instance suitable for OBJECT in PLACE."))
+
 ;;; Object inspection protocol
 
 (defvar *place* nil)
