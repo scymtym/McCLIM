@@ -192,7 +192,7 @@
 
 (defun package-symbols (package &key filter)
   (let ((result (make-array 100 :adjustable t :fill-pointer 0)))
-    (do-symbols (symbol package)
+    (do-external-symbols (symbol package)
       (when (and (eq (symbol-package symbol) package)
                  (or (not filter)
                      (funcall filter symbol)))
@@ -259,7 +259,7 @@
         ;; (write-string "Sort by" stream)
         (with-preserved-cursor-y (stream)
           (with-output-as-gadget (stream)
-            (make-pane 'toggle-button :background +white+ :label "Exported")))
+            (make-pane 'toggle-button :background +white+ :label "External")))
         (with-preserved-cursor-y (stream)
           (with-output-as-gadget (stream)
             (make-pane 'toggle-button :background +white+ :label "Documented")))
@@ -312,7 +312,6 @@
                                  ;; Type slot
                                  (formatting-place (stream symbol 'symbol-type-place nil present inspect)
                                    (formatting-cell (stream) (present stream) (inspect stream))))))))
-                    (map nil #'symbol-row (package-symbols object :filter (symbol-filter state))))
-                  )))))))
+                    (map nil #'symbol-row (package-symbols object :filter (symbol-filter state)))))))))))
 
 ;; TODO command: trace all symbols
