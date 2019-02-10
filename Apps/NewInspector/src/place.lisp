@@ -85,7 +85,7 @@
 ;;; `accessor-place'
 
 (defclass accessor-place (basic-place)
-  ())
+  ((%cell :type symbol)))
 
 (defmethod value ((place accessor-place))
   (funcall (cell place) (container place)))
