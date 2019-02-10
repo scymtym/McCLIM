@@ -113,10 +113,12 @@
 
 ;;; Object states
 
-(defclass inspected-package (inspected-object)
+(defclass inspected-package (inspected-instance)
   ((%symbol-filter :initarg  :symbol-filter
                    :accessor symbol-filter
-                   :initform nil)))
+                   :initform nil))
+  (:default-initargs
+   :slot-style nil))
 
 (defmethod (setf symbol-filter) :after ((new-value t)
                                         (object    inspected-package))
@@ -244,6 +246,9 @@
           (formatting-cell (stream) (inspect stream))))))
 
   (print-documentation object stream)
+
+  ;; Slots (not displayed by default)
+  (call-next-method)
 
   (let ((cell (list nil nil nil nil nil)))
     (with-section (stream)

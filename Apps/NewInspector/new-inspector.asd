@@ -54,11 +54,11 @@
                               (:file       "documentation")
 
                               (:file       "number")
-                              (:file       "symbol")
                               (:file       "list")
                               (:file       "array")
-                              (:file       "hash-table")
                               (:file       "instance")
+                              (:file       "symbol")
+                              (:file       "hash-table")
                               (:file       "class")
                               (:file       "function")))
 

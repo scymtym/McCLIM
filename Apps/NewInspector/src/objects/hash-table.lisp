@@ -59,8 +59,10 @@
 
 ;;; Object state
 
-(defclass inspected-hash-table (inspected-object)
-  ())
+(defclass inspected-hash-table (inspected-instance)
+  ()
+  (:default-initargs
+   :slot-style nil))
 
 (defmethod object-state-class ((object hash-table) (place t))
   'inspected-hash-table)
@@ -138,6 +140,9 @@
 
   (with-room-for-graphics (stream)
     (draw-hash-table-diagram stream object))
+
+  ;; Slots (not displayed by default)
+  (call-next-method)
 
   (with-section (stream) "Entries"
     (with-placeholder-if-emtpy (stream)
