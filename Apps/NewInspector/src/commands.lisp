@@ -19,6 +19,40 @@
 
 (define-command-table inspector)
 
+;;; Utilities
+
+(defun call-with-command-error-handling (do-thunk undo-thunk
+                                         &optional format-control
+                                         &rest format-arguments)
+  (handler-case
+      (funcall do-thunk)
+    (error (condition)
+      (funcall undo-thunk)
+      (let ((stream (frame-standard-output *application-frame*)))
+        (with-style (stream :error)
+          (format stream "~&~@<~?: ~A~@:>~%"
+                  (or format-control "Error executing command")
+                  format-arguments
+                  condition))))))
+
+(defmacro with-command-error-handling ((&optional format-control
+                                        &rest format-arguments)
+                                       do-form &body undo-forms)
+  `(call-with-command-error-handling
+    (lambda () ,do-form) (lambda () ,@undo-forms)
+    ,format-control ,@format-arguments))
+
+;;; Commands on inspector pane
+
+(define-command (com-eval-inspect :command-table inspector
+                                  :name          t)
+    ((form clim:form))
+  (with-command-error-handling ("Error evaluating and inspecting")
+      (let* ((object (eval form))
+             (frame  clim:*application-frame*)
+             (state  (state (clim:find-pane-named frame 'inspector))))
+        (setf (value (root-place state)) object))))
+
 ;;; Commands on all inspected objects
 
 (define-command (com-expand :command-table inspector
@@ -52,27 +86,6 @@
   (list object))
 
 ;;; Commands on all places
-
-(defun call-with-command-error-handling (do-thunk undo-thunk
-                                         &optional format-control
-                                         &rest format-arguments)
-  (handler-case
-      (funcall do-thunk)
-    (error (condition)
-      (funcall undo-thunk)
-      (let ((stream (frame-standard-output *application-frame*)))
-        (with-style (stream :error)
-          (format stream "~&~@<~?: ~A~@:>~%"
-                  (or format-control "Error executing command")
-                  format-arguments
-                  condition))))))
-
-(defmacro with-command-error-handling ((&optional format-control
-                                        &rest format-arguments)
-                                       do-form &body undo-forms)
-  `(call-with-command-error-handling
-    (lambda () ,do-form) (lambda () ,@undo-forms)
-    ,format-control ,@format-arguments))
 
 (define-command (com-set-place :command-table inspector
                                :name          t)
