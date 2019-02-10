@@ -18,6 +18,8 @@
 (cl:in-package #:new-inspector)
 
 ;;; Place protocol
+;;;
+;;; Introspection and mutation of place objects.
 
 (defgeneric supportsp (place operation))
 
@@ -46,7 +48,7 @@
 
 (defgeneric state-applicable-p (state object place)
   (:documentation
-   "Return true is STATE is suitable for OBJECT in PLACE."))
+   "Return true if STATE is suitable for OBJECT in PLACE."))
 
 (defgeneric object-state-class (object place)
   (:documentation
@@ -61,8 +63,6 @@
 (defvar *place* nil)
 
 (defvar *parent-place*)
-
-(defvar *state*)
 
 (defgeneric inspect-place (place stream))
 
