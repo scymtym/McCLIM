@@ -123,6 +123,6 @@
 
 (defmethod make-object-state ((object t) (place t))
   (let ((class (object-state-class object place)))
-    (make-instance class)))
+    (make-instance class :place place)))
 
 (define-presentation-type inspected-object ()) ; TODO probably not needed
