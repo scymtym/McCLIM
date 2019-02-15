@@ -17,7 +17,31 @@
 
 (cl:in-package #:new-inspector)
 
-(defclass inspector-pane (application-pane #+n clim-stream-pane) ; TODO can we be more specific?
+;;; Helper for preserving scroll position
+
+(defclass scroll-position-preserving-mixin ()
+  ())
+
+(defmethod redisplay-frame-pane
+    :around ((frame application-frame) (pane scroll-position-preserving-mixin)
+             &key force-p)
+  (declare (ignore force-p))
+  (let ((viewport (pane-viewport pane)))
+    (multiple-value-bind (x-displacement y-displacement)
+        (transform-position (sheet-transformation pane) 0 0)
+      (call-next-method)
+      (scroll-extent pane
+                     (min (- x-displacement)
+                          (- (bounding-rectangle-width pane)
+                             (bounding-rectangle-width viewport)))
+                     (min (- y-displacement)
+                          (- (bounding-rectangle-height pane)
+                             (bounding-rectangle-height viewport)))))))
+
+;;; The actual inspector pane
+
+(defclass inspector-pane (application-pane #+n clim-stream-pane  ; TODO can we be more specific?
+                          scroll-position-preserving-mixin)
   ((%state :reader   state
            :writer   (setf %state))))
 
