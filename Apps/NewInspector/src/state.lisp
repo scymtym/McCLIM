@@ -41,10 +41,13 @@
                                      (slot-names t)
                                      &key
                                      (root-object nil root-object-supplied-p))
-
   (when root-object-supplied-p
     (setf (root-place instance)
           (make-instance 'root-place :cell root-object))))
+
+(defmethod run-hook ((inspector-state inspector-state) (root-place t))
+  (when-let ((change-hook (change-hook inspector-state)))
+    (map nil (rcurry #'funcall root-place) change-hook)))
 
 (defmethod root-place ((inspector-state inspector-state) &key run-hook?)
   (declare (ignore run-hook?))
@@ -54,8 +57,7 @@
                               &key run-hook?)
   (setf (%root-place inspector-state) new-value)
   (when run-hook?
-    (when-let ((change-hook (change-hook inspector-state)))
-      (map nil (rcurry #'funcall new-value) change-hook))))
+    (run-hook inspector-state new-value)))
 
 (defmethod root-object ((inspector-state inspector-state) &key run-hook?)
   (declare (ignore run-hook?))
