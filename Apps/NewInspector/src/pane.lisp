@@ -21,17 +21,6 @@
   ((%state :reader   state
            :writer   (setf %state))))
 
-(defmethod initialize-instance :after ((instance inspector-pane)
-                                        &key
-                                        (state nil state-supplied-p)
-                                        (root  nil root-supplied-p))
-  (declare (ignore state root))
-  (unless (or state-supplied-p root-supplied-p)
-    (setf (%state instance) (make-instance 'inspector-state))
-    #+no (error "~@<Exactly one of the initargs ~S and ~S must be ~
-            supplied.~@:>"
-           :state :root)))
-
 (defmethod shared-instance :before ((instance   inspector-pane)
                                     (slot-names t)
                                     &key
@@ -41,6 +30,14 @@
   (when (and state-supplied-p root-supplied-p)
     (error "~@<The initargs ~S and ~S are mutually exclusive.~@:>"
            :state :root)))
+
+(defmethod initialize-instance :after ((instance inspector-pane)
+                                        &key
+                                        (state nil state-supplied-p)
+                                        (root  nil root-supplied-p))
+  (declare (ignore state root))
+  (unless (or state-supplied-p root-supplied-p)
+    (setf (%state instance) (make-instance 'inspector-state))))
 
 (defmethod shared-initialize :after ((instance   inspector-pane)
                                      (slot-names t)
