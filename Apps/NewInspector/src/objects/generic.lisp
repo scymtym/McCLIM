@@ -24,8 +24,9 @@
                                        (style  (eql :brief))
                                        (stream t))
   (with-print-error-handling (stream)
-    (call-with-safe-and-terse-printing
-     (lambda () (prin1 object stream)))))
+    (with-safe-and-terse-printing (stream)
+      (with-drawing-options (stream :text-family :fix)
+       (prin1 object stream)))))
 
 ;;; Expanded
 
@@ -55,8 +56,8 @@
                                        (style  (eql :expanded-header))
                                        (stream t))
   (with-print-error-handling (stream) ; TODO do this around everything?
-    (call-with-safe-and-terse-printing
-     (lambda () (prin1 object stream)))))
+    (with-safe-and-terse-printing (stream)
+      (prin1 object stream))))
 
 (defmethod inspect-object-using-state ((object t)
                                        (state  inspected-object)

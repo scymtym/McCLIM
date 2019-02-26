@@ -167,6 +167,10 @@
         (*print-pprint-dispatch* *standard-pprint-dispatch*))
     (funcall thunk)))
 
+(defmacro with-safe-and-terse-printing ((stream) &body body)
+  (check-type stream symbol)
+  `(call-with-safe-and-terse-printing (lambda () ,@body)))
+
 (defun call-with-print-error-handling (thunk stream)
   (handler-case
       (funcall thunk)
