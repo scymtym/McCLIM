@@ -39,7 +39,8 @@
       (:fill (scrolling () inspector))
       (make-pane 'clime:box-adjuster-gadget)
       (1/16 interactor))))
-  (:command-table (application :inherit-from (inspector)))
+  (:command-table (application :inherit-from (inspector
+                                              navigation)))
   (:command-definer nil)
   (:pointer-documentation t)
   (:default-initargs

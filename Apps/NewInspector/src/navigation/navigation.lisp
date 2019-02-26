@@ -66,8 +66,9 @@
                   :stream  pane
                   :n-rows  1)))
 
-;; TODO separate command table
-(define-command (com-select :command-table inspector
+(define-command-table navigation)
+
+(define-command (com-select :command-table navigation
                             :name          "Inspect object")
     ((object inspected-object :gesture :describe))
   (let* ((frame   *application-frame*)
@@ -76,17 +77,16 @@
     (push-element (root-place state) history)
     (setf (root-place state) (make-instance 'root-place :cell (object object))))) ; TODO getting the object can fail
 
-(define-command (com-visit :command-table inspector
-                           :name          "Visit")
+(define-command (com-visit :command-table navigation
+                           :name          t)
     ((object element :gesture :select))
   (let* ((frame   *application-frame*)
          (state   (state (find-pane-named frame 'inspector)))
          (history (history (find-pane-named frame 'history))))
-
     (setf (root-place state) object)))
 
-(define-command (com-back :command-table inspector
-                          :name          "Back"
+(define-command (com-back :command-table navigation
+                          :name          t
                           :keystroke     (#\l :meta))
     ()
   (let* ((frame   *application-frame*)
