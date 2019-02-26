@@ -85,6 +85,30 @@
     (object)
   (list object))
 
+(define-command (com-eval :command-table inspector
+                          :name          t)
+    ((form 'clim:form :prompt "form"))
+  (with-command-error-handling ("Error evaluating form")
+    (let* ((frame  clim:*application-frame*)
+           (state  (state (clim:find-pane-named frame 'inspector))))
+      (present (eval `(let ((* (quote ,(root-object state)))) ,form))
+               'clim:expression))))
+
+(define-command (com-eval-with-context :command-table inspector
+                                       :name          t)
+    ((object 'inspected-object :prompt "context object")
+     (form   'clim:form        :prompt "form"))
+  (with-command-error-handling ("Error evaluating form")
+    (present (eval `(let ((* (quote ,(object object)))) ,form))
+             'clim:expression)))
+
+(define-presentation-to-command-translator object->eval-with-context
+    (inspected-object com-eval-with-context inspector
+     :priority      -1
+     :documentation "Eval a form in this context")
+    (object)
+  (list object (accept 'clim:form :prompt "form")))
+
 ;;; Commands on all places
 
 (define-command (com-set-place :command-table inspector
