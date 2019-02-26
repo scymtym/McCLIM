@@ -22,13 +22,23 @@
 (defclass slot-place (key-value-place)
   ())
 
-(defmethod supportsp ((place slot-place) (operator (eql 'setf)))
-  t) ; TODO read-only structure slots
+(defclass immutable-slot-place (slot-place)
+  ())
+
+(defmethod supportsp ((place immutable-slot-place) (operator (eql 'setf)))
+  nil)
+
+(defclass mutable-slot-place (slot-place)
+  ())
+
+(defmethod supportsp ((place    mutable-slot-place)
+                      (operator (eql 'remove-value)))
+  t)
 
 (flet ((slot-name (place)
          (c2mop:slot-definition-name (cell place))))
 
-  (defmethod accepts-value-p ((place slot-place) (value t))
+  (defmethod accepts-value-p ((place mutable-slot-place) (value t))
     (let* ((slot (cell place))
            (type (c2mop:slot-definition-type slot)))
       (typep value type)))
@@ -39,10 +49,10 @@
   (defmethod value ((place slot-place))
     (slot-value (container place) (slot-name place)))
 
-  (defmethod (setf value) ((new-value t) (place slot-place))
+  (defmethod (setf value) ((new-value t) (place mutable-slot-place))
     (setf (slot-value (container place) (slot-name place)) new-value))
 
-  (defmethod make-unbound ((place slot-place))
+  (defmethod make-unbound ((place mutable-slot-place))
     (slot-makunbound (container place) (slot-name place))))
 
 ;;; Object states
@@ -65,8 +75,8 @@
 
 ;;; Object inspection methods
 
-(defun inspect-slot (slot object stream)
-  (formatting-place (stream object 'slot-place slot present inspect
+(defun inspect-slot (slot object stream &key (place-class 'mutable-slot-place))
+  (formatting-place (stream object place-class slot present inspect
                             :place-var place)
     (let* ((name (c2mop:slot-definition-name (cell place))))
       (formatting-row (stream)
@@ -125,6 +135,7 @@
                                        (state  inspected-instance)
                                        (style  (eql :expanded-body))
                                        (stream t))
+  ;; TODO first line of documentation string?
   (inspect-slots object (slot-style state) stream))
 
 ;;; Commands
