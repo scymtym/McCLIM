@@ -89,12 +89,10 @@
 
 (define-command (com-set-place :command-table inspector
                                :name          t)
-    ((place 'place :prompt "Place to set value of"))
-  (handler-case ; TODO use with-command-error-handling
-      (setf (value place) (accept t :prompt "New place value")) ; TODO just second argument?
-    (simple-parse-error ()
-      (format (get-frame-pane *application-frame* 'int)
-              "~&Command canceled; place value not set~%"))))
+    ((place 'place     :prompt "Place to set value of")
+     (form  'clim:form :prompt "New place value (evaluated)"))
+  (with-command-error-handling ("Error evaluating and setting value")
+    (setf (value place) (eval form))))
 
 (define-presentation-to-command-translator place->com-set-place
     (place com-set-place inspector
@@ -102,7 +100,7 @@
      :tester        ((object) (supportsp object 'setf))
      :documentation "Set value of place")
     (object)
-  (list object))
+  (list object (accept 'clim:form :prompt "New place value (evaluated)")))
 
 (define-command (com-make-place-unbound :command-table inspector ; TODO remove place value
                                         :name          t)
