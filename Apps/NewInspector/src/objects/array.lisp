@@ -65,7 +65,7 @@
   nil)
 
 (defmethod value ((place vector-element-place))
-  (aref (container place) (cell place)))
+  (row-major-aref (container place) (cell place)))
 
 (defmethod (setf value) (new-value (place vector-element-place))
   (setf (aref (container place) (cell place)) new-value))
@@ -144,3 +144,23 @@
                   :do (format-element stream i))))))))
 
 ;; TODO displaced
+(defmethod inspect-object-using-state ((object array)
+                                       (state  inspected-object)
+                                       (styel  (eql :expanded-body))
+                                       (stream t))
+  (with-section (stream) "Elements"
+    (case (array-rank object)
+      (2
+       (let ((row-count    (array-dimension object 0))
+             (column-count (array-dimension object 1)))
+         (formatting-table (stream)
+           (loop :for row :from 0 :below row-count
+                 :do (formatting-row (stream)
+                       (loop :for column :from 0 :below column-count
+                             :for i = (array-row-major-index object row column)
+                             :do (formatting-cell (stream)
+                                   (formatting-place-cell (stream)
+                                       (object 'vector-element-place i present inspect)
+                                     (present stream)
+                                     (write-char #\Space stream)
+                                     (inspect stream))))))))))))
