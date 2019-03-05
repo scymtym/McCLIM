@@ -60,7 +60,7 @@
 (defclass vector-element-place (sequence-element-place)
   ())
 
-(defmethod supportsp ((place     vector-element-place) ; TODO is hits the default?
+(defmethod supportsp ((place     vector-element-place) ; TODO is this the default?
                       (operation (eql 'remove-value)))
   nil)
 
@@ -97,7 +97,7 @@
                                        (stream t))
   (format stream "~:[~;Adjustable ~]Vector" (adjustable-array-p object)))
 
-(Defmethod inspect-object-using-state ((object vector)
+(defmethod inspect-object-using-state ((object vector)
                                        (state  inspected-object)
                                        (style  (eql :expanded-body))
                                        (stream t))
@@ -132,9 +132,9 @@
         (flet ((format-element (stream i)
                  (formatting-place-cell (stream)
                      (object place-class i present inspect)
-                   (present)
+                   (present stream)
                    (write-char #\Space stream)
-                   (inspect))))
+                   (inspect stream))))
           (formatting-item-list (stream :n-columns 1)
             (loop :for i :from 0 :below (array-total-size object)
                   :if (and fill-pointer (>= i fill-pointer))
