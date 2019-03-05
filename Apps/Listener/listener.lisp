@@ -1,4 +1,3 @@
-
 ;;; This is a lisp listener.
 
 ;;; (C) Copyright 2003 by Andy Hefner (hefner1@umbc.edu)
@@ -14,8 +13,8 @@
 ;;; Library General Public License for more details.
 ;;;
 ;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the 
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+;;; License along with this library; if not, write to the
+;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
 (in-package :clim-listener)
@@ -28,7 +27,7 @@
 ;;; them all.
 (defclass listener-view (textual-view) ())
 
-(defclass listener-pointer-documentation-view 
+(defclass listener-pointer-documentation-view
     (listener-view pointer-documentation-view)
   ())
 
@@ -54,7 +53,7 @@
 	   (result (handler-case (read-from-string token)
 		     (error (c)
 		       (declare (ignore c))
-		       (simple-parse-error 
+		       (simple-parse-error
 			"Error parsing ~S for presentation type ~S"
 			token ptype)))))
       (if (presentation-typep result ptype)
@@ -68,35 +67,40 @@
 
 (defclass listener-interactor-pane (interactor-pane) ())
 
-(defmethod stream-present :around 
+(defmethod stream-present :around
     ((stream listener-interactor-pane) object type
      &rest args &key (single-box nil sbp) &allow-other-keys)
   (declare (ignore single-box sbp))
   (apply #'call-next-method stream object type :single-box t args)
   ;; we would do this, but CLIM:PRESENT calls STREAM-PRESENT with all
   ;; the keyword arguments explicitly.  *sigh*.
-  #+nil 
+  #+nil
   (if sbp
       (call-next-method)
       (apply #'call-next-method stream object type :single-box t args)))
 
+(defmethod execute-frame-command ((frame listener) (command t))
+  (print command *trace-output*)
+  (call-next-method))
+
 ;;; Listener application frame
 (define-application-frame listener (standard-application-frame)
-    ((system-command-reader :accessor system-command-reader
-			    :initarg :system-command-reader
-			    :initform t))
-    (:panes (interactor-container
-             (make-clim-stream-pane
-              :type 'listener-interactor-pane
-              :name 'interactor :scroll-bars t
-              :default-view +listener-view+))
-            (doc :pointer-documentation :default-view +listener-pointer-documentation-view+)
-            (wholine (make-pane 'wholine-pane
-                                :display-function 'display-wholine :scroll-bars nil
-                                :display-time :command-loop :end-of-line-action :allow)))
+  ((system-command-reader :accessor system-command-reader
+			  :initarg :system-command-reader
+			  :initform t))
+  (:panes (interactor-container
+           (make-clim-stream-pane
+            :type 'listener-interactor-pane
+            :name 'interactor :scroll-bars t
+            :default-view +listener-view+))
+          (doc :pointer-documentation :default-view +listener-pointer-documentation-view+)
+          (wholine (make-pane 'wholine-pane
+                              :display-function 'display-wholine :scroll-bars nil
+                              :display-time :command-loop :end-of-line-action :allow)))
   (:top-level (default-frame-top-level :prompt 'print-listener-prompt))
   (:command-table (listener
-                   :inherit-from (application-commands
+                   :inherit-from (new-inspector::inspector
+                                  application-commands
                                   lisp-commands
                                   asdf-commands
                                   filesystem-commands
@@ -108,10 +112,10 @@
   (:disabled-commands com-pop-directory com-drop-directory com-swap-directory)
   (:menu-bar t)
   (:layouts (default
-	      (vertically ()
-                interactor-container
-                doc
-                wholine))))
+	     (vertically ()
+               interactor-container
+               doc
+               wholine))))
 
 ;;; Package selection popup
 
@@ -139,7 +143,7 @@
 
 (define-presentation-type empty-input ())
 
-(define-presentation-method present 
+(define-presentation-method present
     (object (type empty-input) stream view &key &allow-other-keys)
   (princ "" stream))
 
@@ -148,12 +152,12 @@
 ;;; are invokved by the :around method on r-f-c, so if we bind
 ;;; the text style here in the primary method, we're okay.
 
-(defmethod read-frame-command ((frame listener) &key (stream *standard-input*))  
+(defmethod read-frame-command ((frame listener) &key (stream *standard-input*))
   "Specialized for the listener, read a lisp form to eval, or a command."
   (multiple-value-bind (object type)
       (let ((*command-dispatchers* '(#\,)))
         (with-text-style (stream (make-text-style :fix :roman :normal))
-          (accept 'command-or-form :stream stream :prompt nil 
+          (accept 'command-or-form :stream stream :prompt nil
                   :default "hello" :default-type 'empty-input)))
     (cond
       ((presentation-subtypep type 'empty-input)
@@ -187,7 +191,7 @@
                                        :frame-manager fm
                                        :width width
                                        :height height)))
-    (flet ((run () 
+    (flet ((run ()
              (let ((*package* (find-package package)))
                (unwind-protect
                     (if debugger
