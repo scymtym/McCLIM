@@ -1813,16 +1813,15 @@ which changed during the current execution of CHANGING-SPACE-REQUIREMENTS.
 (defclass viewport-pane (single-child-composite-pane) ())
 
 (defmethod compose-space ((pane viewport-pane) &key width height)
-  (declare (ignorable width height))
+  (declare (ignore width height))
   ;; I _think_ this is right, it certainly shouldn't be the
   ;; requirements of the child, apart from the max sizes. If the child
   ;; does not want to go bigger than a specific size, we should not
   ;; force it to do so.
-  (let ((child-sr (compose-space (sheet-child pane))))
-    (if child-sr
-        (make-space-requirement :max-width (space-requirement-max-width child-sr)
-                                :max-height (space-requirement-max-height child-sr))
-        (make-space-requirement))))
+  (if-let ((child-sr (compose-space (sheet-child pane))))
+    (make-space-requirement :max-width (space-requirement-max-width child-sr)
+                            :max-height (space-requirement-max-height child-sr))
+    (make-space-requirement)))
 
 (defmethod allocate-space ((pane viewport-pane) width height)
   (with-slots (hscrollbar vscrollbar) (sheet-parent pane)
