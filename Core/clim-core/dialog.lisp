@@ -14,8 +14,8 @@
 ;;; Library General Public License for more details.
 ;;;
 ;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the 
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+;;; License along with this library; if not, write to the
+;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
 #| Random notes:
@@ -88,7 +88,7 @@ method might be interrupted at any time if the user selects another field.
    (activation-gestures :accessor activation-gestures
 			:initform *activation-gestures*
 			:documentation "Binding of *activation-gestures* on
-entry to this accept") 
+entry to this accept")
    (delimeter-gestures :accessor delimiter-gestures
 		       :initform *delimiter-gestures*
 		       :documentation "Binding of *delimeter-gestures* on entry
@@ -98,6 +98,23 @@ to this accept")
 		     :initform nil
 		     :documentation "Condition signalled, if any, during
 accept of this query")))
+
+(defgeneric select-query (stream query record)
+  (:documentation "Does whatever is needed for input (e.g., calls accept) when
+a query is selected for input. It is responsible for updating the
+  query object when a new value is entered in the query field." ))
+
+(defgeneric deselect-query (stream query record)
+  (:documentation "Deselect a query field: turn the cursor off, turn off
+highlighting, etc." ))
+
+(defmethod select-query (stream query record)
+  (declare (ignore stream query record))
+  nil)
+
+(defmethod deselect-query (stream query record)
+  (declare (ignore stream query record))
+  nil)
 
 (defclass accepting-values-record (standard-updating-output-record)
   ()
@@ -127,7 +144,7 @@ accept of this query")))
   ())
 
 ;;; The accepting-values state machine is controlled by commands. Each
-;;; action (e.g., "select a text field") terminates 
+;;; action (e.g., "select a text field") terminates
 
 (define-command-table accept-values)    ; :inherit-from nil???
 
@@ -259,7 +276,7 @@ accept of this query")))
                                 `(com-select-query
                                   ,initially-select-query-identifier)
 				`(com-select-query
-				  ,(query-identifier 
+				  ,(query-identifier
 				    (first
 				     (queries *accepting-values-stream*))))))
 	   (*accelerator-gestures* (compute-inherited-keystrokes command-table)))
@@ -278,9 +295,9 @@ accept of this query")))
                       (progn
                         (when (and select-first-query
                                    (not initially-select-p))
-                          (setf current-command 
+                          (setf current-command
                                 `(com-select-query
-                                  ,(query-identifier 
+                                  ,(query-identifier
                                     (first
                                      (queries *accepting-values-stream*))))
                                 select-first-query nil))
@@ -385,7 +402,7 @@ accept of this query")))
         (setf (changedp query) t)))
     (setf (accept-arguments query) rest-args)
     ;; If the program changes the default, that becomes the value.
-    (unless (equal default (default query)) 
+    (unless (equal default (default query))
       (setf (default query) default)
       (setf (value query) default))
     (flet ((do-prompt ()
@@ -462,7 +479,7 @@ accept of this query")))
 	     (query (car query-list)))
 	(when selected-query
 
-	  (unless (equal query-identifier (query-identifier selected-query)) 
+	  (unless (equal query-identifier (query-identifier selected-query))
 	    (deselect-query *accepting-values-stream*
 			    selected-query
 			    (record selected-query))))
@@ -628,7 +645,7 @@ is called. Used to determine if any editing has been done by user")))
 
 
 
-;;; The desired 
+;;; The desired
 (defmethod select-query (stream query (record av-text-record))
   (declare (ignore stream))
   (let ((estream (editing-stream record))
@@ -774,14 +791,14 @@ is run for the last time"))
                 :activate-callback
                 (lambda (gadget)
                   (declare (ignore gadget))
-                  ;; This is fboundp business is weird, and only implied by a 
+                  ;; This is fboundp business is weird, and only implied by a
                   ;; random message on the old CLIM list. Does the user function
                   ;; take arguments?
                   (when (or (typep action 'function) (fboundp action))
                     (funcall action))
                   (setf (slot-value *application-frame* 'return-value) action)
                   ;; This doesn't work:
-                  #+NIL 
+                  #+NIL
                   (when (eql action :abort)
                     (and (find-restart 'abort)
                          (invoke-restart 'abort)))
@@ -789,8 +806,8 @@ is run for the last time"))
                 args))))
    specs))
 
-		  
-(defmethod frame-manager-notify-user 
+
+(defmethod frame-manager-notify-user
     (frame-manager message-string &key frame associated-window
 		   (title "")
 		   documentation
