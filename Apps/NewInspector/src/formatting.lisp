@@ -158,7 +158,9 @@
 ;;; Safety
 
 ;; TODO can we make this constant?
-(defvar *standard-pprint-dispatch* (with-standard-io-syntax *print-pprint-dispatch*))
+(defvar *standard-pprint-dispatch*
+  (with-standard-io-syntax
+    (copy-pprint-dispatch *print-pprint-dispatch*)))
 
 (defun call-with-safe-and-terse-printing (thunk)
   (let ((*print-circle*          t)
