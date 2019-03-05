@@ -66,7 +66,8 @@
      :documentation "Expand object"
      :pointer-documentation ((object stream)
                              (with-print-error-handling (stream)
-                               (format stream "Expand ~A" (object object)))))
+                               (with-safe-and-terse-printing (stream)
+                                 (format stream "Expand ~A" (object object))))))
     (object)
   (list object))
 
@@ -81,7 +82,8 @@
      :documentation "Collapse object"
      :pointer-documentation ((object stream)
                              (with-print-error-handling (stream)
-                               (format stream "Collapse ~A" (object object)))))
+                               (with-safe-and-terse-printing (stream)
+                                 (format stream "Collapse ~A" (object object))))))
     (object)
   (list object))
 
