@@ -336,7 +336,7 @@ otherwise return false."
 
 (define-presentation-generic-function %describe-presentation-type
     describe-presentation-type
-  (type-key parameters options type stream plural-count ))
+  (type-key parameters options type stream plural-count))
 
 ;;; Support for the default method on describe-presentation-type: if a CLOS
 ;;; class has been defined as a presentation type, get description out of the

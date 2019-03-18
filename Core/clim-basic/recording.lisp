@@ -1717,12 +1717,13 @@ were added."
               ;; structure of our own? -- Hefner, 20080118
 
               ;; Some optimization might be possible here.
-              (with-drawing-options (stream :ink (graphics-state-ink substring)
-                                            :clipping-region (graphics-state-clip substring)
-                                            :text-style (graphics-state-text-style substring))
-                (with-identity-transformation (stream)
-                  (draw-text* (sheet-medium stream)
-                              string start-x (+ start-y (stream-baseline stream))))))))))
+              (unless (alexandria:emptyp string) ; HACK
+               (with-drawing-options (stream :ink (graphics-state-ink substring)
+                                             :clipping-region (graphics-state-clip substring)
+                                             :text-style (graphics-state-text-style substring))
+                 (with-identity-transformation (stream)
+                   (draw-text* (sheet-medium stream)
+                               string start-x (+ start-y (stream-baseline stream)))))))))))
 
 (defmethod output-record-start-cursor-position
     ((record standard-text-displayed-output-record))
