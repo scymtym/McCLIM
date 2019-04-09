@@ -59,6 +59,7 @@
                               (:file       "array")
                               (:file       "instance")
                               (:file       "symbol")
+                              (:file       "pathname")
                               (:file       "hash-table")
                               (:file       "class")
                               (:file       "function")))
