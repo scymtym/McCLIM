@@ -81,3 +81,9 @@
       ; (sleep 1)
       ; (clouseau:inspector (state (find-pane-named frame 'inspector)) :new-process t)
       object)))
+
+#+no (defvar *inspector*)
+#+no (let ((timer (sb-ext:make-timer (lambda ()
+                                  (queue-redisplay (clim:find-pane-named *inspector* 'inspector)))
+                                :thread t)))
+  (sb-ext:schedule-timer timer 1 :repeat-interval 1))
