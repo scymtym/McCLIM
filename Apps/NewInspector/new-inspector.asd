@@ -54,6 +54,7 @@
                               (:file       "documentation")
 
                               (:file       "number")
+                              (:file       "character")
                               (:file       "list")
                               (:file       "array")
                               (:file       "instance")
