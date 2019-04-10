@@ -95,7 +95,9 @@
                                        (state  inspected-object)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (format stream "~:[~;Adjustable ~]Vector" (adjustable-array-p object)))
+  (format stream "Vector")
+  (when (adjustable-array-p object)
+    (badge "adjustable" stream)))
 
 (defmethod inspect-object-using-state ((object vector)
                                        (state  inspected-object)
@@ -143,11 +145,47 @@
                   :else
                   :do (format-element stream i))))))))
 
+(defmethod inspect-object-using-state ((object array) ; TODO repeated for vector
+                                       (state  inspected-object)
+                                       (style  (eql :expanded-header))
+                                       (stream t))
+  (format stream "Array")
+  (when (adjustable-array-p object)
+    (write-char #\Space stream)
+    (badge stream "adjustable")))
+
 ;; TODO displaced
 (defmethod inspect-object-using-state ((object array)
                                        (state  inspected-object)
                                        (styel  (eql :expanded-body))
                                        (stream t))
+  (with-preserved-cursor-x (stream)
+    (formatting-table (stream)
+      (formatting-row (stream)          ; TODO repeated for vector
+        (formatting-place (stream nil 'pseudo-place (array-element-type object) present inspect)
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Element type" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream))))
+      (formatting-row (stream)
+        (formatting-place (stream nil 'pseudo-place (array-total-size object) present inspect)
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Total size" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream))))
+      (formatting-row (stream)
+        (formatting-place (stream nil 'pseudo-place (array-rank object) present inspect) ; TODO writable if adjustable
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Rank" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream))))
+      (formatting-row (stream)
+        (formatting-place (stream nil 'pseudo-place (array-dimensions object) present inspect) ; TODO same
+          (with-style (stream :slot-like)
+            (formatting-cell (stream) (write-string "Dimensions" stream))
+            (formatting-cell (stream) (present stream)))
+          (formatting-cell (stream) (inspect stream))))))
+
   (with-section (stream) "Elements"
     (case (array-rank object)
       (2
