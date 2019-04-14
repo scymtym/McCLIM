@@ -97,7 +97,8 @@
                                        (stream t))
   (format stream "Vector")
   (when (adjustable-array-p object)
-    (badge "adjustable" stream)))
+    (write-char #\Space stream)
+    (badge stream "adjustable")))
 
 (defmethod inspect-object-using-state ((object vector)
                                        (state  inspected-object)
