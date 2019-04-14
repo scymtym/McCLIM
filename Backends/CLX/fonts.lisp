@@ -92,15 +92,58 @@
 
 (defmethod climb:font-text-extents ((font xlib:font) string &key start end align-x align-y direction)
   (declare (ignore align-x align-y direction))
-  (multiple-value-bind (width ascent descent
-                        left-bearing right-bearing overall-ascent overall-descent
-                        overall-direction next-start)
-      (xlib:text-extents font string :start start :end end :translate #'translate)
-    (declare (ignore next-start overall-direction))
-    (let ((height (+ overall-ascent overall-descent)))
-     (values left-bearing (- ascent) right-bearing descent
-             left-bearing overall-ascent width height overall-ascent overall-descent 0
-             width 0))))
+  (let ((ascent  nil)
+        (descent nil)
+        (xmin most-positive-fixnum)
+        (ymin most-positive-fixnum)
+        (xmax most-negative-fixnum)
+        (ymax most-negative-fixnum)
+        (dx 0)
+        (dy 0)
+        (current-y 0)
+        (current-dx 0))
+    (dolines (line (subseq string start end))
+      (multiple-value-bind (width ascent* descent*
+                            xmin* ymin* overall-ascent overall-descent
+                            overall-direction next-start)
+          (if (alexandria:emptyp line)
+              (values 0 0 0 0 0 0 0 0 0)
+              (xlib:text-extents font line :translate #'translate))
+        (declare (ignore next-start overall-direction))
+        (setf ascent ascent* descent descent*)
+        (let* ((line-height (+ overall-ascent overall-descent))
+               (xmax* (+ xmin* width))
+               (ymax* (+ ymin* line-height)))
+
+          (climi::minf ymin ymin*)
+          (climi::maxf ymax (+ current-y ymin* line-height))
+          (climi::minf xmin xmin*)
+          (climi::maxf xmax xmax*)
+          (climi::maxf dx width)
+          (climi::maxf dy (+ current-y line-height))
+          (incf current-y line-height)
+          (setf current-dx width)
+
+          #+no (values left-bearing (- ascent) right-bearing descent
+
+                       left-bearing overall-ascent width height
+
+                       overall-ascent overall-descent
+
+                       0
+
+                       width 0))))
+    (values
+     ;; text bounding box
+     xmin ymin xmax ymax
+     ;; text-bounding-rectangle
+     0 #|x0|# ascent #|y0|# dx dy ; (+ dy line-height)
+     ;; line properties (ascent, descent, line gap)
+     ascent
+     descent
+     0                                  ; leading - line-height
+     ;; cursor-dx cursor-dy
+     current-dx dy)))
 
 
 ;;; Font listing implementation
