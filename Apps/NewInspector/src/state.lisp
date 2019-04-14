@@ -61,9 +61,22 @@
 
 (defmethod root-object ((inspector-state inspector-state) &key run-hook?)
   (declare (ignore run-hook?))
-  (value (root-place inspector-state)))
+  (let ((place (root-place inspector-state)))
+    (if (valuep place)
+        (values (value place) t)
+        (values nil           nil))))
 
 (defmethod (setf root-object) ((new-value t) (inspector-state inspector-state)
                                &key run-hook?)
-  (setf (root-place inspector-state :run-hook? run-hook?)
-        (make-instance 'root-place :cell new-value)))
+  (let* ((place         (root-place inspector-state))
+         (same-object-p (and (valuep place)
+                             (eq new-value (value place))))
+         (new-place     (if same-object-p
+                            place
+                            (make-instance 'root-place :cell new-value)))
+         (run-hook?     (case run-hook?
+                          (:if-changed (not same-object-p))
+                          (t           run-hook?))))
+
+    (setf (root-place inspector-state :run-hook? run-hook?) new-place)
+    new-value))

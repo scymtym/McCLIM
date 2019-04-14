@@ -80,6 +80,14 @@
           (queue-redisplay object))
         (change-hook new-value)))
 
+(defmethod root-object ((inspector-state inspector-pane) &key run-hook?)
+  (declare (ignore run-hook?))
+  (root-object (state inspector-state)))
+
+(defmethod (setf root-object) ((new-value t) (inspector-state inspector-pane)
+                               &key run-hook?)
+  (setf (root-object (state inspector-state) :run-hook? run-hook?) new-value))
+
 (defmethod redisplay-frame-pane ((frame application-frame)
                                  (pane  inspector-pane)
                                  &key force-p)
