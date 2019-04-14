@@ -72,7 +72,8 @@ and the length of resulting sequence are equal."))
     (declare (ignore direction))
     (when (alexandria:emptyp string)
       (values 0 0 0 0 0 0))
-    (let* ((ascent (climb:font-ascent font))
+    (let* ((leading (climb:font-leading font))
+           (ascent (climb:font-ascent font))
            (descent (climb:font-descent font))
            (line-height (+ ascent descent))
            (xmin most-positive-fixnum)
@@ -93,7 +94,7 @@ and the length of resulting sequence are equal."))
              (let ((height (- ymax* ymin*))
                    (ymin* (- ascent (abs ymin*))))
                (minf ymin (+ current-y ymin*))
-               (maxf ymax (+ current-y (+ ymin* height)))))
+               (maxf ymax (+ current-y ymin* height))))
             (:center
              (let ((height/2 (/ (+ current-y (- ymax* ymin*)) 2)))
                (minf ymin (- height/2))
@@ -113,22 +114,17 @@ and the length of resulting sequence are equal."))
           (maxf xmax xmax*)
           (maxf dx dx*)
           (maxf dy (+ current-y dy*))
-          (incf current-y (climb:font-leading font))
+          (incf current-y leading)
           (setf current-dx dx*)))
-      (return-from climb:font-text-extents
-        (values
-         ;; text bounding box
-         xmin ymin xmax ymax
-         ;; text-bounding-rectangle
-         0 #|x0|# (climb:font-ascent font) #|y0|# dx (+ dy line-height)
-         ;; line properties (ascent, descent, line gap)
-         (climb:font-ascent font)
-         (climb:font-descent font)
-         (- (climb:font-leading font)
-            (+ (climb:font-ascent font)
-               (climb:font-descent font)))
-         ;; cursor-dx cursor-dy
-         current-dx dy))))
+      (values
+       ;; text bounding box
+       xmin ymin xmax ymax
+       ;; text-bounding-rectangle
+       0 #|x0|# ascent #|y0|# dx (+ dy line-height)
+       ;; line properties (ascent, descent, line gap)
+       ascent descent (- leading line-height)
+       ;; cursor-dx cursor-dy
+       current-dx dy)))
   (:documentation "Function computes text extents as if it were drawn with a
 specified font. It returns two distinct extents: first is an exact pixel-wise
 bounding box. The second is a text bounding box with all its bearings. Text may
