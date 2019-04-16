@@ -2010,7 +2010,7 @@ according to the flags RECORD and DRAW."
   (stream-close-text-output-record stream)
   (let ((new-record (apply #'make-instance record-type initargs)))
     (with-output-recording-options (stream :record t :draw nil)
-      (with-temporary-margins (stream :left   '(:absolute 0)
+      (with-temporary-margins (stream :left   `(:absolute ,(stream-cursor-position stream))
                                       :top    '(:absolute 0)
                                       :right  '(:relative 0)
                                       :bottom '(:relative 0))
