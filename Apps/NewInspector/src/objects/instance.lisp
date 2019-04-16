@@ -44,7 +44,10 @@
       (typep value type)))
 
   (defmethod valuep ((place slot-place))
-    (slot-boundp (container place) (slot-name place)))
+    (let ((container (container place))
+          (name      (slot-name place)))
+      (and (slot-exists-p container name)
+           (slot-boundp container name))))
 
   (defmethod value ((place slot-place))
     (slot-value (container place) (slot-name place)))
