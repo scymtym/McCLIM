@@ -60,6 +60,15 @@
 
 ;;; Interface
 
+(defun inspector-name (object)
+  (with-output-to-string (stream)
+    (write-string "Inspector: " stream)
+    (handler-case
+        (with-safe-and-terse-printing (stream)
+          (prin1 object stream))
+      (error ()
+        (write-string "<error printing object>" stream)))))
+
 (defun inspector (object &key (new-process nil))
   (when (typep *application-frame* 'inspector)
     (restart-case (error "Clouseau called from inside Clouseau, possibly infinite recursion")
@@ -75,8 +84,7 @@
                    (*print-level* 10))
                (run-frame-top-level frame))))
       (if new-process
-          (let ((name (format nil "Inspector Clouseau: ~S" object)))
-            (clim-sys:make-process #'run :name name))
+          (clim-sys:make-process #'run :name (inspector-name object))
           (run))
       ; (sleep 1)
       ; (clouseau:inspector (state (find-pane-named frame 'inspector)) :new-process t)
