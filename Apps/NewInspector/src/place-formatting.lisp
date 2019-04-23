@@ -86,8 +86,8 @@
                                                       :cell      ,cell)))))
        (flet (,@(when present
                   `((,present (&optional (stream ,stream))
-                              (present ,place-var 'place :stream stream))))
+                      (present ,place-var 'place :stream stream))))
               ,@(when inspect
                   `((,inspect (&optional (stream ,stream))
-                              (inspect-place ,place-var stream)))))
+                      (inspect-place ,place-var stream)))))
          ,@body))))
