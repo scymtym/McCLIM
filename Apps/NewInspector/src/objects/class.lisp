@@ -30,7 +30,9 @@
 ;;; Object states
 
 (defclass inspected-class (inspected-instance)
-  ())
+  ()
+  (:default-initargs
+   :slot-style nil))
 
 (defmethod object-state-class ((object class) (place t))
   'inspected-class)
@@ -51,20 +53,21 @@
                                        (state  inspected-object)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (prin1 (class-name (class-of object)) stream)
+  (let ((metaclass (class-of object)))
+    (prin1 (class-name metaclass) stream)
 
-  (write-char #\Space stream)
-  (if (anonymous-class-p object)
-      (badge stream "anonymous")
-      (prin1 (class-name object) stream))
-
-  (write-char #\Space stream)
-  (badge stream "~:[not ~;~]finalized" (safe-finalized-p object))
-
-  (when (not (eq (class-of object)
-                 (load-time-value (find-class 'standard-class))))
     (write-char #\Space stream)
-    (badge stream "non-default metaclass")))
+    (if (anonymous-class-p object)
+        (badge stream "anonymous")
+        (prin1 (class-name object) stream))
+
+    (write-char #\Space stream)
+    (badge stream "~:[not ~;~]finalized" (safe-finalized-p object))
+
+    (when (not (eq (class-of object)
+                   (load-time-value (find-class 'standard-class))))
+      (write-char #\Space stream)
+      (badge stream "non-default metaclass"))))
 
 (defvar *hack-cache* (make-hash-table :test #'equal))
 
@@ -98,9 +101,25 @@
           (with-style (stream :slot-like)
             (formatting-cell (stream) (write-string "Subclasses" stream))
             (formatting-cell (stream) (present stream)))
-          (formatting-cell (stream) (inspect stream))))))
+          (formatting-cell (stream) (inspect stream))))
+
+      ;; TODO prototype
+      ;; TODO precedence list
+      ))
 
   (print-documentation object stream)
+
+  ;; TODO initargs
+  (with-section (stream) "Initargs"
+    (let (initargs)
+      (with-placeholder-if-emtpy (stream)
+        ((not (safe-finalized-p object))
+         "Not finalized - initargs not available~%")
+        ((not (setf initargs (c2mop:class-default-initargs object)))
+         "No initargs~%")
+        (t
+         (with-drawing-options (stream :text-size :smaller)
+           (prin1 initargs stream))))))
 
   (with-section (stream) "Effective slots"
     (let (slots)
@@ -140,10 +159,26 @@
                             (formatting-cell (stream)
                               )
                             (formatting-cell (stream)
-                              (let ()
-                                (formatting-place (stream object 'pseudo-place contributing present inspect)
-                                  (inspect stream)))))))
+                              (loop :for (class . slot) :in contributing
+                                    :do (formatting-place (stream object 'pseudo-place slot nil nil :place-var place)
+                                          (clim:with-output-as-presentation (stream place 'place)
+                                            (princ (c2mop:slot-definition-name slot) stream))) ; TODO how to print the symbol?
+                                        (write-string " in " stream)
+                                        (formatting-place (stream object 'pseudo-place class nil nil :place-var place)
+                                          (clim:with-output-as-presentation (stream place 'place)
+                                            (princ (class-name class) stream)))))))) ; TODO how to print the symbol?
                   slots)))))))
+
+  (with-section (stream) "Specializer usage"
+    (let ((methods (c2mop:specializer-direct-methods object)))
+      (with-placeholder-if-emtpy (stream)
+        ((not methods)
+         "Not used as a specializer~%")
+        (t
+         (with-drawing-options (stream :text-size :smaller)
+           ;; TODO INSPECT-METHOD-LIST want the generic function, not OBJECT
+           (inspect-method-list object methods stream
+                                :generic-function-name t))))))
 
   (call-next-method))
 

@@ -61,8 +61,8 @@
                               (:file       "symbol")
                               (:file       "pathname")
                               (:file       "hash-table")
-                              (:file       "class")
-                              (:file       "function")))
+                              (:file       "function")
+                              (:file       "class")))
 
                 (:module     "application"
                  :pathname   "src"

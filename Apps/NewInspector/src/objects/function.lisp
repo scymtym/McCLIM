@@ -132,6 +132,35 @@
   ;; Documentation
   (print-documentation object stream))
 
+(defun inspect-method-list (object methods stream &key generic-function-name)
+  (formatting-table (stream)
+    (formatting-row (stream)
+      (formatting-header (stream) "Generic function" "Qualifiers" "Specializers"))
+    (map nil (lambda (method)
+               (formatting-place (stream object 'method-place method present inspect
+                                         :place-var place)
+                 (formatting-row (stream)
+                   (with-style (stream :slot-like)
+                     (when generic-function-name
+                       (formatting-cell (stream)
+                         (princ (c2mop:generic-function-name
+                                 (c2mop:method-generic-function method))
+                                stream)))
+                     (formatting-cell (stream)
+                       (format-items (qualifiers place) :stream stream))
+                     (map nil (lambda (specializer)
+                                (formatting-cell (stream)
+                                  (with-print-error-handling (stream)
+                                    (typecase specializer
+                                      (class (princ (class-name specializer) stream))
+                                      (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream))))))
+                          (specializers place)))
+                   (formatting-cell (stream)
+                     (present))
+                   (formatting-cell (stream)
+                     (inspect)))))
+         methods)))
+
 (defmethod inspect-object-using-state ((object generic-function)
                                        (state  inspected-generic-function)
                                        (style  (eql :expanded-body))
@@ -148,28 +177,7 @@
         ((null methods)
          "No methods~%")
         (t
-         (formatting-table (stream)
-           (formatting-row (stream)
-             (formatting-header (stream) "Qualifiers" "Specializers"))
-           (map nil (lambda (method)
-                      (formatting-place (stream object 'method-place method present inspect
-                                                :place-var place)
-                        (formatting-row (stream)
-                          (with-style (stream :slot-like)
-                            (formatting-cell (stream)
-                              (format-items (qualifiers place) :stream stream))
-                            (map nil (lambda (specializer)
-                                       (formatting-cell (stream)
-                                         (with-print-error-handling (stream)
-                                           (typecase specializer
-                                             (class (princ (class-name specializer) stream))
-                                             (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream))))))
-                                 (specializers place)))
-                          (formatting-cell (stream)
-                            (present))
-                          (formatting-cell (stream)
-                            (inspect)))))
-                methods))))))
+         (inspect-method-list object methods stream)))))
   ;; Slots
   (with-section (stream) "Slots"
     (inspect-slots object (slot-style state) stream))
