@@ -270,7 +270,7 @@
         (unless (and (zerop dx) (zerop dy))
           (setf (sheet-transformation sheet)
                 (compose-translation-with-transformation
-                 transform (- x old-x) (- y old-y))))))))
+                 transform dx dy)))))))
 
 (defmethod resize-sheet ((sheet basic-sheet) width height)
   (setf (sheet-region sheet)
@@ -747,16 +747,16 @@ might be different from the sheet's native region."
   (with-slots (native-region) sheet
     (unless native-region
       (let ((this-region (transform-region (sheet-native-transformation sheet)
-        				   (sheet-region sheet)))
+                                           (sheet-region sheet)))
             (parent (sheet-parent sheet)))
         (setf native-region
               (if parent
-        	  (region-intersection this-region
-        			       (transform-region
-        				(invert-transformation
-        				 (%sheet-mirror-transformation sheet))
-        				(sheet-native-region parent)))
-        	  this-region))))
+                  (region-intersection this-region
+                                       (transform-region
+                                        (invert-transformation
+                                         (%sheet-mirror-transformation sheet))
+                                        (sheet-native-region parent)))
+                  this-region))))
     native-region))
 
 #+ (or) ;; XXX: is this needed?
@@ -795,7 +795,7 @@ might be different from the sheet's native region."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; dangerous codes
-;;; postfix: %%% 
+;;; postfix: %%%
 ;;;
 
 ;; used by invoke-with-double-buffering
