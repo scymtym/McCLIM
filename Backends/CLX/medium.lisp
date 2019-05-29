@@ -780,7 +780,10 @@ translated, so they begin at different position than [0,0])."))
                    (max-x (round-coordinate (+ center-x radius-dx)))
                    (max-y (round-coordinate (+ center-y radius-dy))))
               (xlib:draw-arc mirror gc
-                             min-x min-y (- max-x min-x) (- max-y min-y)
+                             (alexandria:clamp min-x #x-8000 #x7fff)
+                             (alexandria:clamp min-y #x-8000 #x7fff)
+                             (alexandria:clamp (- max-x min-x) #x-8000 #x7fff)
+                             (alexandria:clamp (- max-y min-y) #x-8000 #x7fff)
                              (mod start-angle (* 2 pi)) arc-angle
                              filled)))))
       ;; Implementation scans for vertial or horizontal lines to get the
@@ -806,8 +809,10 @@ translated, so they begin at different position than [0,0])."))
            (max-y (round-coordinate (+ center-y radius))))
       (with-clx-graphics () medium
         (xlib:draw-arc mirror gc
-                       min-x min-y
-                       (- max-x min-x) (- min-y max-y)
+                       (alexandria:clamp min-x #x-8000 #x7fff)
+                       (alexandria:clamp min-y #x-8000 #x7fff)
+                       (alexandria:clamp (- max-x min-x) #x-8000 #x7fff)
+                       (alexandria:clamp (- min-y max-y) #x-8000 #x7fff)
                        start-angle arc-angle
                        filled)))))
 
