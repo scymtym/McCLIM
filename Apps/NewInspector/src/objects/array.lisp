@@ -17,6 +17,8 @@
 
 (cl:in-package #:new-inspector)
 
+;;; Places
+
 (defclass vector-bound-place (basic-place)
   ())
 
@@ -55,9 +57,24 @@
 (defmethod (setf value) ((new-value integer) (place vector-fill-pointer-place))
   (setf (fill-pointer (container place)) new-value))
 
+;;; `array-element-place'
+
+(defclass array-element-place (sequence-element-place)
+  ())
+
+(defmethod supportsp ((place     array-element-place) ; TODO is this the default?
+                      (operation (eql 'remove-value)))
+  nil)
+
+(defmethod value ((place array-element-place))
+  (row-major-aref (container place) (cell place)))
+
+(defmethod (setf value) (new-value (place array-element-place))
+  (setf (row-major-aref (container place) (cell place)) new-value))
+
 ;;; `vector-element-place'
 
-(defclass vector-element-place (sequence-element-place)
+(defclass vector-element-place (sequence-element-place) ; TODO can we just use array-element-place?
   ())
 
 (defmethod supportsp ((place     vector-element-place) ; TODO is this the default?
@@ -68,7 +85,7 @@
   (row-major-aref (container place) (cell place)))
 
 (defmethod (setf value) (new-value (place vector-element-place))
-  (setf (aref (container place) (cell place)) new-value))
+  (setf (row-major-aref (container place) (cell place)) new-value))
 
 ;;; `adjustable-vector-element-place'
 
@@ -89,22 +106,40 @@
             :do (setf (aref container i) (aref container (1+ i)))))
     (adjust-array container (1- length))))
 
+;;; Object states
+
+(defclass inspected-array (inspected-object)
+  ())
+
+(defclass inspected-vector (inspected-array
+                            inspected-sequence)
+  ())
+
+(defmethod object-state-class ((object vector) (place t))
+  'inspected-vector)
+
+(defmethod object-state-class ((object array) (place t))
+  'inspected-array)
+
 ;;; Object inspection methods
 
 (defmethod inspect-object-using-state ((object vector)
-                                       (state  inspected-object)
+                                       (state  inspected-vector)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (format stream "Vector")
+  #+no (format stream "Vector")
+  (print-sequence-header
+   stream "vector" (array-total-size object) (start state) (end state))
   (when (adjustable-array-p object)
     (write-char #\Space stream)
     (badge stream "adjustable")))
 
 (defmethod inspect-object-using-state ((object vector)
-                                       (state  inspected-object)
+                                       (state  inspected-vector)
                                        (style  (eql :expanded-body))
                                        (stream t))
-  (let ((fill-pointer (when (array-has-fill-pointer-p object)
+  (let ((length       (array-total-size object))
+        (fill-pointer (when (array-has-fill-pointer-p object)
                         (fill-pointer object))))
     (with-preserved-cursor-x (stream)
       (formatting-table (stream)
@@ -132,22 +167,27 @@
       (let ((place-class (if (adjustable-array-p object)
                              'adjustable-vector-element-place
                              'vector-element-place)))
-        (flet ((format-element (stream i)
-                 (formatting-place-cell (stream)
-                     (object place-class i present inspect)
-                   (present stream)
-                   (write-char #\Space stream)
-                   (inspect stream))))
-          (formatting-item-list (stream :n-columns 1)
-            (loop :for i :from 0 :below (array-total-size object)
-                  :if (and fill-pointer (>= i fill-pointer))
-                  :do (with-drawing-options (stream :ink +light-gray+) ; TODO style
-                        (format-element stream i))
-                  :else
-                  :do (format-element stream i))))))))
+        (multiple-value-bind (start end truncated?)
+            (effective-bounds state length)
+          (with-preserved-cursor-x (stream)
+            (flet ((format-element (stream i)
+                     (formatting-place-cell (stream)
+                         (object place-class i present inspect)
+                       (present stream)
+                       (write-char #\Space stream)
+                       (inspect stream))))
+              (formatting-item-list (stream :n-columns 1)
+                (loop :for i :from 0 :below end ; (array-total-size object)
+                      :if (and fill-pointer (>= i fill-pointer))
+                      :do (with-drawing-options (stream :ink +light-gray+) ; TODO style
+                            (format-element stream i))
+                      :else
+                      :do (format-element stream i)))))
+          (when truncated?
+            (note-truncated stream length (- end start))))))))
 
 (defmethod inspect-object-using-state ((object array) ; TODO repeated for vector
-                                       (state  inspected-object)
+                                       (state  inspected-array)
                                        (style  (eql :expanded-header))
                                        (stream t))
   (format stream "Array")
@@ -157,7 +197,7 @@
 
 ;; TODO displaced
 (defmethod inspect-object-using-state ((object array)
-                                       (state  inspected-object)
+                                       (state  inspected-array)
                                        (styel  (eql :expanded-body))
                                        (stream t))
   (with-preserved-cursor-x (stream)
@@ -199,7 +239,7 @@
                              :for i = (array-row-major-index object row column)
                              :do (formatting-cell (stream)
                                    (formatting-place-cell (stream)
-                                       (object 'vector-element-place i present inspect)
+                                       (object 'array-element-place i present inspect)
                                      (present stream)
                                      (write-char #\Space stream)
                                      (inspect stream))))))))))))

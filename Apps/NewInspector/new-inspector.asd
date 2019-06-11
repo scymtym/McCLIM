@@ -55,6 +55,7 @@
 
                               (:file       "number")
                               (:file       "character")
+                              (:file       "sequence")
                               (:file       "list")
                               (:file       "array")
                               (:file       "instance")

@@ -69,10 +69,10 @@
 
 ;;; Object states
 
-(defclass inspected-improper-list (inspected-object)
+(defclass inspected-improper-list (inspected-sequence)
   ())
 
-(defclass inspected-proper-list (inspected-object)
+(defclass inspected-proper-list (inspected-sequence)
   ())
 
 (defclass inspected-alist (inspected-proper-list)
@@ -138,46 +138,60 @@
                                        (state  inspected-alist)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (format stream "alist-shaped list of length ~D" (length object)))
+  (print-sequence-header
+   stream "alist-shaped list" (length object) (start state) (end state)))
 
 (defmethod inspect-object-using-state ((object cons)
                                        (state  inspected-alist)
                                        (style  (eql :expanded-body))
                                        (stream t))
-  (formatting-table (stream)         ; inspector-table (object stream)
-
-    (loop :for cell :in object
-          :for (key . value) = cell
-          :do (formatting-row (stream)
-                (with-style (stream :slot-like)
-                  (formatting-place-cell (stream :align-y :center)
-                      (object 'alist-key-place cell present inspect)
-                    (present stream)
-                    (inspect stream)))
-                (formatting-place
-                    (stream object 'alist-value-place cell present inspect)
-                  (formatting-cell (stream :align-x :center :align-y :center)
-                    (present stream))
-                  (formatting-cell (stream :align-y :center)
-                    (inspect stream)))))))
+  (let ((length (length object)))
+    (multiple-value-bind (start end truncated?)
+        (effective-bounds state length)
+      (with-preserved-cursor-x (stream)
+        (formatting-table (stream)   ; inspector-table (object stream)
+          (loop :for i :from start :below end
+                :for cell :in (nthcdr start object)
+                :for (key . value) = cell
+                :do (formatting-row (stream)
+                      (with-style (stream :slot-like)
+                        (formatting-place-cell (stream :align-y :center)
+                            (object 'alist-key-place cell present inspect)
+                          (present stream)
+                          (inspect stream)))
+                      (formatting-place
+                          (stream object 'alist-value-place cell present inspect)
+                        (formatting-cell (stream :align-x :center :align-y :center)
+                          (present stream))
+                        (formatting-cell (stream :align-y :center)
+                          (inspect stream)))))))
+      (when truncated?
+        (note-truncated stream length (- end start))))))
 
 (defmethod inspect-object-using-state ((object cons)
                                        (state  inspected-proper-list)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (format stream "proper list of length ~D" (length object)))
+  (print-sequence-header
+   stream "proper list" (length object) (start state) (end state)))
 
 (defmethod inspect-object-using-state ((object cons)
                                        (state  inspected-proper-list)
                                        (style  (eql :expanded-body))
                                        (stream t))
-  (formatting-item-list (stream :n-columns 1)
-    (loop :for cell :on object
-          :do (formatting-place-cell (stream)
-                  (object 'list-element-place cell present inspect)
-                (present)
-                (write-char #\Space stream)
-                (inspect)))))
+  (let ((length (length object)))
+    (multiple-value-bind (start end truncated?) (effective-bounds state length)
+      (with-preserved-cursor-x (stream)
+        (formatting-item-list (stream :n-columns 1)
+          (loop :for i :below (- end start)
+                :for cell :on (nthcdr start object)
+                :do (formatting-place-cell (stream)
+                        (object 'list-element-place cell present inspect)
+                      (present)
+                      (write-char #\Space stream)
+                      (inspect)))))
+      (when truncated?
+        (note-truncated stream length (- end start))))))
 
 (defmethod inspect-object-using-state ((object cons)
                                        (state  inspected-improper-list)
