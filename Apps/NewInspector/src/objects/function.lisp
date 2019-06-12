@@ -135,7 +135,9 @@
 (defun inspect-method-list (object methods stream &key generic-function-name)
   (formatting-table (stream)
     (formatting-row (stream)
-      (formatting-header (stream) "Generic function" "Qualifiers" "Specializers"))
+      (if generic-function-name
+          (formatting-header (stream) "Generic function" "Qualifiers" "Specializers")
+          (formatting-header (stream) "Qualifiers" "Specializers")))
     (map nil (lambda (method)
                (formatting-place (stream object 'method-place method present inspect
                                          :place-var place)
@@ -165,7 +167,7 @@
                                        (state  inspected-generic-function)
                                        (style  (eql :expanded-body))
                                        (stream t))
-  ;;
+  ;; Function
   (call-next-method)
 
   ;; method class
@@ -188,6 +190,15 @@
                                        (style  (eql :class-only))
                                        (stream t))
   (princ (class-name (class-of object)) stream))
+
+(defmethod inspect-object-using-state ((object method)
+                                       (state  inspected-method)
+                                       (style  (eql :expanded-body))
+                                       (stream t))
+  ;; Documentation
+  (print-documentation object stream)
+  ;;
+  (call-next-method))
 
 ;;; Commands
 
