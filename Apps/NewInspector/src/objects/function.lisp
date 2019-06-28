@@ -56,8 +56,15 @@
 (defmethod object-state-class ((object function) (place t))
   'inspected-function)
 
-(defclass inspected-generic-function (inspected-function
-                                      inspected-instance)
+(defclass inspected-funcallable-standard-object (inspected-function
+                                                 inspected-instance)
+  ())
+
+(defmethod object-state-class ((object c2mop:funcallable-standard-object)
+                               (place  t))
+  'inspected-funcallable-standard-object)
+
+(defclass inspected-generic-function (inspected-funcallable-standard-object)
   ()
   (:default-initargs
    :slot-style nil))
@@ -132,6 +139,18 @@
   ;; Documentation
   (print-documentation object stream))
 
+(defmethod inspect-object-using-state ((object c2mop:funcallable-standard-object)
+                                       (state  inspected-funcallable-standard-object)
+                                       (style  (eql :expanded-body))
+                                       (stream t))
+  ;; Function
+  (call-next-method)
+
+  ;; Slots
+  (with-section (stream) "Slots"
+    (inspect-slots object (slot-style state) stream))
+  #+broken (call-next-method))
+
 (defun inspect-method-list (object methods stream &key generic-function-name)
   (formatting-table (stream)
     (formatting-row (stream)
@@ -167,7 +186,7 @@
                                        (state  inspected-generic-function)
                                        (style  (eql :expanded-body))
                                        (stream t))
-  ;; Function
+  ;; Funcallable standard object
   (call-next-method)
 
   ;; method class
@@ -179,11 +198,7 @@
         ((null methods)
          "No methods~%")
         (t
-         (inspect-method-list object methods stream)))))
-  ;; Slots
-  (with-section (stream) "Slots"
-    (inspect-slots object (slot-style state) stream))
-  #+broken (call-next-method))
+         (inspect-method-list object methods stream))))))
 
 (defmethod inspect-object-using-state ((object method)
                                        (state  inspected-method)
