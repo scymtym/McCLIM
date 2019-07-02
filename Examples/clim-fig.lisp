@@ -167,16 +167,19 @@
       (setf (clim-fig-redo-list *application-frame*) nil))))
 
 (defun handle-move-object (pane figure first-point-x first-point-y)
-  (tracking-pointer (pane)
-    (:pointer-button-release (&key event x y)
-      (when (= (pointer-event-button event) +pointer-right-button+)
-        (multiple-value-bind (old-x old-y)
-            (output-record-position figure)
-          (setf (output-record-position figure)
-                (values (+ old-x (- x first-point-x))
-                        (+ old-y (- y first-point-y)))))
-        (window-refresh pane)
-        (return-from handle-move-object)))))
+  (multiple-value-bind (old-x old-y) (output-record-position figure)
+    (flet ((move-it (x y)
+             (setf (output-record-position figure)
+                   (values (+ old-x (- x first-point-x))
+                           (+ old-y (- y first-point-y))))
+             (window-refresh pane)))
+      (tracking-pointer (pane)
+        (:pointer-motion (&key x y)
+          (move-it x y))
+        (:pointer-button-release (&key event x y)
+          (when (= (pointer-event-button event) +pointer-right-button+)
+            (move-it x y)
+            (return-from handle-move-object)))))))
 
 (defun clim-fig ()
   (run-frame-top-level (make-application-frame 'clim-fig)))
@@ -321,19 +324,19 @@
   (:layouts
    (default
      (vertically ()
-       (horizontally ()
-         (vertically (:width 150)
-           (tabling (:height 60)
-             (list black-button blue-button green-button cyan-button)
-             (list red-button magenta-button yellow-button white-button)
-             (list turquoise-button grey-button brown-button orange-button))
-           line-width-slider
-           round-shape-toggle
-           (horizontally () fill-mode-toggle constrict-toggle)
-           point-button line-button arrow-button
-           ellipse-button rectangle-button
-	   bezier-button)
-         (scrolling (:width 600 :height 400) canvas))
+       (:fill (horizontally ()
+                (vertically (:width 150)
+                  (tabling (:height 60)
+                    (list black-button blue-button green-button cyan-button)
+                    (list red-button magenta-button yellow-button white-button)
+                    (list turquoise-button grey-button brown-button orange-button))
+                  line-width-slider
+                  round-shape-toggle
+                  (horizontally () fill-mode-toggle constrict-toggle)
+                  point-button line-button arrow-button
+                  ellipse-button rectangle-button
+	          bezier-button)
+                (scrolling (:width 600 :height 400) canvas)))
        (horizontally (:height 30) clear undo redo)
        status)))
   (:top-level (default-frame-top-level :prompt 'clim-fig-prompt)))
