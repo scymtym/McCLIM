@@ -73,8 +73,9 @@
                                        (state  inspected-hash-table)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (with-style (stream :header)
-    (princ (class-name (class-of object)) stream)))
+  (inspect-class-as-name (class-of object) stream)
+  (write-char #\Space stream)
+  (print-instance-identity object stream))
 
 (defun draw-hash-table-diagram (stream hash-table)
   (let* ((width                  300)

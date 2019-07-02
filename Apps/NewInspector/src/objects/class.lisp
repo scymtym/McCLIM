@@ -50,11 +50,20 @@
         (not (eq (find-class name nil) class)))))
 
 (defmethod inspect-object-using-state ((object class)
-                                       (state  inspected-object)
+                                       (state  inspected-class)
+                                       (style  (eql :name-only))
+                                       (stream t))
+  (if (anonymous-class-p object)
+      (badge stream "anonymous")
+      (prin1 (class-name object) stream)))
+
+(defmethod inspect-object-using-state ((object class)
+                                       (state  inspected-class)
                                        (style  (eql :expanded-header))
                                        (stream t))
   (let ((metaclass (class-of object)))
-    (prin1 (class-name metaclass) stream)
+    (inspect-class-as-name metaclass stream)
+    ;; (prin1 (class-name metaclass) stream)
 
     (write-char #\Space stream)
     (if (anonymous-class-p object)
@@ -64,7 +73,7 @@
     (write-char #\Space stream)
     (badge stream "~:[not ~;~]finalized" (safe-finalized-p object))
 
-    (when (not (eq (class-of object)
+    (when (not (eq metaclass
                    (load-time-value (find-class 'standard-class))))
       (write-char #\Space stream)
       (badge stream "non-default metaclass"))))
@@ -72,7 +81,7 @@
 (defvar *hack-cache* (make-hash-table :test #'equal))
 
 (defmethod inspect-object-using-state ((object class)
-                                       (state  inspected-object)
+                                       (state  inspected-class)
                                        (style  (eql :expanded-body))
                                        (stream t))
   (with-preserved-cursor-x (stream)

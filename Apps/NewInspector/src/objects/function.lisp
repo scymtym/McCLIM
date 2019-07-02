@@ -91,11 +91,12 @@
 
 ;;; Object inspection methods
 
-(defmethod inspect-object-using-state ((object function)
-                                       (state  inspected-function)
-                                       (style  (eql :expanded-header))
-                                       (stream t))
-  (call-next-method)
+;;; `function'
+
+(defmethod inspect-object-using-state :after ((object function)
+                                              (state  inspected-function)
+                                              (style  (eql :expanded-header))
+                                              (stream t))
   ;; Traced
   (when (tracedp object)
     (write-string " " stream)
@@ -139,6 +140,15 @@
   ;; Documentation
   (print-documentation object stream))
 
+;;; `funcallable-standard-object'
+
+(defmethod inspect-object-using-state :after ((object function)
+                                              (state  inspected-funcallable-standard-object)
+                                              (style  (eql :expanded-header))
+                                              (stream t))
+  (write-string " " stream)
+  (badge stream "fucallable"))
+
 (defmethod inspect-object-using-state ((object c2mop:funcallable-standard-object)
                                        (state  inspected-funcallable-standard-object)
                                        (style  (eql :expanded-body))
@@ -150,6 +160,8 @@
   (with-section (stream) "Slots"
     (inspect-slots object (slot-style state) stream))
   #+broken (call-next-method))
+
+;;; `generic-function' and `method'
 
 (defun inspect-method-list (object methods stream &key generic-function-name)
   (formatting-table (stream)

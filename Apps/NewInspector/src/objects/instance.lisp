@@ -58,6 +58,29 @@
   (defmethod make-unbound ((place mutable-slot-place))
     (slot-makunbound (container place) (slot-name place))))
 
+;;; `class-of-place'
+
+(defclass class-of-place (pseudo-place)
+  ())
+
+(defmethod make-object-state ((object t)
+                              (place  class-of-place))
+  (make-instance (object-state-class object place) :place place :style :name-only))
+
+(defun inspect-class-as-name (class stream)
+  ;; This presents the name of CLASS as a collapsed inspectable object
+  ;; that expands into CLASS.
+  (formatting-place (stream nil 'class-of-place class nil inspect)
+    (inspect stream)))
+
+;;; Instance Identity
+
+(defun print-instance-identity (object stream)
+  (let ((string (with-output-to-string (stream)
+                  (print-unreadable-object (object stream :identity t)))))
+    (with-drawing-options (stream :ink +dark-slate-blue+ :text-size :smaller) ; TODO with-style
+      (format stream "@~A" (string-trim "#<>{} " string)))))
+
 ;;; Object states
 
 (defclass inspected-instance (inspected-object)
@@ -122,17 +145,15 @@
                 (formatting-table (stream)
                   (map nil (rcurry #'inspect-slot object stream) super-slots))))))
 
+
 (defmethod inspect-object-using-state ((object t)
                                        (state  inspected-instance)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (prin1 (class-name (class-of object)) stream) ; TODO make a function
+  (inspect-class-as-name (class-of object) stream)
 
   (write-char #\Space stream)
-  (let ((string (with-output-to-string (stream) ; TODO make a function
-                  (print-unreadable-object (object stream :identity t)))))
-    (with-drawing-options (stream :ink +dark-slate-blue+ :text-size :smaller) ; TODO with-style
-      (format stream "@~A" (string-trim "#<>{} " string)))))
+  (print-instance-identity object stream))
 
 (defmethod inspect-object-using-state ((object t)
                                        (state  inspected-instance)
