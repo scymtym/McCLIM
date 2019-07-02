@@ -56,29 +56,10 @@
 
 ;;; Commands on all inspected objects
 
-(defun adjust-record (root-record stream)
-  (let ((old-y2 (bounding-rectangle-max-y root-record)))
-    (redisplay root-record stream)
-    (let ((delta (- (bounding-rectangle-max-y root-record) old-y2)))
-      (map-over-output-records-overlapping-region
-       (lambda (record)
-         (unless (eq record root-record)
-           (erase-output-record record stream)
-           (multiple-value-bind (x y) (output-record-position record)
-             (setf (output-record-position record) (values x (+ y delta))))
-           (add-output-record record (stream-output-history stream))))
-       (stream-output-history stream) (make-rectangle* 0 old-y2 1000 10000))
-      (stream-increment-cursor-position stream 0 delta)
-      (repaint-sheet stream +everywhere+)
-      )))
-;; TODO look at sheet-move-output-vertically
-
 (define-command (com-expand :command-table inspector
                             :name          t)
-    ((object inspected-object) (presentation t))
-  (setf (style object) :expanded)
-
-  #+no (adjust-record presentation *standard-output*))
+    ((object inspected-object))
+  (setf (style object) :expanded))
 
 (define-presentation-to-command-translator object->expand
     (inspected-object com-expand inspector
@@ -88,17 +69,13 @@
                              (with-print-error-handling (stream)
                                (with-safe-and-terse-printing (stream)
                                  (format stream "Expand ~A" (object object))))))
-    (object presentation)
-  (list object nil #+no (loop :for parent = presentation :then (output-record-parent parent)
-                     :until (updating-output-record-p parent)
-                     :finally (return parent))))
+    (object)
+  (list object))
 
 (define-command (com-collapse :command-table inspector
                               :name          t)
-    ((object inspected-object) (presentation t))
-  (setf (style object) :brief)
-
-  #+no (adjust-record presentation *standard-output*))
+    ((object inspected-object))
+  (setf (style object) :brief))
 
 (define-presentation-to-command-translator object->collapse
     (inspected-object com-collapse inspector
@@ -108,10 +85,8 @@
                              (with-print-error-handling (stream)
                                (with-safe-and-terse-printing (stream)
                                  (format stream "Collapse ~A" (object object))))))
-    (object presentation)
-  (list object nil #+no (loop :for parent = presentation :then (output-record-parent parent)
-                     :until (updating-output-record-p parent)
-                     :finally (return parent))))
+    (object)
+  (list object))
 
 (define-command (com-eval :command-table inspector
                           :name          t)
