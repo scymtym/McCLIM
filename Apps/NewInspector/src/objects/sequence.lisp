@@ -32,7 +32,7 @@
 
 ;;; Object states
 
-(defclass inspected-sequence (inspected-object) ; TODO put into sequence.lisp (with command at end of file)
+(defclass inspected-sequence (inspected-object)
   ((%start :initarg  :start
            :accessor start
            :initform 0)
@@ -40,7 +40,7 @@
            :accessor end
            :initform 30)))
 
-(defmethod effective-bounds ((state inspected-object) (length integer))
+(defmethod effective-bounds ((state inspected-sequence) (length integer))
   (let ((start (start state))
         (end   (if-let ((end (end state)))
                  (min end length)
