@@ -58,8 +58,7 @@
                   :printer (lambda (element stream)
                              (if first?
                                  (setf first? nil)
-                                 (write-string "»" stream)
-                                 )
+                                 (write-string "»" stream))
                              (present element 'element
                                       :stream     stream
                                       :single-box t))
