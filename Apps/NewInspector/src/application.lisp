@@ -69,14 +69,14 @@
       (error ()
         (write-string "<error printing object>" stream)))))
 
-(defun inspector (object &key (new-process nil))
+(defun inspect (object &key (new-process nil))
   (when (typep *application-frame* 'inspector)
     (restart-case (error "Clouseau called from inside Clouseau, possibly infinite recursion")
       (continue ()
         :report "Continue by starting a new Clouseau instance")
       (abort-clouseau ()
         :report "Abort this call to Clouseau"
-        (return-from inspector))))
+        (return-from inspect))))
 
   (let ((frame (make-application-frame 'inspector :object object)))
     (flet ((run ()

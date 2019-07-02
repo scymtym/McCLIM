@@ -16,7 +16,7 @@
   Then inspect an object:
 
   #+BEGIN_SRC lisp :exports code
-    (new-inspector:inspector (find-class 'class))
+    (new-inspector:inspect (find-class 'class))
   #+END_SRC
 
   A window containing the following should open:

@@ -22,6 +22,9 @@
    #:clim)
 
   (:shadow
+   #:inspect) ; used as a local function name
+
+  (:export
    #:inspect)
 
   (:shadowing-import-from #:alexandria
