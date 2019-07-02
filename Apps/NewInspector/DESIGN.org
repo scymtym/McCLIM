@@ -24,14 +24,14 @@
      one object should never lead to an attempt to display an infinite
      amount of objects.
 
-     The previous inspector architecture mitigated to some degree by
-     placing objects being displayed onto a stack during a depth-first
-     traversal and checking for already displayed objects with
-     ~eql~. +This does not work with something like src_lisp[:exports
-     code]{#1=#(1 2 #1#)} and using equal instead treats objects as
-     identical which shouldn't be.+ I don't remember what it was, but
-     some kind of circular structure could still cause an infinite
-     loop.
+     The previous inspector architecture mitigated this to some degree
+     by placing objects being displayed onto a stack during a
+     depth-first traversal and checking for already displayed objects
+     with ~eql~. +This does not work with something like
+     src_lisp[:exports code]{#1=#(1 2 #1#)} and using equal instead
+     treats objects as identical which shouldn't be.+ I don't remember
+     what it was, but some kind of circular structure could still
+     cause an infinite loop.
 
   3. Places in which objects reside should be modeled explicitly and,
      to some extend, indicated to the user. The distinction between an
@@ -50,25 +50,26 @@
 
      The previous inspector architecture generally only represented
      objects, making it impossible for a command applied to an object
-     to, for example, retrieve an array containing the object an
+     to, for example, retrieve an array containing the object and
      modify the array.
 
   4. Each inspected object should have an associated state that
      persists across redisplays and can store information specific to
-     the object class (E.g. instances slots can be displayed as a flat
+     the object class (E.g. instance slots can be displayed as a flat
      list or organized by superclass from which the slot has been
      inherited). This mechanism should be extensible.
 
      The previous inspector architecture associated pre-defined pieces
-     of state such as the expansion status or style in which cons tree
-     should be displayed with objects. This mechanism was not
+     of state such as the expansion status or style in which cons
+     trees should be displayed with objects. This mechanism was not
      extensible.
 
   5. It should be possible to define commands which are only
      applicable to specific object classes.
 
      The previous inspector architecture did not generally use
-     specific classes
+     specific presentation types and therefore could not control the
+     applicability of commands very well.
 
 * Design
 
@@ -102,7 +103,7 @@
 *** Static View
 
     The central object is the inspector state which associates a tree
-    of places and object (yes, a tree, even if the objects form a
+    of places and objects (yes, a tree, even if the objects form a
     circular structure) to object states.
 
 *** Dynamic View
@@ -134,11 +135,12 @@
            3. Store $s^+$ in $p$'s cache under the key $(p v)$
 
         2. Call ~(inspect-object-using-state v s y stream)~ which
-           displays $v$ using the addition information stored in $s$
+           displays $v$ using the additional information stored in $s$
            and $y$, creating a presentation with underlying object
            $s$.
 
-           Places contained in $v$ are displayed recursive calls:
+           Places contained in $v$ are displayed by recursive calls
+           (depending on the expansion status encoded in $y$):
 
            1. ~(ensure-child …)~ obtains or creates child places
 
@@ -220,3 +222,29 @@
     + ~inspect-object object stream~ /generic function/
 
     + ~inspect-object-using-state object state style stream~ /generic function/
+
+*** Inspector state protocol
+
+    This protocol manages the root place stored directly in the main
+    inspector state object.
+
+    The /run-hook?/ keyword parameter of writers controls whether the
+    "change hook" of the inspector state should be executed,
+    potentially causing a pane displaying the inspector state to
+    redisplay itself. The following values are accepted:
+
+    + ~:if-changed~ :: Run the hook unless the new root object is the
+                       same as the current one.
+
+    + any other true value :: Run the hook unconditionally.
+
+    + false :: Do not run the hook.
+
+    Protocol generic functions:
+
+    + ~root-place inspector-state &key run-hook?~ /generic function/
+
+    + ~(setf root-place) new-value inspector-state &key run-hook?~ /generic function/
+
+      Replace the tree of objects currently being inspected with a new
+      tree that has /new-value/ at its root.
