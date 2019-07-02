@@ -19,6 +19,25 @@
 
 ;;; Places
 
+;;; `array-dimensions-place'
+
+(defclass array-dimensions-place (basic-place)
+  ())
+
+(defmethod supportsp ((place array-dimensions-place) (operation (eql 'setf)))
+  (adjustable-array-p (container place)))
+
+(defmethod value ((place array-dimensions-place))
+  (array-dimensions (container place)))
+
+(defmethod (setf value) ((new-value t) (place array-dimensions-place))
+  (let ((container (container place)))
+    (multiple-value-bind (to index-offset) (array-displacement container)
+      (adjust-array container new-value :displaced-to           to
+                                        :displaced-index-offset index-offset))))
+
+;;; `vector-bound-place'
+
 (defclass vector-bound-place (basic-place)
   ())
 
@@ -121,6 +140,16 @@
 (defmethod object-state-class ((object array) (place t))
   'inspected-array)
 
+;;; For all arrays
+
+(defmethod inspect-object-using-state :after ((object array)
+                                              (state  inspected-array)
+                                              (style  (eql :expanded-header))
+                                              (stream t))
+  (when (adjustable-array-p object)
+    (write-char #\Space stream)
+    (badge stream "adjustable")))
+
 ;;; Object inspection methods
 
 (defmethod inspect-object-using-state ((object vector)
@@ -129,11 +158,9 @@
                                        (stream t))
   #+no (format stream "Vector")
   (print-sequence-header
-   stream "vector" (array-total-size object) (start state) (end state))
-  (when (adjustable-array-p object)
-    (write-char #\Space stream)
-    (badge stream "adjustable")))
+   stream "vector" (array-total-size object) (start state) (end state)))
 
+;; TODO displacement
 (defmethod inspect-object-using-state ((object vector)
                                        (state  inspected-vector)
                                        (style  (eql :expanded-body))
@@ -177,7 +204,7 @@
                        (write-char #\Space stream)
                        (inspect stream))))
               (formatting-item-list (stream :n-columns 1)
-                (loop :for i :from 0 :below end ; (array-total-size object)
+                (loop :for i :from 0 :below end
                       :if (and fill-pointer (>= i fill-pointer))
                       :do (with-drawing-options (stream :ink +light-gray+) ; TODO style
                             (format-element stream i))
@@ -186,46 +213,55 @@
           (when truncated?
             (note-truncated stream length (- end start))))))))
 
-(defmethod inspect-object-using-state ((object array) ; TODO repeated for vector
+(defmethod inspect-object-using-state ((object array)
                                        (state  inspected-array)
                                        (style  (eql :expanded-header))
                                        (stream t))
-  (format stream "Array")
-  (when (adjustable-array-p object)
-    (write-char #\Space stream)
-    (badge stream "adjustable")))
+  (format stream "Array"))
 
-;; TODO displaced
 (defmethod inspect-object-using-state ((object array)
                                        (state  inspected-array)
                                        (styel  (eql :expanded-body))
                                        (stream t))
-  (with-preserved-cursor-x (stream)
-    (formatting-table (stream)
-      (formatting-row (stream)          ; TODO repeated for vector
-        (formatting-place (stream nil 'pseudo-place (array-element-type object) present inspect)
-          (with-style (stream :slot-like)
-            (formatting-cell (stream) (write-string "Element type" stream))
-            (formatting-cell (stream) (present stream)))
-          (formatting-cell (stream) (inspect stream))))
-      (formatting-row (stream)
-        (formatting-place (stream nil 'pseudo-place (array-total-size object) present inspect)
-          (with-style (stream :slot-like)
-            (formatting-cell (stream) (write-string "Total size" stream))
-            (formatting-cell (stream) (present stream)))
-          (formatting-cell (stream) (inspect stream))))
-      (formatting-row (stream)
-        (formatting-place (stream nil 'pseudo-place (array-rank object) present inspect) ; TODO writable if adjustable
-          (with-style (stream :slot-like)
-            (formatting-cell (stream) (write-string "Rank" stream))
-            (formatting-cell (stream) (present stream)))
-          (formatting-cell (stream) (inspect stream))))
-      (formatting-row (stream)
-        (formatting-place (stream nil 'pseudo-place (array-dimensions object) present inspect) ; TODO same
-          (with-style (stream :slot-like)
-            (formatting-cell (stream) (write-string "Dimensions" stream))
-            (formatting-cell (stream) (present stream)))
-          (formatting-cell (stream) (inspect stream))))))
+  (multiple-value-bind (to index-offset) (array-displacement object)
+    (with-preserved-cursor-x (stream)
+      (formatting-table (stream)
+        (formatting-row (stream)      ; TODO repeated for vector
+          (formatting-place (stream nil 'pseudo-place (array-element-type object) present inspect)
+            (with-style (stream :slot-like)
+              (formatting-cell (stream) (write-string "Element type" stream))
+              (formatting-cell (stream) (present stream)))
+            (formatting-cell (stream) (inspect stream)))
+          (when to
+            (formatting-place (stream nil 'pseudo-place to present inspect) ; TODO writable if adjustable
+              (with-style (stream :slot-like)
+                (formatting-cell (stream) (write-string "Displaced to" stream))
+                (formatting-cell (stream) (present stream)))
+              (formatting-cell (stream) (inspect stream)))))
+        (formatting-row (stream)
+          (formatting-place (stream nil 'pseudo-place (array-total-size object) present inspect)
+            (with-style (stream :slot-like)
+              (formatting-cell (stream) (write-string "Total size" stream))
+              (formatting-cell (stream) (present stream)))
+            (formatting-cell (stream) (inspect stream)))
+          (when to
+            (formatting-place (stream nil 'pseudo-place index-offset present inspect) ; TODO writable if adjustable
+              (with-style (stream :slot-like)
+                (formatting-cell (stream) (write-string "Displaced index offset" stream))
+                (formatting-cell (stream) (present stream)))
+              (formatting-cell (stream) (inspect stream)))))
+        (formatting-row (stream)
+          (formatting-place (stream nil 'pseudo-place (array-rank object) present inspect)
+            (with-style (stream :slot-like)
+              (formatting-cell (stream) (write-string "Rank" stream))
+              (formatting-cell (stream) (present stream)))
+            (formatting-cell (stream) (inspect stream))))
+        (formatting-row (stream)
+          (formatting-place (stream object 'array-dimensions-place nil present inspect)
+            (with-style (stream :slot-like)
+              (formatting-cell (stream) (write-string "Dimensions" stream))
+              (formatting-cell (stream) (present stream)))
+            (formatting-cell (stream) (inspect stream)))))))
 
   (with-section (stream) "Elements"
     (case (array-rank object)
