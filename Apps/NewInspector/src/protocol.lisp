@@ -70,7 +70,16 @@
 
 (defgeneric inspect-object-using-state (object state style stream)
   (:documentation
-   "Foo bar"))
+   "Present OBJECT to STREAM according to STATE and STYLE.
+
+    STATE stores information that is permanently associated with
+    OBJECT.
+
+    STYLE on the other hand consists of transient information such as
+    whether OBJECT is should be presented in expanded or collapsed
+    form.
+
+    STREAM is the stream to which OBJECT should be presented."))
 
 ;;; Default behavior
 
