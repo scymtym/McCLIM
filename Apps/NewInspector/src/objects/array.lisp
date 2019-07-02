@@ -96,7 +96,7 @@
                       (operation (eql 'remove-value)))
   t)
 
-(defmethod make-unbound ((place adjustable-vector-element-place))
+(defmethod remove-value ((place adjustable-vector-element-place))
   (let* ((container (container place))
          (length    (array-total-size container))
          (index     (cell place)))

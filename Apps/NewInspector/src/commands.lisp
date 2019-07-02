@@ -154,15 +154,15 @@
     (object)
   (list object (accept 'clim:form :prompt "New place value (evaluated)")))
 
-(define-command (com-make-place-unbound :command-table inspector ; TODO remove place value
+(define-command (com-remove-place-value :command-table inspector
                                         :name          t)
     ((place 'place :prompt "Place to remove value of"))
   (with-command-error-handling
       ("Could not remove value of place ~A" place)
-      (make-unbound place)))
+      (remove-value place)))
 
 (define-presentation-to-command-translator place->com-remove-place-value
-    (place com-make-place-unbound inspector
+    (place com-remove-place-value inspector
      :gesture       :delete
      :tester        ((object)
                      (and (supportsp object 'remove-value)

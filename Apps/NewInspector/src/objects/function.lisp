@@ -39,7 +39,7 @@
 (defmethod value ((place method-place))
   (cell place) #+no (find-method (container place) (qualifiers place) (specializers place)))
 
-(defmethod make-unbound ((place method-place))
+(defmethod remove-value ((place method-place))
   (remove-method (container place) (value place))) ; TODO store the method?
 
 (defmethod qualifiers ((place method-place))

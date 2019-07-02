@@ -44,7 +44,7 @@
 (defmethod supportsp ((place list-element-place) (operation (eql 'remove-value)))
   t)
 
-(defmethod make-unbound ((place list-element-place))
+(defmethod remove-value ((place list-element-place))
   (loop :for predecessor :on (container place)
         :for middle = (rest predecessor)
         :for successor = (rest middle)
@@ -55,7 +55,7 @@
 (defclass alist-element-place (list-element-place)
   ())
 
-(defmethod make-unbound ((place alist-element-place))
+(defmethod remove-value ((place alist-element-place))
   (delete (cell place) (container place)))
 
 (defclass alist-key-place (key-place

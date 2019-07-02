@@ -31,7 +31,7 @@
 
 (defgeneric (setf value) (new-value place))
 
-(defgeneric make-unbound (place)) ; TODO remove-value?
+(defgeneric remove-value (place))
 
 ;;; Object state protocol
 ;;;

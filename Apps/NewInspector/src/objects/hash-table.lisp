@@ -36,7 +36,7 @@
     (remhash old-key hash-table)
     (setf (gethash new-value hash-table) old-value)))
 
-(defmethod make-unbound ((place hash-table-key-place))
+(defmethod remove-value ((place hash-table-key-place))
   (remhash (cell place) (container place)))
 
 ;; `hash-table-value-place'
@@ -54,7 +54,7 @@
 (defmethod (setf value) (new-value (place hash-table-value-place))
   (setf (gethash (cell place) (container place)) new-value))
 
-(defmethod make-unbound ((place hash-table-value-place))
+(defmethod remove-value ((place hash-table-value-place))
   (remhash (cell place) (container place)))
 
 ;;; Object state

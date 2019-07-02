@@ -55,7 +55,7 @@
   (defmethod (setf value) ((new-value t) (place mutable-slot-place))
     (setf (slot-value (container place) (slot-name place)) new-value))
 
-  (defmethod make-unbound ((place mutable-slot-place))
+  (defmethod remove-value ((place mutable-slot-place))
     (slot-makunbound (container place) (slot-name place))))
 
 ;;; `class-of-place'

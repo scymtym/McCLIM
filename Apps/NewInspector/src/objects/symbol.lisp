@@ -60,7 +60,7 @@
 (defmethod (setf value) ((new-value t) (place symbol-value-place))
   (setf (symbol-value (container place)) new-value))
 
-(defmethod make-unbound ((place symbol-value-place))
+(defmethod remove-value ((place symbol-value-place))
   (makunbound (container place)))
 
 ;;; `symbol-function-place'
@@ -85,7 +85,7 @@
   ;; (setf (symbol-function (container place)) new-value)
   (setf (fdefinition (container place)) new-value))
 
-(defmethod make-unbound ((place symbol-function-place))
+(defmethod remove-value ((place symbol-function-place))
   (fmakunbound (container place)))
 
 ;;; `symbol-type-place'
@@ -108,7 +108,7 @@
 (defmethod (setf value) ((new-value class) (place symbol-type-place))
   (setf (find-class (container place) nil) new-value))
 
-(defmethod make-unbound ((place symbol-type-place))
+(defmethod remove-value ((place symbol-type-place))
   (setf (find-class place nil) nil))
 
 ;;; Object states
