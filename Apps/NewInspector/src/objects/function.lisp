@@ -163,7 +163,7 @@
     (inspect-slots object (slot-style state) stream))
   #+broken (call-next-method))
 
-;;; `generic-function' and `method'
+;;; `generic-function'
 
 (defun inspect-method-list (object methods stream &key generic-function-name)
   (formatting-table (stream)
@@ -187,7 +187,7 @@
                                 (formatting-cell (stream)
                                   (with-print-error-handling (stream)
                                     (typecase specializer
-                                      (class (princ (class-name specializer) stream))
+                                      (class (inspect-class-as-name specializer stream))
                                       (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream))))))
                           (specializers place)))
                    (formatting-cell (stream)
@@ -213,6 +213,8 @@
          "No methods~%")
         (t
          (inspect-method-list object methods stream))))))
+
+;; `method'
 
 (defmethod inspect-object-using-state ((object method)
                                        (state  inspected-method)

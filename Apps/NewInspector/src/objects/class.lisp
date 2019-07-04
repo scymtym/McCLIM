@@ -22,9 +22,6 @@
 ;;; sub/super/meta class
 ;;; slots
 ;;; direct methods
-
-;;; finalize, finalized badge
-
 ;;; add/remove slots
 
 ;;; Object states
@@ -63,7 +60,6 @@
                                        (stream t))
   (let ((metaclass (class-of object)))
     (inspect-class-as-name metaclass stream)
-    ;; (prin1 (class-name metaclass) stream)
 
     (write-char #\Space stream)
     (if (anonymous-class-p object)
@@ -118,7 +114,6 @@
 
   (print-documentation object stream)
 
-  ;; TODO initargs
   (with-section (stream) "Initargs"
     (let (initargs)
       (with-placeholder-if-emtpy (stream)
@@ -128,7 +123,9 @@
          "No initargs~%")
         (t
          (with-drawing-options (stream :text-size :smaller)
-           (prin1 initargs stream))))))
+           ;; TODO do this properly
+           (prin1 initargs stream)
+           (fresh-line stream))))))
 
   (with-section (stream) "Effective slots"
     (let (slots)
@@ -185,7 +182,7 @@
          "Not used as a specializer~%")
         (t
          (with-drawing-options (stream :text-size :smaller)
-           ;; TODO INSPECT-METHOD-LIST want the generic function, not OBJECT
+           ;; TODO INSPECT-METHOD-LIST wants the generic function, not OBJECT
            (inspect-method-list object methods stream
                                 :generic-function-name t))))))
 
