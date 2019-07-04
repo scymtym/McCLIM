@@ -27,6 +27,9 @@
 
 (defgeneric valuep (place))
 
+(defun value-no-error-p (place) ; TODO call this safe-valuep?
+  (ignore-errors (valuep place)))
+
 (defgeneric value (place))
 
 (defgeneric (setf value) (new-value place))

@@ -141,7 +141,7 @@
      :gesture       :delete
      :tester        ((object)
                      (and (supportsp object 'remove-value)
-                          (valuep object)))
+                          (value-no-error-p object)))
      :documentation "Remove value of place")
     (object)
   (list object))
@@ -165,10 +165,10 @@
      :gesture :select
      :tester ((object from-object)
               (cond ((not from-object)
-                     (valuep object)) ; TODO should work for unbound?
+                     (value-no-error-p object)) ; TODO should work for unbound?
                     ((eq from-object object)
                      nil)
-                    ((valuep from-object)
+                    ((value-no-error-p from-object)
                      (ignore-errors ; TODO do this properly
                       (and (supportsp object 'setf)
                            (accepts-value-p object (value from-object)))))
@@ -210,10 +210,10 @@
      :gesture :swap
      :tester ((object from-object)
               (cond ((not from-object)
-                     (valuep object)) ; TODO should work for unbound?
+                     (value-no-error-p object)) ; TODO should work for unbound?
                     ((eq from-object object)
                      nil)
-                    ((valuep from-object)
+                    ((value-no-error-p from-object)
                      (ignore-errors ; TODO do this properly
                       (and (supportsp object 'setf)
                            (accepts-value-p object (value from-object)))))
@@ -247,7 +247,7 @@
      :tester ((object)
               (and (supportsp object 'setf)
                    (accepts-value-p object t)
-                   (valuep object)
+                   (value-no-error-p object)
                    (eq (value object) t)))
      :documentation "Set to false"
      :pointer-documentation
@@ -268,7 +268,7 @@
      :tester ((object)
               (and (supportsp object 'setf)
                    (accepts-value-p object t)
-                   (valuep object)
+                   (value-no-error-p object)
                    (eq (value object) nil)))
      :documentation "Set to true"
      :pointer-documentation
@@ -300,7 +300,7 @@
      :gesture :increment
      :tester ((object)
               (and (supportsp object 'setf)
-                   (valuep object)
+                   (value-no-error-p object)
                    (let ((value (value object)))
                      (and (typep value 'real)
                           (accepts-value-p object (1+ value))))))
@@ -318,7 +318,7 @@
      :gesture :decrement
      :tester ((object)
               (and (supportsp object 'setf)
-                   (valuep object)
+                   (value-no-error-p object)
                    (let ((value (value object)))
                      (and (typep value 'real)
                           (accepts-value-p object (1- value))))))
