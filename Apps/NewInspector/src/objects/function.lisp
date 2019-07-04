@@ -20,7 +20,8 @@
 ;;; Utilities
 
 (defun tracedp (function)
-  (gethash function sb-debug::*traced-funs*))
+  #-sbcl nil
+  #+sbcl (gethash function sb-debug::*traced-funs*))
 
 ;;; `method-place'
 
@@ -131,6 +132,7 @@
                 (formatting-cell (stream) (present stream)))
               (formatting-cell (stream) (inspect stream))))))
       ;; Type
+      #+sbcl
       (formatting-row (stream)
         (formatting-place (stream nil 'pseudo-place (sb-introspect:function-type object) present inspect) ; TODO fresh list every time? => state is forgotten
           (with-style (stream :slot-like)
@@ -229,6 +231,7 @@
 
 ;;; Commands
 
+#+sbcl
 (define-command (com-trace :command-table inspector
                            :name          "Trace Function")
     ((object 'inspected-function))
@@ -237,6 +240,7 @@
         (let ((name (nth-value 2 (function-lambda-expression object))))
           (sb-debug::trace-1 name (sb-debug::make-trace-info) object)))))
 
+#+sbcl
 (define-presentation-to-command-translator inspected-function->com-trace
     (inspected-function com-trace inspector
      :tester ((object) (not (tracedp (object object))))
@@ -248,6 +252,7 @@
     (object)
   (list object))
 
+#+sbcl
 (define-command (com-untrace :command-table inspector
                              :name          "Untrace Function")
     ((object 'inspected-function))
@@ -256,6 +261,7 @@
         (let ((name (nth-value 2 (function-lambda-expression object))))
           (sb-debug::untrace-1 name))))) ; TODO
 
+#+sbcl
 (define-presentation-to-command-translator inspected-function->com-untrace
     (inspected-function com-untrace inspector
      :tester ((object) (tracedp (object object)))

@@ -143,9 +143,9 @@
            (let ((state (nth-value 1 (find-symbol (symbol-name object) package)))) ; TODO ugly
              (badge stream "~(~A~)" state)))))
 
-  (when-let ((kind (sb-cltl2:variable-information object)))
-    (write-char #\Space stream)
-    (badge stream "~(~A~)" kind)))
+  #+sbcl (when-let ((kind (sb-cltl2:variable-information object)))
+           (write-char #\Space stream)
+           (badge stream "~(~A~)" kind)))
 
 (defmethod inspect-object-using-state ((object symbol)
                                        (state  inspected-object)
