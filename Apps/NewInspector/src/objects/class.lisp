@@ -27,9 +27,25 @@
 ;;; Object states
 
 (defclass inspected-class (inspected-instance)
-  ()
+  ((%collapsed-style :initarg  :collapsed-style
+                     :accessor collapsed-style)) ; TODO brief vs. collapsed
   (:default-initargs
    :slot-style nil))
+
+(defmethod initialize-instance :after  ; TODO mixin for collapsed-style
+    ((instance inspected-class)
+     &key
+     (collapsed-style nil collapsed-style-supplied-p))
+  (declare (ignore collapsed-style))
+  (unless collapsed-style-supplied-p
+    (setf (collapsed-style instance) (style instance))))
+
+(defmethod (setf style) :around ((new-value (eql :brief))
+                                 (object    inspected-class))
+  (let ((collapsed-style (collapsed-style object)))
+    (if (eq new-value collapsed-style)
+        (call-next-method)
+        (setf (style object) collapsed-style))))
 
 (defmethod object-state-class ((object class) (place t))
   'inspected-class)
