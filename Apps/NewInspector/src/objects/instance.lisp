@@ -65,7 +65,8 @@
 
 (defmethod make-object-state ((object t)
                               (place  class-of-place))
-  (make-instance (object-state-class object place) :place place :style :name-only))
+  (make-instance (object-state-class object place) :place place
+                                                   :style :name-only))
 
 (defun inspect-class-as-name (class stream)
   ;; This presents the name of CLASS as a collapsed inspectable object
@@ -104,15 +105,21 @@
 (defun inspect-slot (slot object stream &key (place-class 'mutable-slot-place))
   (formatting-place (stream object place-class slot present inspect
                             :place-var place)
-    (let* ((name (c2mop:slot-definition-name (cell place))))
+    (let ((name       (c2mop:slot-definition-name slot))
+          (allocation (c2mop:slot-definition-allocation slot)))
       (formatting-row (stream)
         (formatting-cell (stream :align-y :center) ; TODO must be able to inspect slot
           (with-style (stream :slot-like)
-            (write-string (symbol-name name) stream)))
+            (write-string (symbol-name name) stream))
+          (when (not (eq allocation :instance))
+            (write-char #\Space stream)
+            (badge stream "~A-allocated" allocation)))
+        ;; TODO badge for non-instance allocation?
         (formatting-cell (stream :align-x :center :align-y :center)
           (present stream))
         (formatting-cell (stream :align-y :center)
-          (inspect stream))))))
+          (with-error-handling (stream "Error accessing slot")
+            (inspect stream)))))))
 
 (defmethod inspect-slots ((object t)
                           (style  (eql nil))
