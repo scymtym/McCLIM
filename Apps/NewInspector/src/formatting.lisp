@@ -174,12 +174,15 @@
   (check-type stream symbol)
   `(call-with-safe-and-terse-printing (lambda () ,@body)))
 
-(defun call-with-print-error-handling (thunk stream)
+(defun call-with-error-handling (thunk stream message)
   (handler-case
       (funcall thunk)
     (error ()
       (with-style (stream :error)
-        (write-string "error printing object" stream)))))
+        (write-string message stream)))))
+
+(defmacro with-error-handling ((stream message) &body body)
+  `(call-with-error-handling (lambda () ,@body) ,stream ,message))
 
 (defmacro with-print-error-handling ((stream) &body body)
-  `(call-with-print-error-handling (lambda () ,@body) ,stream))
+  `(with-error-handling (,stream "error printing object") ,@body))
