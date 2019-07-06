@@ -79,7 +79,9 @@
            :reader   place)
    (%style :initarg  :style
            :accessor style
-           :initform :brief)))
+           :initform :brief)
+   (%occurrences :accessor occurrences
+                 :initform '())))
 
 (defmethod object ((object inspected-object))
   (value (place object)))
@@ -95,3 +97,64 @@
     (make-instance class :place place)))
 
 (define-presentation-type inspected-object ()) ; TODO probably not needed
+
+;;; Indicating circular structure using presentation highlighting
+
+(flet ((map-other-occurrences (function presentation)
+         (map nil (lambda (other)
+                    (unless (eq other presentation)
+                      (funcall function other)))
+              (cdr (occurrences (presentation-object presentation)))))
+       (draw-arrow (stream from to ink)
+         (multiple-value-bind (x1 y1) (bounding-rectangle-position from)
+           (multiple-value-bind (x2 y2) (bounding-rectangle-position to)
+             (let ((design (mcclim-bezier:make-bezier-curve*
+                            (list x1              y1
+                                  (lerp .3 x1 x2) y1
+                                  x2              (lerp .7 y1 y2)
+                                  x2              y2))))
+               (mcclim-bezier:draw-bezier-design*
+                stream design :ink ink :line-thickness 2)
+               (draw-arrow* stream
+                            x2 (lerp .99 y1 y2)
+                            x2               y2
+                            :ink ink :line-thickness 2))))
+         #+no (multiple-value-call #'draw-arrow* stream
+                (bounding-rectangle-position from)
+                (bounding-rectangle-position to)
+                :ink ink :line-thickness 2)))
+
+  (define-presentation-method highlight-presentation
+    :after ((type   inspected-object)
+            (record t)
+            (stream t)
+            (state  (eql :highlight)))
+
+    (let ((i 0))
+      (map-other-occurrences
+       (lambda (other-presentation)
+         (let ((ink (make-contrasting-inks 8 (mod i 8))))
+           (when (zerop i)
+             (multiple-value-call #'draw-circle* stream
+               (bounding-rectangle-position record) 5 :ink ink))
+           (draw-arrow stream record other-presentation ink))
+         (incf i))
+       record)))
+
+  (define-presentation-method highlight-presentation
+    :after ((type   inspected-object)
+            (record t)
+            (stream t)
+            (state  (eql :unhighlight)))
+    (let ((i 0))
+      (map-other-occurrences
+       (lambda (other-presentation)
+         (repaint-sheet
+          stream (with-output-to-output-record (stream)
+                   (when (zerop i)
+                     (multiple-value-call #'draw-circle* stream
+                       (bounding-rectangle-position record) 5))
+                   ;; TODO can we just use the design as the region here?
+                   (draw-arrow stream record other-presentation +black+)))
+         (incf i))
+       record))))

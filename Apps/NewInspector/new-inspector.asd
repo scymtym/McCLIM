@@ -21,7 +21,8 @@
   :author      "Jan Moringen <jmoringe@techfak.uni-bielefeld.de>"
 
   :version     (:read-file-form "version-string.sexp")
-  :depends-on  ("mcclim")
+  :depends-on  ("mcclim"
+                "mcclim-bezier")
 
   :components  ((:module     "base"
                  :pathname   "src"

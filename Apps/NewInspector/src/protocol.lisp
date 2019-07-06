@@ -98,17 +98,25 @@
           (with-style (stream :error)
             (format stream "Could not inspect place: ~A" condition))))))
 
+(defvar *seen*)
+
 (defmethod inspect-object ((object t) (stream t))
   (let* ((place *place*)
          (state (ensure-state object place
                               (lambda ()
                                 (make-object-state object place))))
          (style (style state)))
-    (with-output-as-presentation (stream state (presentation-type-of state)
-                                         :single-box t)
-      (let ((*place*        nil)
-            (*parent-place* place))
-        (inspect-object-using-state object state style stream)))
+    (let ((presentation (with-output-as-presentation (stream state (presentation-type-of state)
+                                                             :single-box t)
+                          (let ((*place*        nil)
+                                (*parent-place* place))
+                            (inspect-object-using-state object state style stream)))))
+
+      (let ((occurrences (ensure-gethash object *seen* (cons nil '()))))
+        (push presentation (cdr occurrences))
+        (setf (slot-value state '%occurrences) occurrences))
+
+      )
     state))
 
 ;;; Inspector state protocol
@@ -130,7 +138,8 @@
      &key
      (view (make-instance 'inspector-view)))
   (setf (stream-default-view stream) view) ; TODO restore old default view?
-  (inspect-place (root-place state) stream)
+  (let ((*seen* (make-hash-table :test #'eq)))
+    (inspect-place (root-place state) stream))
 
   #+old (let* ((root-place  (root-place state))
          (root-object (value root-place))
