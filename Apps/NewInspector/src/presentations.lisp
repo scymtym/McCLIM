@@ -25,52 +25,21 @@
 (defclass inspector-view (textual-view)
   ())
 
-;;; `changable'
-;;;
-;;; Indicates that the place represented by the presentation can be
-;;; changed (by assigning a different value or removing the value).
-
-(define-presentation-type changable ()) ; TODO I think this is not used
-
-(define-presentation-method present :around ((object t)
-                                             (type   changable)
-                                             (stream t)
-                                             (view   textual-view)
-                                             &key)
-  (with-style (stream :changable) (call-next-method)))
-
-(define-presentation-method present ((object t) ; TODO used? even harmful?
-                                     (type   changable)
-                                     (stream t)
-                                     (view   textual-view)
-                                     &key)
-  (let ((cell (cell object)))
-    (present cell (presentation-type-of cell) :stream stream :view view)))
-
-;;;
-
-(define-presentation-type slot-like ()) ; TODO I think this is not used
-
-(define-presentation-method present :around (object
-                                             (type slot-like)
-                                             stream
-                                             (view textual-view)
-                                             &key)
-  (with-style (stream :slot-like) (call-next-method)))
-
-;;;
-
-(define-presentation-type place () ; TODO do we need this?
-  ; :inherit-from 'changable
-  )
-
 ;;; Place presentations
+;;;
+;;; These visually represent the in which an inspected object
+;;; resides. Also indicates whether the place can be changed (by
+;;; assigning a different value or removing the value).
+
+(define-presentation-type place ())
 
 (define-presentation-method present :around ((object basic-place)
                                              (type   place)
                                              (stream t)
                                              (view   inspector-view)
                                              &key)
+  ;; Present the place with the "changable" style if its value can be
+  ;; changed or removed.
   (if (or (supportsp object 'setf) (supportsp object 'remove-value))
       (with-style (stream :changable) (call-next-method))
       (call-next-method)))
