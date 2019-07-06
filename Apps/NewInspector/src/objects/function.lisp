@@ -188,7 +188,7 @@
                                   (with-print-error-handling (stream)
                                     (typecase specializer
                                       (class (inspect-class-as-name specializer stream))
-                                      (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream))))))
+                                      (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream)))))) ; TODO should be inspectable
                           (specializers place)))
                    (formatting-cell (stream)
                      (present))
@@ -279,4 +279,4 @@
                                     :name          "Remove all Methods")
     ((object 'inspected-generic-function))
   (with-command-error-handling ("Could not remove all methods")
-      (error "not implemented")))
+      (error "TODO not implemented")))
