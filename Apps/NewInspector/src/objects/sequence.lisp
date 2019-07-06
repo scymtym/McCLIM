@@ -19,12 +19,18 @@
 
 ;;; Utilities
 
+(defun end-or-length (end length)
+  (if end
+      (min end length)
+      length))
+
 (defun print-sequence-header (stream kind length start end)
   (format stream "~A of length ~:D" kind length)
-  (when (or (plusp start) (< end length))
-    (write-char #\Space stream)
-    (with-style (stream :note)
-      (format stream "~:D … ~:D shown" start end))))
+  (let ((end (end-or-length end length)))
+    (when (or (plusp start) (< end length))
+      (write-char #\Space stream)
+      (with-style (stream :note)
+        (format stream "~:D … ~:D shown" start end)))))
 
 (defun note-truncated (stream length shown-count)
   (with-style (stream :note)
@@ -42,9 +48,7 @@
 
 (defmethod effective-bounds ((state inspected-sequence) (length integer))
   (let ((start (start state))
-        (end   (if-let ((end (end state)))
-                 (min end length)
-                 length)))
+        (end   (end-or-length (end state) length)))
     (values start end (or (plusp start) (< end length)))))
 
 (defmethod inspect-object-using-state ((object sequence)
