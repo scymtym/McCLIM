@@ -123,13 +123,13 @@
 
 ;;; Inspector state protocol
 
-(defgeneric root-place (inspector-state &key run-hook?))
+(defgeneric root-place (inspector-state &key run-hook-p))
 
-(defgeneric (setf root-place) (new-value inspector-state &key run-hook?))
+(defgeneric (setf root-place) (new-value inspector-state &key run-hook-p))
 
-(defgeneric root-object (inspector-state &key run-hook?))
+(defgeneric root-object (inspector-state &key run-hook-p))
 
-(defgeneric (setf root-object) (new-value inspector-state &key run-hook?))
+(defgeneric (setf root-object) (new-value inspector-state &key run-hook-p))
 
 (defgeneric change-hook (inspector-state))
 

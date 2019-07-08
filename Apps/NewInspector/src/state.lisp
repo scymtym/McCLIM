@@ -49,34 +49,34 @@
   (when-let ((change-hook (change-hook inspector-state)))
     (map nil (rcurry #'funcall root-place) change-hook)))
 
-(defmethod root-place ((inspector-state inspector-state) &key run-hook?)
-  (declare (ignore run-hook?))
+(defmethod root-place ((inspector-state inspector-state) &key run-hook-p)
+  (declare (ignore run-hook-p))
   (%root-place inspector-state))
 
 (defmethod (setf root-place) ((new-value t) (inspector-state inspector-state)
-                              &key run-hook?)
+                              &key run-hook-p)
   (setf (%root-place inspector-state) new-value)
-  (when run-hook?
+  (when run-hook-p
     (run-hook inspector-state new-value)))
 
-(defmethod root-object ((inspector-state inspector-state) &key run-hook?)
-  (declare (ignore run-hook?))
+(defmethod root-object ((inspector-state inspector-state) &key run-hook-p)
+  (declare (ignore run-hook-p))
   (let ((place (root-place inspector-state)))
     (if (valuep place)
         (values (value place) t)
         (values nil           nil))))
 
 (defmethod (setf root-object) ((new-value t) (inspector-state inspector-state)
-                               &key run-hook?)
+                               &key run-hook-p)
   (let* ((place         (root-place inspector-state))
          (same-object-p (and (valuep place)
                              (eq new-value (value place))))
          (new-place     (if same-object-p
                             place
                             (make-instance 'root-place :cell new-value)))
-         (run-hook?     (case run-hook?
+         (run-hook-p    (case run-hook-p
                           (:if-changed (not same-object-p))
-                          (t           run-hook?))))
+                          (t           run-hook-p))))
 
-    (setf (root-place inspector-state :run-hook? run-hook?) new-place)
+    (setf (root-place inspector-state :run-hook-p run-hook-p) new-place)
     new-value))
