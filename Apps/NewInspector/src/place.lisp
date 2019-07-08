@@ -35,6 +35,7 @@
                          (class     t)
                          (place     basic-place)
                          (thunk     function))
+  ;; TODO clean this up, add to protocol, export
   (symbol-macrolet ((by-class (gethash cell (or (gethash container (children place))
                                                 (setf (gethash container (children place)) (make-hash-table :test #'eql))))))
     (or (assoc-value by-class class :test #'eq)
@@ -72,6 +73,9 @@
   (setf (style new-value) :expanded))
 
 ;;; `pseudo-place'
+;;;
+;;; A place that is in some way computed or derived and not backed by
+;;; a concrete location such as an instance slot or array element.
 
 (defclass pseudo-place (basic-place)
   ())
@@ -99,6 +103,9 @@
   ())
 
 ;;; `key-value-place'
+;;;
+;;; A place that represents either the key or the value of a key-value
+;;; pair. Examples include hash-table entries and alist elements.
 
 (defclass key-value-place (basic-place)
   ())
