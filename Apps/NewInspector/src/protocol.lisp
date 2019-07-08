@@ -129,6 +129,8 @@
 
 (defgeneric (setf root-object) (new-value inspector-state &key run-hook?))
 
+(defgeneric change-hook (inspector-state))
+
 ;;;
 
 (defgeneric present-inspected-object-graph (state stream &key view))

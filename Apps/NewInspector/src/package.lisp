@@ -22,10 +22,60 @@
    #:clim)
 
   (:shadow
-   #:inspect) ; used as a local function name
-
-  (:export
    #:inspect)
 
   (:shadowing-import-from #:alexandria
-   #:simple-parse-error))
+   #:simple-parse-error)
+
+  ;; Formatting Utilities
+  (:export
+   #:call-with-preserved-cursor-x      #:with-preserved-cursor-x
+   #:call-with-preserved-cursor-y      #:with-preserved-cursor-y
+
+   #:with-style
+   #:call-with-section                 #:with-section
+   #:call-with-placeholder-if-empty    #:with-placeholder-if-emtpy
+   #:call-with-output-as-badge         #:with-output-as-badge
+   #:badge
+
+   #:call-with-safe-and-terse-printing #:with-safe-and-terse-printing
+   #:call-with-error-handling          #:with-error-handling
+                                       #:with-print-error-handling)
+
+  ;; Place protocol
+  (:export
+   #:supportsp
+   #:accepts-value-p
+   #:valuep
+   #:value                          ; also setf
+   #:remove-value)
+
+  ;; Object state protocol
+  (:export
+   #:place
+   #:object
+   #:state-applicable-p
+
+   #:object-state-class
+   #:make-object-state)
+
+  ;; Object inspection protocol
+  (:export
+   #:inspect-place
+   #:inspect-object
+   #:inspect-object-using-state)
+
+  ;; Inspector state protocol
+  (:export
+   #:root-place                     ; also setf
+   #:root-object                    ; also setf
+   #:change-hook
+   #:present-inspected-object-graph)
+
+  ;; Inspector pane protocol
+  (:export
+   #:queue-redisplay)
+
+  ;; User interface
+  (:export
+   #:inspect))
