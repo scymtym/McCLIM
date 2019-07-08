@@ -191,9 +191,9 @@
                                       (t     (prin1 `(eql ,(c2mop:eql-specializer-object specializer)) stream)))))) ; TODO should be inspectable
                           (specializers place)))
                    (formatting-cell (stream)
-                     (present))
+                     (present stream))
                    (formatting-cell (stream)
-                     (inspect)))))
+                     (inspect stream)))))
          methods)))
 
 (defmethod inspect-object-using-state ((object generic-function)
@@ -228,7 +228,7 @@
                                        (stream t))
   ;; Documentation
   (print-documentation object stream)
-  ;;
+  ;; Slots
   (call-next-method))
 
 ;;; Commands
