@@ -17,21 +17,24 @@
      should not expand the other.
 
      The previous inspector architecture associated all state
-     information to objects themselves, making this impossible.
+     information with objects themselves, making this behavior
+     impossible to implement.
 
   2. Circular structure should not pose a problem. Circular structure
      should be explorable in a step-wise fashion. A command to expand
      one object should never lead to an attempt to display an infinite
      amount of objects.
 
-     The previous inspector architecture mitigated this to some degree
-     by placing objects being displayed onto a stack during a
-     depth-first traversal and checking for already displayed objects
-     with ~eql~. +This does not work with something like
-     src_lisp[:exports code]{#1=#(1 2 #1#)} and using equal instead
-     treats objects as identical which shouldn't be.+ I don't remember
-     what it was, but some kind of circular structure could still
-     cause an infinite loop.
+     The previous inspector architecture mitigated potential problems
+     with circular structure to some degree by placing objects being
+     displayed onto a stack during a depth-first traversal and
+     checking for already displayed objects with ~eql~.
+
+     +This does not work with something like src_lisp[:exports
+     code]{#1=#(1 2 #1#)} and using equal instead treats objects as
+     identical which shouldn't be.+ I don't remember what it was, but
+     some kind of circular structure could still cause an infinite
+     loop.
 
   3. Places in which objects reside should be modeled explicitly and,
      to some extend, indicated to the user. The distinction between an
@@ -46,7 +49,8 @@
        the place is an immutable object.
 
      + Some places can be unbound and can be made unbound. A model
-       consisting only of values cannot express this.
+       consisting only of values has no way of expressing properties
+       of the place in which a value resides.
 
      The previous inspector architecture generally only represented
      objects, making it impossible for a command applied to an object
@@ -83,7 +87,7 @@
               unbound. Some kinds of places allow changing the value
               and/or making the place unbound.
 
-   + object state :: Information associated to an inspected object and
+   + object state :: Information associated with an inspected object and
                      the place the object resides in. If the same
                      (~eql~) object resides in multiple places, each
                      place-object pair has its own object state.
@@ -92,7 +96,7 @@
                      type ~inspected-object~. Since there can be
                      specific object state classes for place
                      class-object class combinations, presentation
-                     methods can be specialized on object state
+                     methods can be specialized to object state
                      classes.
 
    + object style :: A component of the object state that governs the
@@ -104,7 +108,7 @@
 
     The central object is the inspector state which associates a tree
     of places and objects (yes, a tree, even if the objects form a
-    circular structure) to object states.
+    circular structure) with object states.
 
 *** Dynamic View
 
@@ -197,11 +201,11 @@
 
     + ~place state~ /generic function/
 
-      Return the place to which /state/ is associated.
+      Return the place with which /state/ is associated.
 
     + ~object state~ /generic function/
 
-      Return the object to which /state/ is associated.
+      Return the object with which /state/ is associated.
 
     + ~state-applicable-p state object place~ /generic function/
 
