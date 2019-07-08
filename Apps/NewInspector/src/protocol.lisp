@@ -43,11 +43,13 @@
 
 (defgeneric place (state)
   (:documentation
-   "Return the place to which STATE is associated."))
+   "Return the place with which STATE is associated."))
 
 (defgeneric object (state)
   (:documentation
-   "Return the object to which STATE is associated."))
+   "Return the object with which STATE is associated."))
+
+;; TODO should a `style' generic function be part of the protocol?
 
 (defgeneric state-applicable-p (state object place)
   (:documentation
@@ -141,14 +143,7 @@
      (view (make-instance 'inspector-view)))
   (setf (stream-default-view stream) view) ; TODO restore old default view?
   (let ((*seen* (make-hash-table :test #'eq)))
-    (inspect-place (root-place state) stream))
-
-  #+old (let* ((root-place  (root-place state))
-         (root-object (value root-place))
-         (*state*     state)
-         (*place*     root-place))
-    (setf (stream-default-view stream) view) ; TODO restore old default view?
-    (inspect-object root-object stream)))
+    (inspect-place (root-place state) stream)))
 
 ;;; Backward compatibility
 
