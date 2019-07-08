@@ -42,22 +42,26 @@
    #:call-with-error-handling          #:with-error-handling
                                        #:with-print-error-handling)
 
-  ;; Place protocol
+  ;; Place protocol and class
   (:export
    #:supportsp
    #:accepts-value-p
    #:valuep
    #:value                          ; also setf
-   #:remove-value)
+   #:remove-value
 
-  ;; Object state protocol
+   #:basic-place)
+
+  ;; Object state protocol and class
   (:export
    #:place
    #:object
    #:state-applicable-p
 
    #:object-state-class
-   #:make-object-state)
+   #:make-object-state
+
+   #:inspected-object)
 
   ;; Object inspection protocol
   (:export
