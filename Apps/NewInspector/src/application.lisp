@@ -71,7 +71,9 @@
 
 (defun inspect (object &key (new-process nil))
   (when (typep *application-frame* 'inspector)
-    (restart-case (error "Clouseau called from inside Clouseau, possibly infinite recursion")
+    (restart-case
+        (error "~@<Clouseau called from inside Clouseau, possibly ~
+                infinite recursion~@:>")
       (continue ()
         :report "Continue by starting a new Clouseau instance")
       (abort-clouseau ()
@@ -80,14 +82,12 @@
 
   (let ((frame (make-application-frame 'inspector :object object)))
     (flet ((run ()
-             (let ((*print-length* 10)
+             (let ((*print-length* 10) ; TODO do this properly
                    (*print-level* 10))
                (run-frame-top-level frame))))
       (if new-process
           (clim-sys:make-process #'run :name (inspector-name object))
           (run))
-      ; (sleep 1)
-      ; (clouseau:inspector (state (find-pane-named frame 'inspector)) :new-process t)
       object)))
 
 #+no (defvar *inspector*)
