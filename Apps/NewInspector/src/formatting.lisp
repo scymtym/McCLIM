@@ -51,7 +51,9 @@
                 (:slot-like '(:ink +dark-orange+                    :text-size :small))
                 (:unbound   '(:ink +dark-gray+   :text-face :italic))
                 (:note      '(                   :text-face :italic :text-size :small))
-                (:error     '(:ink +dark-red+    :text-face :italic)))))
+                (:error     '(:ink +dark-red+    :text-face :italic))
+
+                (:identity  '(:ink +dark-slate-blue+ :text-size :smaller)))))
     `(with-drawing-options (,stream ,@args ,@extra-drawing-options)
        ,@body)))
 

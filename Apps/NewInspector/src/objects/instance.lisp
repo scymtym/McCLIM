@@ -79,7 +79,7 @@
 (defun print-instance-identity (object stream)
   (let ((string (with-output-to-string (stream)
                   (print-unreadable-object (object stream :identity t)))))
-    (with-drawing-options (stream :ink +dark-slate-blue+ :text-size :smaller) ; TODO with-style
+    (with-style (stream :identity)
       (format stream "@~A" (string-trim "#<>{} " string)))))
 
 ;;; Object states
