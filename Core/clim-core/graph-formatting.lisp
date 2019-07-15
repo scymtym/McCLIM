@@ -582,6 +582,26 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
   (declare (ignore from-node to-node))
   (apply #'draw-line* stream x1 y1 x2 y2 drawing-options))
 
+#+no (defun bezier-arc-drawer (stream from-node to-node x1 y1 x2 y2
+                          &rest drawing-options
+                          &key &allow-other-keys)
+  (multiple-value-bind (cx1 cx2)
+      (if (and (= x1 x2) (or (member to-node (alexandria:mappend #'graph-node-children
+                                                                 (graph-node-children from-node)))
+                             (member to-node (alexandria:mappend #'graph-node-children
+                                                                 (alexandria:mappend #'graph-node-children
+                                                                                     (graph-node-children from-node)))))
+               )
+          (values (+ x1 (abs (- y2 y1))) (+ x1 (abs (- y2 y1))))
+          (values x1                     x2))
+    (apply #'mcclim-bezier:draw-bezier-design*
+           stream (mcclim-bezier:make-bezier-curve*
+                   (list x1  y1
+                         cx1 (alexandria:lerp .5 y1 y2)
+                         cx2 (alexandria:lerp .5 y1 y2)
+                         x2  y2))
+           drawing-options)))
+
 (defun arrow-arc-drawer (stream from-node to-node x1 y1 x2 y2
                          &rest drawing-options
                          &key &allow-other-keys)
