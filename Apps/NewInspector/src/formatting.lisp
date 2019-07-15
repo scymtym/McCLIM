@@ -46,14 +46,19 @@
 (defmacro with-style ((stream style &rest extra-drawing-options &key)
                       &body body)
   (let ((args (ecase style
-                (:header    '(                   :text-face :bold))
-                (:changable '(:ink +dark-violet+))
-                (:slot-like '(:ink +dark-orange+                    :text-size :small))
-                (:unbound   '(:ink +dark-gray+   :text-face :italic))
-                (:note      '(                   :text-face :italic :text-size :small))
-                (:error     '(:ink +dark-red+    :text-face :italic))
+                (:header            '(                   :text-face :bold))
+                (:changable         '(:ink +dark-violet+))
+                (:slot-like         '(:ink +dark-orange+                    :text-size :small))
+                (:unbound           '(:ink +dark-gray+   :text-face :italic))
+                (:note              '(                   :text-face :italic :text-size :small))
+                (:error             '(:ink +dark-red+    :text-face :italic))
 
-                (:identity  '(:ink +dark-slate-blue+ :text-size :smaller)))))
+                (:identity          '(:ink +dark-slate-blue+ :text-size :smaller))
+
+                (:float-sign        '(:ink (make-contrasting-inks 8 0)))
+                (:float-significand '(:ink (make-contrasting-inks 8 1)))
+                (:float-radix       '(:ink (make-contrasting-inks 8 3)))
+                (:float-exponent    '(:ink (make-contrasting-inks 8 4))))))
     `(with-drawing-options (,stream ,@args ,@extra-drawing-options)
        ,@body)))
 
