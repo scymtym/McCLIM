@@ -111,6 +111,11 @@
 (defmethod remove-value ((place symbol-type-place))
   (setf (find-class place nil) nil))
 
+(defmethod make-object-state ((object class)
+                              (place  symbol-type-place))
+  (make-instance (object-state-class object place) :place place
+                                                   :style :name-only))
+
 ;;; Object states
 
 (defclass inspected-package (inspected-instance)
