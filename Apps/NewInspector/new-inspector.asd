@@ -66,7 +66,10 @@
                               (:file       "function")
                               (:file       "class")
 
-                              (:file       "disassembly")))
+                              (:file       "disassembly"
+                                           :if-feature (:not :sbcl))
+                              (:file       "disassembly-sbcl"
+                                           :if-feature :sbcl)))
 
                 (:module     "application"
                  :pathname   "src"
