@@ -146,15 +146,19 @@
             (record t)
             (stream t)
             (state  (eql :unhighlight)))
-    (let ((i 0))
+    (let ((i      0)
+          (region +nowhere+))
       (map-other-occurrences
        (lambda (other-presentation)
-         (repaint-sheet
-          stream (with-output-to-output-record (stream)
+         (let ((new-region
+                 (with-output-to-output-record (stream)
                    (when (zerop i)
                      (multiple-value-call #'draw-circle* stream
                        (bounding-rectangle-position record) 5))
                    ;; TODO can we just use the design as the region here?
-                   (draw-arrow stream record other-presentation +black+)))
+                   (draw-arrow stream record other-presentation +black+))))
+           (setf region (region-union region new-region)))
          (incf i))
-       record))))
+       record)
+      (unless (eq region +nowhere+)
+        (repaint-sheet stream region)))))
