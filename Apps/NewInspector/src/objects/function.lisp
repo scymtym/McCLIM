@@ -52,7 +52,10 @@
 ;;; Object states
 
 (defclass inspected-function (inspected-object)
-  ())
+  ((%disassembly-style :initarg  :disassembly-style
+                       :type     (member nil t) ; could be text vs. graph later
+                       :accessor disassembly-style
+                       :initform nil)))
 
 (defmethod object-state-class ((object function) (place t))
   'inspected-function)
@@ -140,7 +143,10 @@
             (formatting-cell (stream) (present stream)))
           (formatting-cell (stream) (inspect stream))))))
   ;; Documentation
-  (print-documentation object stream))
+  (print-documentation object stream)
+  ;; Disassembly
+  (when (disassembly-style state)
+    (display-disassembly object stream)))
 
 ;;; `funcallable-standard-object'
 
@@ -233,6 +239,16 @@
 
 ;;; Commands
 
+;;; Generic functions
+
+(define-command (com-remove-methods :command-table inspector
+                                    :name          "Remove all Methods")
+    ((object 'inspected-generic-function))
+  (with-command-error-handling ("Could not remove all methods")
+    (error "TODO not implemented")))
+
+;;; Tracing
+
 #+sbcl
 (define-command (com-trace :command-table inspector
                            :name          "Trace Function")
@@ -266,17 +282,45 @@
 #+sbcl
 (define-presentation-to-command-translator inspected-function->com-untrace
     (inspected-function com-untrace inspector
-     :tester ((object) (tracedp (object object)))
+                        :tester ((object) (tracedp (object object)))
+                        :priority -1
+                        :documentation "Untrace function"
+                        :pointer-documentation ((object stream)
+                                                (format stream "~@<Untrace the function ~A~@:>"
+                                                        (object object))))
+  (object)
+  (list object))
+
+;;; Disassembling
+
+(define-command (com-show-disassembly :command-table inspector
+                                      :name          t)
+    ((object 'inspected-function))
+  (setf (disassembly-style object) t))
+
+(define-presentation-to-command-translator inspected-function->com-show-disassembly
+    (inspected-function com-show-disassembly inspector
+     :tester ((object) (not (disassembly-style object)))
      :priority -1
-     :documentation "Untrace function"
+     :documentation "Show disassembly"
      :pointer-documentation ((object stream)
-                             (format stream "~@<Untrace the function ~A~@:>"
+                             (format stream "~@<Show disassembly for function ~A~@:>"
                                      (object object))))
     (object)
   (list object))
 
-(define-command (com-remove-methods :command-table inspector
-                                    :name          "Remove all Methods")
-    ((object 'inspected-generic-function))
-  (with-command-error-handling ("Could not remove all methods")
-      (error "TODO not implemented")))
+(define-command (com-hide-disassembly :command-table inspector
+                                      :name          t)
+    ((object 'inspected-function))
+  (setf (disassembly-style object) nil))
+
+(define-presentation-to-command-translator inspected-function->com-hide-disassembly
+    (inspected-function com-hide-disassembly inspector
+     :tester ((object) (disassembly-style object))
+     :priority -1
+     :documentation "Hide disassembly"
+     :pointer-documentation ((object stream)
+                             (format stream "~@<Hide disassembly for function ~A~@:>"
+                                     (object object))))
+    (object)
+  (list object))

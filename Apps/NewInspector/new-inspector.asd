@@ -64,7 +64,9 @@
                               (:file       "pathname")
                               (:file       "hash-table")
                               (:file       "function")
-                              (:file       "class")))
+                              (:file       "class")
+
+                              (:file       "disassembly")))
 
                 (:module     "application"
                  :pathname   "src"

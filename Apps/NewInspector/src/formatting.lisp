@@ -58,7 +58,9 @@
                 (:float-sign        '(:ink (make-contrasting-inks 8 0)))
                 (:float-significand '(:ink (make-contrasting-inks 8 1)))
                 (:float-radix       '(:ink (make-contrasting-inks 8 3)))
-                (:float-exponent    '(:ink (make-contrasting-inks 8 4))))))
+                (:float-exponent    '(:ink (make-contrasting-inks 8 4)))
+
+                (:disassembly       '(                                 :text-family :fix)))))
     `(with-drawing-options (,stream ,@args ,@extra-drawing-options)
        ,@body)))
 
