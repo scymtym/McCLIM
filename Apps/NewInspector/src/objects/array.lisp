@@ -191,27 +191,31 @@
               (formatting-cell (stream) (inspect stream)))))))
 
     (with-section (stream) "Elements"
-      (let ((place-class (if (adjustable-array-p object)
-                             'adjustable-vector-element-place
-                             'vector-element-place)))
-        (multiple-value-bind (start end truncated?)
-            (effective-bounds state length)
-          (with-preserved-cursor-x (stream)
-            (flet ((format-element (stream i)
-                     (formatting-place-cell (stream)
-                         (object place-class i present inspect)
-                       (present stream)
-                       (write-char #\Space stream)
-                       (inspect stream))))
-              (formatting-item-list (stream :n-columns 1)
-                (loop :for i :from 0 :below end
-                      :if (and fill-pointer (>= i fill-pointer))
-                      :do (with-drawing-options (stream :ink +light-gray+) ; TODO style
-                            (format-element stream i))
-                      :else
-                      :do (format-element stream i)))))
-          (when truncated?
-            (note-truncated stream length (- end start))))))))
+      (with-placeholder-if-emtpy (stream)
+        ((zerop length)
+         "no elements")
+        (t
+         (let ((place-class (if (adjustable-array-p object)
+                                'adjustable-vector-element-place
+                                'vector-element-place)))
+           (multiple-value-bind (start end truncated?)
+               (effective-bounds state length)
+             (with-preserved-cursor-x (stream)
+               (flet ((format-element (stream i)
+                        (formatting-place-cell (stream)
+                            (object place-class i present inspect)
+                          (present stream)
+                          (write-char #\Space stream)
+                          (inspect stream))))
+                 (formatting-item-list (stream :n-columns 1)
+                   (loop :for i :from 0 :below end
+                         :if (and fill-pointer (>= i fill-pointer))
+                         :do (with-drawing-options (stream :ink +light-gray+) ; TODO style
+                               (format-element stream i))
+                         :else
+                         :do (format-element stream i)))))
+             (when truncated?
+               (note-truncated stream length (- end start))))))))))
 
 (defmethod inspect-object-using-state ((object array)
                                        (state  inspected-array)
@@ -226,7 +230,7 @@
   (multiple-value-bind (to index-offset) (array-displacement object)
     (with-preserved-cursor-x (stream)
       (formatting-table (stream)
-        (formatting-row (stream)      ; TODO repeated for vector
+        (formatting-row (stream)        ; TODO repeated for vector
           (formatting-place (stream nil 'pseudo-place (array-element-type object) present inspect)
             (with-style (stream :slot-like)
               (formatting-cell (stream) (write-string "Element type" stream))
@@ -264,18 +268,22 @@
             (formatting-cell (stream) (inspect stream)))))))
 
   (with-section (stream) "Elements"
-    (case (array-rank object)
-      (2
-       (let ((row-count    (array-dimension object 0))
-             (column-count (array-dimension object 1)))
-         (formatting-table (stream)
-           (loop :for row :from 0 :below row-count
-                 :do (formatting-row (stream)
-                       (loop :for column :from 0 :below column-count
-                             :for i = (array-row-major-index object row column)
-                             :do (formatting-cell (stream)
-                                   (formatting-place-cell (stream)
-                                       (object 'array-element-place i present inspect)
-                                     (present stream)
-                                     (write-char #\Space stream)
-                                     (inspect stream))))))))))))
+    (with-placeholder-if-emtpy (stream)
+      ((zerop length)
+       "no elements")
+      (t
+       (case (array-rank object)
+         (2
+          (let ((row-count    (array-dimension object 0))
+                (column-count (array-dimension object 1)))
+            (formatting-table (stream)
+              (loop :for row :from 0 :below row-count
+                    :do (formatting-row (stream)
+                          (loop :for column :from 0 :below column-count
+                                :for i = (array-row-major-index object row column)
+                                :do (formatting-cell (stream)
+                                      (formatting-place-cell (stream)
+                                          (object 'array-element-place i present inspect)
+                                        (present stream)
+                                        (write-char #\Space stream)
+                                        (inspect stream))))))))))))))
