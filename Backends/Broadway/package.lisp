@@ -9,4 +9,7 @@
   (:shadow
    #:type
 
-   #:color))
+   #:color)
+
+  (:shadowing-import-from #:alexandria
+   #:simple-parse-error))
