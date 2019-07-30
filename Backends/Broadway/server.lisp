@@ -108,26 +108,7 @@
     (setf (nibbles:ub32ref/le header 1) serial)
     (write-frame 2 (concatenate 'nibbles:octet-vector header payload) stream)))
 
-(defun new-surface (stream id x y width height)
-  (write-frame 2 (serialize-operation
-                  0 (make-instance 'new-surface :id id :x x :y y :width width :height height :temp? nil))
-               stream)
-  (force-output stream))
 
-(defun show-surface (stream id)
-  (write-frame 2 (serialize-operation
-                  0 (make-instance 'show-surface :id id))
-               stream)
-  #+old (let ((buffer (nibbles:make-octet-vector 2)))
-          (setf (nibbles:ub16ref/le buffer 0)  id)
-          (write-message 3 0 buffer stream))
-  (force-output stream))
-
-(defun upload-texture (stream id data)
-  (let ((header (serialize-operation
-                 0 (make-instance 'upload-texture :id id :size (length data)))))
-    (write-frame 2 (concatenate 'nibbles:octet-vector header data) stream))
-  (force-output stream))
 
 (defun set-nodes (stream surface-id nodes &key delete)
   (let* ((node-deletions  (when delete
