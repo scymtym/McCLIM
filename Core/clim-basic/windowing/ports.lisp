@@ -52,12 +52,10 @@
 (defvar *all-ports* nil)
 
 (defun find-port (&key (server-path *default-server-path*))
-  (if (null server-path)
-      (setq server-path (find-default-server-path)))
-  (if (atom server-path)
-      (setq server-path (list server-path)))
-  (setq server-path
-        (funcall (get (first server-path) :server-path-parser) server-path))
+  (let ((raw-path (alexandria:ensure-list
+                   (or server-path (find-default-server-path)))))
+    (setq server-path
+          (funcall (get (first raw-path) :server-path-parser) raw-path)))
   (loop for port in *all-ports*
         if (equal server-path (port-server-path port))
         do (return port)
@@ -67,8 +65,7 @@
                       (error "Don't know how to make a port of type ~S"
                              server-path))
                   (setq port
-                        (funcall 'make-instance port-type
-                                 :server-path server-path))
+                        (make-instance port-type :server-path server-path))
                   (push port *all-ports*)
                   (return port))))
 
