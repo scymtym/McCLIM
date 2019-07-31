@@ -1,11 +1,11 @@
 (cl:in-package #:clim-broadway)
 
-(defun run-server (&key (port 8080))
+(defun run-server (&key (port 8080) the-port)
   (usocket:with-socket-listener (server-socket "0.0.0.0" port)
     (loop :for client-socket = (usocket:socket-accept server-socket :element-type :default)
-          :do (serve client-socket))))
+          :do (serve client-socket the-port))))
 
-(defun serve (socket)
+(defun serve (socket port)
   (let ((stream (usocket:socket-stream socket)))
     (destructuring-bind (verb path version)
         (split-sequence:split-sequence
@@ -20,7 +20,7 @@
                           (usocket:socket-close socket)))
         ("/socket"      (bt:make-thread (lambda ()
                                           (unwind-protect
-                                               (serve-socket socket)
+                                               (serve-socket socket port)
                                             (usocket:socket-close socket)))
                                         :name "websocket worker"))
         (otherwise      (usocket:socket-close socket))))))
@@ -29,11 +29,6 @@
   (read-file-into-string
    (merge-pathnames "client.html" #.(or *compile-file-truename*
                                         *load-truename*))))
-
-(defun write-crlf-line (string stream)
-  (write-string string stream)
-  (write-char #\Return stream)
-  (write-char #\Linefeed stream))
 
 (defun serve-client (socket)
   (let ((stream (usocket:socket-stream socket)))
@@ -57,89 +52,15 @@
                                                         *load-truename*)))
                   stream)))
 
-(defun read-header-line (stream)
-  (let* ((line  (remove #\Return (read-line stream)))
-         (colon (position #\: line))
-         (key   (when colon (subseq line 0 colon)))
-         (value (when colon (string-trim '(#\Space) (subseq line (1+ colon))))))
-    (when colon
-      (values key value))))
-
-(defparameter *web-socket-key-magic*
-  "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
-
-(defun websocket-response-key (key)
-  (let ((digest (ironclad:make-digest :sha1)))
-    (ironclad:digest-sequence digest (sb-ext:string-to-octets key))
-    (ironclad:digest-sequence digest (sb-ext:string-to-octets *web-socket-key-magic*))
-    (base64:usb8-array-to-base64-string (ironclad:produce-digest digest))))
-
-(assert (string= (websocket-response-key "x3JJHMbDL1EzLkh9GBhXDw==")
-                 "HSmrc0sMlYUkAGmm5OPpG2HaGWk="))
-
-(defun write-frame (opcode payload stream &key mask?)
-  (let ((length (length payload))
-        (buffer (make-array 4 :element-type '(unsigned-byte 8)))
-
-        (final? t))
-    (setf (ldb (byte 1 7) (aref buffer 0)) (if final? 1 0)
-          (ldb (byte 3 0) (aref buffer 0)) opcode)
-    (setf (ldb (byte 1 7) (aref buffer 1)) (if mask? 1 0)
-          (ldb (byte 7 0) (aref buffer 1)) (cond ((> length 65535)
-                                                  127)
-                                                 ((> length 125)
-                                                  126)
-                                                 (t length)))
-    (when (> length 125)
-      (setf (aref buffer 2) (ldb (byte 8 8) length)
-            (aref buffer 3) (ldb (byte 8 0) length)))
-
-    ; (fresh-line)
-    ; (format t "server -> client:~%")
-    ; (utilities.binary-dump:binary-dump (concatenate 'nibbles:octet-vector buffer payload) :base 16 :offset-base 16 :print-type t)
-    ; (fresh-line)
-
-    (write-sequence buffer stream :end (if (> length 125) 4 2))
-    (write-sequence payload stream)))
-
 (defun write-message (opcode serial payload stream)
   (let ((header (nibbles:make-octet-vector 5)))
     (setf (aref header 0) opcode)
     (setf (nibbles:ub32ref/le header 1) serial)
     (write-frame 2 (concatenate 'nibbles:octet-vector header payload) stream)))
 
-
-
-(defun set-nodes (stream surface-id nodes &key delete)
-  (let* ((node-deletions  (when delete
-                            (serialize-node-operation (make-instance 'remove-node :id 1))))
-         (node-insertions (serialize-node-operation (make-instance 'insert-node :parent-id 0 :previous-sibling-id 0)))
-         (nodes           (serialize-make-node
-                           1 #+no (make-instance 'color
-                                            :x 20.0f0 :y 20.0f0 :width 20.0f0 :height 20.0f0
-                                            :red 255 :green 0 :blue 0 :alpha 0)
-                             (first nodes)))
-         (header          (serialize-operation
-                           0 (make-instance 'set-nodes :id   surface-id
-                                                       :size (truncate
-                                                              (+ (if node-deletions
-                                                                     (length node-deletions)
-                                                                     0)
-                                                                 (length node-insertions)
-                                                                 (length nodes))
-                                                              4)))))
-    (write-frame 2 (concatenate 'nibbles:octet-vector
-                                header
-                                (or node-deletions (nibbles:octet-vector))
-                                node-insertions
-                                nodes)
-                 stream)
-    (force-output stream)))
-
 (defun handle-incoming-message (payload)
-                                        ; (utilities.binary-dump:binary-dump payload :base 16 :offset-base 16)
-                                        ; (fresh-line)
-
+  ;; (utilities.binary-dump:binary-dump payload :base 16 :offset-base 16)
+  ;; (fresh-line)
   (let ((offset 0))
     (loop :while (< (+ offset 12) (length payload))
           :for (event new-offset) = (multiple-value-list
@@ -147,29 +68,29 @@
           :collect (print event)
           :do (setf offset new-offset))))
 
-(defun unmask (payload)
-  (let ((result (nibbles:make-octet-vector (- (length payload) 4))))
+(defun upload-image (stream id image)
+  (let* ((width  (pattern-width image))
+         (height (pattern-height image))
+         (array  (let ((a (clime:pattern-array image))
+                       (b (make-array (* 3 width height) :element-type 'nibbles:octet)))
+                   (loop :for y :below height
+                         :do (loop :for x :below width
+                                   :do (setf (aref b (+ (* 3 (+ (* y width) x)) 0)) (ldb (byte 8 24) (aref a y x))
+                                             (aref b (+ (* 3 (+ (* y width) x)) 1)) (ldb (byte 8  16) (aref a y x))
+                                             (aref b (+ (* 3 (+ (* y width) x)) 2)) (ldb (byte 8 8) (aref a y x)))))
+                   b))
+         (data (let ((stream (flexi-streams:make-in-memory-output-stream))
+                     (png    (make-instance 'zpng:png
+                                            :width width
+                                            :height height
+                                            :image-data array)))
+                 (zpng:write-png-stream png stream)
+                 (flexi-streams:get-output-stream-sequence stream))))
+    (upload-texture stream id data)
+    (force-output stream)))
 
-    ; (format t "masked:~%")
-    ; (utilities.binary-dump:binary-dump payload :base 16 :offset-base 16)
-    ; (fresh-line)
-
-    (loop :for offset :below (- (length payload) 4)
-          :for mask-byte = (aref payload (mod offset 4))
-          :for payload-byte = (aref payload (+ 4 offset))
-          :do (setf (aref result offset) (logxor mask-byte payload-byte)))
-
-    ; (format t "unmasked:~%")
-    ; (utilities.binary-dump:binary-dump result :base 16 :offset-base 16)
-    ; (fresh-line)
-
-    result))
-
-(defvar *port* (make-instance 'broadway-port))
-
-(defun make-texture (i text)
-  (let* ((port   *port*)
-         (pixmap (climb:port-allocate-pixmap port :sheet 100 100)))
+(defun make-texture (port i text)
+  (let* ((pixmap (climb:port-allocate-pixmap port :sheet 100 100)))
     (draw-rectangle* pixmap 0 0 100 100 :ink +black+)
     (draw-rectangle* pixmap 2 2 98 98 :ink +white+)
     (draw-circle* pixmap 80 80 20 :ink +yellow+)
@@ -198,83 +119,79 @@
 
       (port-deallocate-pixmap port pixmap))))
 
-(defun serve-socket (socket)
-  (let ((stream (usocket:socket-stream socket))
-        host origin secure-origin secure-key)
-    (loop :for (key value) = (multiple-value-list (read-header-line stream))
-          :while key
-          :do (list key value)
-          :when (equal key "Host")
-          :do (setf host value)
-          :when (equal key "Origin")
-          :do (setf origin value)
-          :when (equal key "Sec-WebSocket-Origin")
-          :do (setf secure-origin value)
-          :when (equal key "Sec-WebSocket-Key")
-          :do (setf secure-key value))
-                                        ; (print (list host origin secure-origin secure-key))
+(defun handle-incoming-event (port event)
+  (with-simple-restart (continue "Skip the event")
+    (typecase event
+      (screen-size-changed
+       (setf (slot-value (graft port) 'region)
+             (make-bounding-rectangle 0 0 (width event) (height event))))
 
-    (write-crlf-line "HTTP/1.1 101 Switching Protocol" stream)
-    (write-crlf-line "Upgrade: websocket" stream)
-    (write-crlf-line "Connection: Upgrade" stream)
-    (write-crlf-line (format nil "Sec-WebSocket-Accept: ~A" (websocket-response-key secure-key)) stream)
-    (when origin
-      (write-crlf-line (format nil "Sec-WebSocket-Origin: ~A" origin) stream))
-    (write-crlf-line (format nil "Sec-WebSocket-Location: ws://~A/socket" "localhost") stream)
-    (write-crlf-line "Sec-WebSocket-Protocol: broadway" stream)
-    (write-crlf-line "" stream)
-    (force-output stream)
+      (pointer-move
+       (setf (%pointer-position (port-pointer port)) (list (root-x event) (root-y event)))
 
-    (setf (usocket:socket-option socket :tcp-nodelay) t)
+       (when-let ((sheet (surface->sheet port (surface event))))
+         (distribute-event
+          port (make-instance 'pointer-motion-event
+                              :sheet sheet
+                              :x (root-x event)
+                              :y (- (root-y event) 20)
+                              :graft-x (root-x event)
+                              :graft-y (root-y event)
+                              :modifier-state 0))))
 
+      ((or button-press button-release)
+       (when-let ((sheet (surface->sheet port (surface event))))
+         (distribute-event
+          port (make-instance (if (typep event 'button-press)
+                                  'pointer-button-press-event
+                                  'pointer-button-release-event)
+                              :sheet sheet
+                              :x (root-x event)
+                              :y (- (root-y event) 20)
+                              :graft-x (root-x event)
+                              :graft-y (root-y event)
+                              :button (ecase (button event)
+                                        (1 +pointer-left-button+)
+                                        (2 +pointer-middle-button+)
+                                        (3 +pointer-right-button+))
+                              :modifier-state 0))))
 
-    (new-surface stream 1 10 10 640 480)
-    (show-surface stream 1)
+      ((or key-press key-release)
+       (when-let ((sheet (climi::port-pointer-sheet port)))
+         (let ((character (case (keysym event)
+                            (65293 #\Return)
+                            (65288 #\Backspace)
+                            (t     (code-char (keysym event))))))
+           (distribute-event
+            port (make-instance (if (typep event 'key-press)
+                                    'key-press-event
+                                    'key-release-event)
+                                :sheet sheet
+                                :x 0    ; (root-x eent)
+                                :y 0    ; (- (root-y eent) 20)
+                                :key-name (char-name character)
+                                :key-character character
+                                :modifier-state 0))))))))
 
-    (upload-texture stream 5 (make-texture 0 ""))
-    (set-nodes stream 1 (list (make-instance 'texture
-                                             :x 20.0f0 :y 20.0f0 :width 100.0f0 :height 100.0f0
-                                             :id 5)))
+(defun serve-socket (socket port)
+  (let ((stream (usocket:socket-stream socket)))
+    (establish-websocket socket)
 
-    (loop :with x = 0
-          :with y = 0
-          :with text = (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)
-          :do (sleep .01)
-              (loop :while (listen stream)
-                    :do (let* ((buffer (make-array 2 :element-type '(unsigned-byte 8)))
-                               (length (read-sequence buffer stream)))
-                          (when (zerop length)
-                            (return))
-                                        ; (fresh-line)
-                                        ; (format t "client -> server:~%")
-                                        ; (utilities.binary-dump:binary-dump buffer :base 16 :offset-base 16 :end length)
-                                        ; (fresh-line)
+    (loop (with-simple-restart (continue "Skip the operation")
+            (when-let ((op (with-port-locked (port)
+                             (pop (queued-operations port)))))
+              (funcall op stream)))
 
-                          (let* ((mask?   (logbitp 7 (aref buffer 1)))
-                                 (length  (+ (ldb (byte 7 0) (aref buffer 1))
-                                             (if mask? 4 0)))
-                                 (payload (nibbles:make-octet-vector length)))
-                            #+no (format t "  final? ~A opcode ~A~%"
-                                         (ldb (byte 1 7) (aref buffer 0))
-                                         (ldb (byte 3 0) (aref buffer 0)))
-                                        ; (format t "  mask? ~A payload length ~A~%" mask? length)
-                            (when (plusp length)
-                              (loop :for offset = 0 :then (read-sequence payload stream :start offset)
-                                    :while (< offset length))
-                              (loop :for message :in (handle-incoming-message (if mask? (unmask payload) payload))
+          (sleep .01)
+          (loop :while (listen stream)
+                :for (payload opcode) = (multiple-value-list (read-frame stream))
+                :when payload
+                :do (loop :for message :in (handle-incoming-message payload)
+                          :do (handle-incoming-event port message))))))
 
-                                    :when (typep message 'pointer-move)
-                                    :do (setf x (root-x message)
-                                              y (root-y message))
-
-                                    :when (typep message 'key-press)
-                                    :do (vector-push-extend (code-char (keysym message)) text)
-
-                                    :do (upload-texture stream 5 (make-texture x text))
-                                        (set-nodes stream 1 (list (make-instance 'texture
-                                                                                 :x (float x 1.0f0)
-                                                                                 :y (float y 1.0f0)
-                                                                                 :width 100.0f0
-                                                                                 :height 100.0f0
-                                                                                 :id 5))
-                                                   :delete t)))))))))
+(defun surface->sheet (port id)
+  (when-let* ((mirror->sheet (slot-value port 'climi::mirror->sheet))
+              (surface       (find id (remove-if-not (of-type 'surface)
+                                                     (hash-table-keys mirror->sheet))
+                                   :test #'eql :key #'id)))
+    (gethash surface mirror->sheet)))

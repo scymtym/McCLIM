@@ -18,6 +18,9 @@
                              (:file "definitions")
                              (:file "code-generation")))
 
+               (:file "frame-manager")
                (:file "port")
+
+               (:file "websocket") ; TODO make server stuff one module
 
                (:file "server")))

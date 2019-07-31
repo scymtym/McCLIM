@@ -34,10 +34,13 @@
           :reader  type)))
 
 (defclass message ()
-  ((%name   :initarg :name
-            :reader  name)
-   (%fields :initarg :fields
-            :reader  fields)))
+  ((%name       :initarg  :name
+                :reader   name)
+   (%fields     :initarg  :fields
+                :reader   fields)
+   (%print-spec :initarg  :print-spec
+                :reader   print-spec
+                :initform nil)))
 
 (defmacro field (name type)
   (let ((type (case type
@@ -45,12 +48,16 @@
                 (t         type))))
     `(make-instance 'field :name ',name :type ',type)))
 
-(defmacro message (name &rest fields)
-  `(make-instance 'message
-                  :name   ',name
-                  :fields (list ,@(map 'list (lambda (field)
-                                               `(field ,@field))
-                                       fields))))
+(defmacro message (name-and-options &rest fields)
+  (destructuring-bind (name &key print-spec)
+      (ensure-list name-and-options)
+    `(make-instance 'message
+                    :name   ',name
+                    :fields (list ,@(map 'list (lambda (field)
+                                                 `(field ,@field))
+                                         fields))
+                    ,@(when print-spec
+                        `(:print-spec ',print-spec)))))
 
 (defmacro define-message (name &rest fields)
   `(defparameter ,name (message ,name ,@fields)))
@@ -71,9 +78,10 @@
   (let ((pairs    '())
         (messages* '()))
     (flet ((process-message (name-id-fields)
-             (destructuring-bind ((name id) &rest fields) name-id-fields
+             (destructuring-bind ((name id &rest options) &rest fields)
+                 name-id-fields
                (push `(,name ,id) pairs)
-               (push `(message ,name ,@fields) messages*))))
+               (push `(message (,name ,@options) ,@fields) messages*))))
       (map nil #'process-message messages)
       `(make-instance 'protocol
                       :name     ',name
@@ -213,7 +221,7 @@
          (protocol-size (reduce #'+ fields :key (rcurry #'generate :size)))
          (ids           (ids description)))
     `(progn
-       (typecase value
+       (etypecase value
          ,@(map 'list (lambda (message)
                         (let* ((name   (name message))
                                (number (symbol->number ids name))
@@ -235,3 +243,20 @@
                               ))))
             (messages description))))))
 
+;;; Print
+
+(defmethod generate ((description message) (target (eql 'print-object)))
+  (when-let ((print-spec (print-spec description)))
+    (destructuring-bind (format &rest fields) print-spec
+      (list `(defmethod print-object ((object ,(name description)) stream)
+               (print-unreadable-object (object stream :type t :identity t)
+                 (format stream ,format
+                         ,@(map 'list (lambda (field)
+                                        (let ((field (find field (fields description)
+                                                           :key #'name)))
+                                          `(,(name field) object)))
+                                fields))))))))
+
+(defmethod generate ((description protocol) (target (eql 'print-object)))
+  (let ((methods (mappend (rcurry #'generate 'print-object) (messages description))))
+    `(progn ,@methods)))
