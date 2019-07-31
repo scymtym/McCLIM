@@ -1006,7 +1006,8 @@ function handleDisplayCommands(display_commands)
                 image.src = t.url;
                 // Unref blob url when loaded
                 image.onload = function() { t.unref(); };
-            }(texture);
+            }
+            a_block(texture);
             break;
         case DISPLAY_OP_CHANGE_TRANSFORM:
             var div = cmd[1];
@@ -1029,7 +1030,7 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
         var saved_pos = cmd.pos;
         var command = cmd.get_uint8();
         lastSerial = cmd.get_32();
-        console.log("command: ", command, " cmd: ", cmd)
+        console.log("command: ", command, " cmd: ", cmd);
         switch (command) {
         case BROADWAY_OP_DISCONNECTED:
             alert ("disconnected");
@@ -1338,7 +1339,7 @@ function sendInput(cmd, args)
     fullArgs.forEach(function(arg, i) {
         view.setInt32(i*4, arg, false);
     });
-    console.log("sending ", buffer)
+    // console.log("sending ", buffer)
     inputSocket.send(buffer);
 }
 
