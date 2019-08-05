@@ -143,7 +143,30 @@
    (bottom-color  4)
    (left-color    4))
 
-  ((outset-shadow 4))
+  ((outset-shadow 4)
+   (x               :float32)
+   (y               :float32)
+   (width           :float32)
+   (height          :float32)
+
+   (top-radius-x    :float32)
+   (top-radius-y    :float32)
+   (right-radius-x  :float32)
+   (right-radius-y  :float32)
+   (bottom-radius-x :float32)
+   (bottom-radius-y :float32)
+   (left-radius-x   :float32)
+   (left-radius-y   :float32)
+
+   (red             1)
+   (green           1)
+   (blue            1)
+   (alpha           1)
+
+   (dx              :float32)
+   (dy              :float32)
+   (spread          :float32)
+   (blur            :float32))
 
   ((inset-shadow 5))
 

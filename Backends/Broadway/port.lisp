@@ -68,7 +68,8 @@
   ((%id :initarg :id
         :reader  id)
                                         ;(%texture-id )
-   ))
+   (%name :initarg  :name
+          :accessor name)))
 
 (defmethod clim:destroy-mirror ((port           broadway-port)
                                 (mirrored-sheet t))
@@ -114,6 +115,9 @@
 
     mirror))
 
+(defmethod climb:port-set-mirror-name ((port broadway-port) (mirror t) (name t))
+  (setf (name mirror) name)) ; TODO update
+
 (defmethod climb:port-set-mirror-region ((port          broadway-port)
                                          (mirror        surface)
                                          (mirror-region t))
@@ -140,10 +144,35 @@
                            #+no (new-surface stream id x1 y1 (- x2 x1) (- y2 y1))
                            (resize-surface stream id effective-x1 effective-y1 effective-width effective-height)
 
-                           (set-nodes stream id (list (make-instance 'border :x             (float 0                1.0f0)
-                                                                             :y             (float 0                1.0f0)
-                                                                             :width         (float effective-width  1.0f0)
-                                                                             :height        (float effective-height 1.0f0)
+                           (set-nodes stream id (list (make-instance 'outset-shadow
+                                                                     :x               (float 0                1.0f0)
+                                                                     :y               (float 0                1.0f0)
+                                                                     :width           (float effective-width  1.0f0)
+                                                                     :height          (float effective-height 1.0f0)
+
+                                                                     :top-radius-x    (float corner-radius 1.0f0)
+                                                                     :top-radius-y    (float corner-radius 1.0f0)
+                                                                     :right-radius-x  (float corner-radius 1.0f0)
+                                                                     :right-radius-y  (float corner-radius 1.0f0)
+                                                                     :bottom-radius-x (float corner-radius 1.0f0)
+                                                                     :bottom-radius-y (float corner-radius 1.0f0)
+                                                                     :left-radius-x   (float corner-radius 1.0f0)
+                                                                     :left-radius-y   (float corner-radius 1.0f0)
+
+                                                                     :red             0
+                                                                     :green           0
+                                                                     :blue            0
+                                                                     :alpha           128
+
+                                                                     :dx              4.0f0
+                                                                     :dy              4.0f0
+                                                                     :spread          4.0f0
+                                                                     :blur            4.0f0))
+                                      :new-node-id 4)
+                           (set-nodes stream id (list (make-instance 'border :x               (float 0                1.0f0)
+                                                                             :y               (float 0                1.0f0)
+                                                                             :width           (float effective-width  1.0f0)
+                                                                             :height          (float effective-height 1.0f0)
 
                                                                              :top-radius-x    (float corner-radius 1.0f0)
                                                                              :top-radius-y    (float corner-radius 1.0f0)
