@@ -11,33 +11,28 @@
        (let ((value operation))
          ,(generate operation :serialize))))
 
-(defun write-operation (stream serial operation)
-  (print operation)
-  (write-frame 2 (serialize-operation serial operation) stream)
-  (force-output stream))
+(defun new-surface (connection id x y width height)
+  (write-operation connection (make-instance 'new-surface :id id :x x :y y :width width :height height :temp? nil)))
 
-(defun new-surface (stream id x y width height)
-  (write-operation stream 0 (make-instance 'new-surface :id id :x x :y y :width width :height height :temp? nil)))
+(defun show-surface (connection id)
+  (write-operation connection (make-instance 'show-surface :id id)))
 
-(defun show-surface (stream id)
-  (write-operation stream 0 (make-instance 'show-surface :id id)))
+(defun hide-surface (connection id)
+  (write-operation connection (make-instance 'hide-surface :id id)))
 
-(defun hide-surface (stream id)
-  (write-operation stream 0 (make-instance 'hide-surface :id id)))
+(defun destroy-surface (connection id)
+  (write-operation connection (make-instance 'destroy-surface :id id)))
 
-(defun destroy-surface (stream id)
-  (write-operation stream 0 (make-instance 'destroy-surface :id id)))
+(defun resize-surface (connection id x y width height)
+  (write-operation connection (make-instance 'move-resize :id id :flags 3 :x x :y y :width width :height height)))
 
-(defun resize-surface (stream id x y width height)
-  (write-operation stream 0 (make-instance 'move-resize :id id :flags 3 :x x :y y :width width :height height)))
-
-(defun upload-texture (stream id data)
+(defun upload-texture (connection id data)
   (let ((header (serialize-operation
                  0 (print (make-instance 'upload-texture :id id :size (length data))))))
-    (write-frame 2 (concatenate 'nibbles:octet-vector header data) stream))
-  (force-output stream))
+    (write-frame 2 (concatenate 'nibbles:octet-vector header data) connection))
+  (force-output connection))
 
-(defun set-nodes (stream surface-id nodes
+(defun set-nodes (connection surface-id nodes
                   &key
                   (new-node-id         1)
                   (parent-id           0)
@@ -67,18 +62,18 @@
                                 (or node-deletions (nibbles:octet-vector))
                                 node-insertions
                                 nodes)
-                 stream)
-    (force-output stream)))
+                 connection)
+    (force-output connection)))
 
-(defun patch-texture (stream surface-id node-id texture-id)
+(defun patch-texture (connection surface-id node-id texture-id)
   (let* ((node-operation (serialize-node-operation (make-instance 'patch-texture
                                                                   :node-id    node-id
                                                                   :texture-id texture-id)))
          (header          (serialize-operation
                            0 (print (make-instance 'set-nodes :id   surface-id
                                                               :size (truncate (length node-operation) 4))))))
-    (write-frame 2 (concatenate 'nibbles:octet-vector header node-operation) stream)
-    (force-output stream)))
+    (write-frame 2 (concatenate 'nibbles:octet-vector header node-operation) connection)
+    (force-output connection)))
 
 ;;; Node creation operations
 ;;;

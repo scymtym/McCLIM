@@ -62,7 +62,32 @@
 
 ;;; Sending
 
-(defun write-frame (opcode payload stream &key mask?) ; TO DO stream should be first
+(defun frame-size (payload-length)
+  (cond ((> payload-length 65535) :large)
+        ((> payload-length 125)   :medium)
+        (t                        :small)))
+
+(defun write-frame-header (stream opcode payload-length &key mask?)
+  (let ((size   (frame-size payload-length))
+        (buffer (nibbles:make-octet-vector 10))
+        (final? t))
+    (declare (dynamic-extent buffer))
+    (setf (ldb (byte 1 7) (aref buffer 0)) (if final? 1 0)
+          (ldb (byte 3 0) (aref buffer 0)) opcode)
+    (setf (ldb (byte 1 7) (aref buffer 1)) (if mask? 1 0)
+          (ldb (byte 7 0) (aref buffer 1)) (ecase size
+                                             (:large  127)
+                                             (:medium 126)
+                                             (:small  length)))
+    (case size
+      (:large  (setf (nibbles:ub64ref/be buffer 2) length))
+      (:medium (setf (nibbles:ub16ref/be buffer 2) length)))
+    (write-sequence buffer stream :end (ecase size
+                                         (:large  10)
+                                         (:medium  4)
+                                         (:small   2)))))
+
+(defun write-frame (opcode payload stream &key mask?) ; TODO stream should be first
   (let ((length (length payload))
         (buffer (make-array 10 :element-type '(unsigned-byte 8)))
 

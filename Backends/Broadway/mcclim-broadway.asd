@@ -16,7 +16,8 @@
                 :serial     t
                 :components ((:file "meta-model")
                              (:file "definitions")
-                             (:file "code-generation")))
+                             (:file "code-generation")
+                             (:file "connection")))
 
                (:file "frame-manager")
                (:file "port")
