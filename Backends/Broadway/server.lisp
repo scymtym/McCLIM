@@ -52,12 +52,6 @@
                                                         *load-truename*)))
                   stream)))
 
-(defun write-message (opcode serial payload stream)
-  (let ((header (nibbles:make-octet-vector 5)))
-    (setf (aref header 0) opcode)
-    (setf (nibbles:ub32ref/le header 1) serial)
-    (write-frame 2 (concatenate 'nibbles:octet-vector header payload) stream)))
-
 (defun handle-incoming-message (payload)
   ;; (utilities.binary-dump:binary-dump payload :base 16 :offset-base 16)
   ;; (fresh-line)
