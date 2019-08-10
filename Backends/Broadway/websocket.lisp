@@ -78,10 +78,10 @@
           (ldb (byte 7 0) (aref buffer 1)) (ecase size
                                              (:large  127)
                                              (:medium 126)
-                                             (:small  length)))
+                                             (:small  payload-length)))
     (case size
-      (:large  (setf (nibbles:ub64ref/be buffer 2) length))
-      (:medium (setf (nibbles:ub16ref/be buffer 2) length)))
+      (:large  (setf (nibbles:ub64ref/be buffer 2) payload-length))
+      (:medium (setf (nibbles:ub16ref/be buffer 2) payload-length)))
     (write-sequence buffer stream :end (ecase size
                                          (:large  10)
                                          (:medium  4)

@@ -94,9 +94,11 @@
 (defmacro define-protocol (name (&rest fields) &rest messages)
   `(defparameter ,name (protocol ,name (,@fields) ,@messages)))
 
-;;;
+;;; Class
 
-(defmethod generate ((description field) (target (eql :slot)))
+(defgeneric generate (description target &key &allow-other-keys))
+
+(defmethod generate ((description field) (target (eql :slot)) &key)
   (let* ((name    (name description))
          (initarg (make-keyword name))
          (type    (type description))
@@ -109,43 +111,49 @@
             :type     ,type
             :reader   ,name)))
 
-(defmethod generate ((description message) (target (eql :class)))
-  `(defclass ,(name description) ()
+(defmethod generate ((description message) (target (eql :class))
+                     &key message-protocol-class)
+  `(defclass ,(name description) (,message-protocol-class)
      (,@(map 'list (rcurry #'generate :slot) (fields description)))))
 
-(defmethod generate ((description protocol) (target (eql :class)))
-  `(progn ,@(map 'list (rcurry #'generate :class) (messages description))))
+(defmethod generate ((description protocol) (target (eql :class)) &key)
+  (let ((protocol-class-name (symbolicate (name description) '#:-message)))
+    `(progn
+       (defclass ,protocol-class-name () ())
+       ,@(map 'list (rcurry #'generate :class
+                            :message-protocol-class protocol-class-name)
+              (messages description)))))
 
 ;;; Size
 
-(defmethod generate ((description (eql 'boolean)) (target (eql :size)))
+(defmethod generate ((description (eql 'boolean)) (target (eql :size)) &key)
   1)
 
-(defmethod generate ((description (eql :float32)) (target (eql :size)))
+(defmethod generate ((description (eql :float32)) (target (eql :size)) &key)
   4)
 
-(defmethod generate ((description integer) (target (eql :size)))
+(defmethod generate ((description integer) (target (eql :size)) &key)
   description)
 
-(defmethod generate ((description field) (target (eql :size)))
+(defmethod generate ((description field) (target (eql :size)) &key)
   (generate (type description) target))
 
-(defmethod generate ((description message) (target (eql :size)))
+(defmethod generate ((description message) (target (eql :size)) &key)
   (reduce #'+ (fields description) :key (rcurry #'generate target)))
 
 ;;;
 
-(defmethod generate ((description (eql 'boolean)) (target (eql :deserialize)))
+(defmethod generate ((description (eql 'boolean)) (target (eql :deserialize)) &key)
   `(prog1
        (= 1 (aref buffer offset))
      (incf offset 1)))
 
-(defmethod generate ((description (eql :float32)) (target (eql :deserialize)))
+(defmethod generate ((description (eql :float32)) (target (eql :deserialize)) &key)
   `(prog1
        (nibbles:ieee-single-ref/be buffer offset)
      (incf offset 4)))
 
-(defmethod generate ((description integer) (target (eql :deserialize)))
+(defmethod generate ((description integer) (target (eql :deserialize)) &key)
   (ecase description
     (1 `(prog1
             (aref buffer offset)
@@ -157,18 +165,18 @@
             (nibbles:ub32ref/be buffer offset)
           (incf offset 4)))))
 
-(defmethod generate ((description field) (target (eql :deserialize)))
+(defmethod generate ((description field) (target (eql :deserialize)) &key)
   (let* ((name    (name description))
          (initarg (make-keyword name))
          (type    (type description)))
     `(,initarg ,(generate type target))))
 
-(defmethod generate ((description message) (target (eql :deserialize)))
+(defmethod generate ((description message) (target (eql :deserialize)) &key)
   `(make-instance ',(name description)
                   ,@(mappend (rcurry #'generate target)
                              (fields description))))
 
-(defmethod generate ((description protocol) (target (eql :deserialize)))
+(defmethod generate ((description protocol) (target (eql :deserialize)) &key)
   (let ((fields (fields description))
         (ids    (ids description)))
     `(let (,@(map 'list (lambda (field)
@@ -183,17 +191,17 @@
 
 ;;; Serialize
 
-(defmethod generate ((description (eql 'boolean)) (target (eql :serialize)))
+(defmethod generate ((description (eql 'boolean)) (target (eql :serialize)) &key)
   `(prog1
        (setf (aref buffer offset) (if value 1 0))
      (incf offset 1)))
 
-(defmethod generate ((description (eql :float32)) (target (eql :serialize)))
+(defmethod generate ((description (eql :float32)) (target (eql :serialize)) &key)
   `(prog1
        (setf (nibbles:ieee-single-ref/le buffer offset) value)
      (incf offset 4)))
 
-(defmethod generate ((description integer) (target (eql :serialize)))
+(defmethod generate ((description integer) (target (eql :serialize)) &key)
   (ecase description
     (1 `(prog1
             (setf (aref buffer offset) value)
@@ -205,18 +213,18 @@
             (setf (nibbles:ub32ref/le buffer offset) value)
           (incf offset 4)))))
 
-(defmethod generate ((description field) (target (eql :serialize)))
+(defmethod generate ((description field) (target (eql :serialize)) &key)
   (let* ((name   (name description))
          (reader name)
          (type   (type description)))
     `(let ((value (,reader value)))
        ,(generate type target))))
 
-(defmethod generate ((description message) (target (eql :serialize)))
+(defmethod generate ((description message) (target (eql :serialize)) &key)
   `(progn
      ,@(map 'list (rcurry #'generate target) (fields description))))
 
-(defmethod generate ((description protocol) (target (eql :serialize)))
+(defmethod generate ((description protocol) (target (eql :serialize)) &key)
   (let* ((fields        (fields description))
          (protocol-size (reduce #'+ fields :key (rcurry #'generate :size)))
          (ids           (ids description)))
@@ -245,7 +253,7 @@
 
 ;;; Print
 
-(defmethod generate ((description message) (target (eql 'print-object)))
+(defmethod generate ((description message) (target (eql 'print-object)) &key)
   (when-let ((print-spec (print-spec description)))
     (destructuring-bind (format &rest fields) print-spec
       (list `(defmethod print-object ((object ,(name description)) stream)
@@ -257,6 +265,6 @@
                                           `(,(name field) object)))
                                 fields))))))))
 
-(defmethod generate ((description protocol) (target (eql 'print-object)))
+(defmethod generate ((description protocol) (target (eql 'print-object)) &key)
   (let ((methods (mappend (rcurry #'generate 'print-object) (messages description))))
     `(progn ,@methods)))

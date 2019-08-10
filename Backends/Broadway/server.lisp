@@ -62,7 +62,7 @@
           :collect (print event)
           :do (setf offset new-offset))))
 
-(defun upload-image (stream id image)
+(defun upload-image (connection id image)
   (let* ((width  (pattern-width image))
          (height (pattern-height image))
          (array  (let ((a (clime:pattern-array image))
@@ -80,10 +80,9 @@
                                             :image-data array)))
                  (zpng:write-png-stream png stream)
                  (flexi-streams:get-output-stream-sequence stream))))
-    (upload-texture stream id data)
-    (force-output stream)))
+    (upload-texture connection id data)))
 
-(defun make-texture (port i text)
+#+no (defun make-texture (port i text)
   (let* ((pixmap (climb:port-allocate-pixmap port :sheet 100 100)))
     (draw-rectangle* pixmap 0 0 100 100 :ink +black+)
     (draw-rectangle* pixmap 2 2 98 98 :ink +white+)
@@ -150,6 +149,21 @@
                                         (3 +pointer-right-button+))
                               :modifier-state 0))))
 
+      (scroll
+       (when-let ((sheet (surface->sheet port (surface event))))
+         (distribute-event
+          port (make-instance 'climi::pointer-scroll-event
+                              :sheet sheet
+                              :x (root-x event)
+                              :y (- (root-y event) 20)
+                              :graft-x (root-x event)
+                              :graft-y (root-y event)
+                              :delta-x 0
+                              :delta-y (case (direction event)
+                                         (0 -1)
+                                         (1 1))
+                              :modifier-state 0))))
+
       ((or key-press key-release)
        (when-let ((sheet (climi::port-pointer-sheet port)))
          (let ((character (case (keysym event)
@@ -168,13 +182,14 @@
                                 :modifier-state 0))))))))
 
 (defun serve-socket (socket port)
-  (let ((stream (usocket:socket-stream socket)))
+  (let* ((stream     (usocket:socket-stream socket))
+         (connection (make-instance 'connection- :stream stream)))
     (establish-websocket socket)
 
     (loop (with-simple-restart (continue "Skip the operation")
             (when-let ((op (with-port-locked (port)
                              (pop (queued-operations port)))))
-              (funcall op stream)))
+              (funcall op connection)))
 
           (sleep .01)
           (loop :while (listen stream)
