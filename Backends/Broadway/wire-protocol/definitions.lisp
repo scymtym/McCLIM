@@ -98,7 +98,7 @@
     ((type 4)
      (id   4))
 
-  ((texture 0)
+  ((texture 0 :print-spec ("~D" id))
    (x      :float32)
    (y      :float32)
    (width  :float32)
@@ -177,19 +177,23 @@
 (define-protocol node-operation
     ((opcode 4))
 
-  ((insert-node 0)
+  ((insert-node 0 :print-spec ("parent ~D sibling ~D"
+                               parent-id previous-sibling-id))
    (parent-id           4)
    (previous-sibling-id 4))
 
-  ((remove-node 1)
+  ((remove-node 1 :print-spec ("id ~D" id))
    (id 4))
 
-  ((move-after-child 2)
+  ((move-after-child 2 :print-spec ("id ~D parent ~D sibling ~D"
+                                    reused-node-id parent-id
+                                    previous-sibling-id))
    (parent-id           4)
    (previous-sibling-id 4)
    (reused-node-id      4))
 
-  ((patch-texture 3)
+  ((patch-texture 3 :print-spec ("node ~D texture ~D"
+                                 node-id texture-id))
    (node-id    4)
    (texture-id 4))
 

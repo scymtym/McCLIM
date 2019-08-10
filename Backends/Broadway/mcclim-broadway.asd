@@ -19,6 +19,13 @@
                              (:file "code-generation")
                              (:file "connection")))
 
+               (:module     "dom"
+                :serial     t
+                :components ((:file "node")
+                             (:file "synchronization")
+                             (:file "surface")
+                             (:file "surface-manager")))
+
                (:file "frame-manager")
                (:file "port")
 
