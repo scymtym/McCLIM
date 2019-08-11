@@ -22,6 +22,7 @@
                (:module     "dom"
                 :serial     t
                 :components ((:file "node")
+                             (:file "tile")
                              (:file "synchronization")
                              (:file "surface")
                              (:file "surface-manager")))

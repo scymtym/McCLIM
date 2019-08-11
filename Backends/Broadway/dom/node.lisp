@@ -2,16 +2,15 @@
 
 (defclass tree ()
   ((%root         :reader   root
-                  :writer   (setf %root))
+                  :writer   (setf %root)
+                  :initform nil)
    ;; Ids
    (%next-node-id :initarg  :next-node-id
                   :type     (integer 1)
                   :accessor next-node-id
                   :initform 1)
    (%id->node     :reader   %id->node
-                  :initform (make-hash-table)))
-  (:default-initargs
-   :root (error "Missing required initarg :ROOT")))
+                  :initform (make-hash-table))))
 
 (defmethod shared-initialize :after ((instance   tree)
                                      (slot-names t)
@@ -67,61 +66,3 @@
   (vector-push-extend child (children parent))
   (setf (%parent child) parent)
   (add-node child (tree parent)))
-
-(defvar *inspector*)
-(defvar *tree* )
-
-(let* ((root (make-instance 'node :id 0))
-       (tree (make-instance 'tree :root root)))
-  (add-child (make-instance 'node :id 1) root)
-
-  (let* ((old clim:*default-server-path*))
-    (setf clim:*default-server-path* :clx)
-    (unwind-protect
-         (setf *inspector* (nth-value
-                            1 (clouseau:inspect tree :new-process t)))
-      (setf clim:*default-server-path* old))))
-
-(defun make-tree-1 ()
-  (let* ((tree (make-instance 'tree :root nil))
-         (root (root tree))
-         (n1   (make-node nil tree :parent root))
-         (n2   (make-node nil tree :parent n1))
-         (n3   (make-node nil tree :parent n1))
-         (n4   (make-node nil tree :parent n1)))
-    (make-node nil tree :parent n3)
-    tree))
-
-(defun make-tree-2 ()
-  (let* ((tree (make-instance 'tree :root nil))
-         (root (root tree))
-         (n1   (make-node nil tree :parent root)))
-    (make-node nil tree :parent n1)
-    (make-node nil tree :parent n1)
-    tree))
-
-;;;
-
-(defmethod clouseau:inspect-object-using-state ((object tree)
-                                                (state  clouseau::inspected-instance)
-                                                (style  (eql :expanded-body))
-                                                (stream t))
-  (format-graph-from-root
-   (root object)
-   (lambda (object stream)
-     (clouseau:formatting-place (object 'clouseau:pseudo-place object nil present-value)
-       (present-value stream)))
-   #'children
-   :stream stream :orientation :vertical))
-
-(let* ((old-tree (make-tree-2))
-       (new-tree (make-surface-tree (make-instance 'outset-shadow)
-                                    (make-instance 'border)
-                                    (make-instance 'color)
-                                    (make-tiles 300 300 128))                     ; (make-tree-1)
-         ))
-  (setf (clouseau:root-object *inspector* :run-hook-p t)
-        (list (cons :old old-tree)
-              (cons :new new-tree)
-              (cons :ops (synchronize old-tree new-tree))
-              (cons :ops (synchronize new-tree new-tree)))))

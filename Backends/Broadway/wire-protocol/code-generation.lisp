@@ -47,13 +47,27 @@
                                                                              :parent-id           parent-id
                                                                              :previous-sibling-id previous-sibling-id))))
   (map nil (lambda (node)
-             (print node)
+             (print (list new-node-id :-> node))
              (append-message-chunk connection (serialize-make-node new-node-id node)))
        nodes)
   (prepend-message-chunk connection (print (make-instance 'set-nodes :id   surface-id
                                                                :size (truncate
                                                                       (+ (output-length connection))
                                                                       4))))
+  (send-message connection))
+
+(defun set-nodes2 (connection surface-id operations)
+  (loop :for operation = (pop operations)
+        :while operation
+        :do (append-message-chunk connection (serialize-node-operation (print operation)))
+        :when (typep operation 'insert-node)
+          :do (append-message-chunk connection (serialize-make-node (pop operations) (print (pop operations)))))
+
+  (prepend-message-chunk
+   connection (print (make-instance 'set-nodes :id   surface-id
+                                               :size (truncate
+                                                      (+ (output-length connection))
+                                                      4))))
   (send-message connection))
 
 (defun patch-texture (connection surface-id node-id texture-id)

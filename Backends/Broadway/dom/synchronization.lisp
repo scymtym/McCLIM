@@ -15,16 +15,18 @@
        (nodes-equivalent/children left right)))
 
 (defun synchronize (old-tree new-tree)
-  (let ((result '()))
+  (let ((result (make-array 10 :adjustable t :fill-pointer 0)))
     (labels ((maybe-id (node)
                (if node (id node) 0))
              (remove-node (node)
-               (push (make-instance 'remove-node :id (id node)) result))
-             (insert-node (parent &key after)
-               (push (make-instance 'insert-node
-                                    :parent-id           (maybe-id parent)
+               (vector-push-extend (make-instance 'remove-node :id (id node)) result))
+             (insert-node (node &key after)
+               (vector-push-extend (make-instance 'insert-node
+                                    :parent-id           (maybe-id (parent node))
                                     :previous-sibling-id (maybe-id after))
-                     result))
+                     result)
+               (vector-push-extend (id node) result)
+               (vector-push-extend (data node) result))
              (sync-nodes (new-nodes old-nodes)
                (loop :for sibling  =   nil :then (node new-node old-node
                                                        sibling)
@@ -33,12 +35,12 @@
              (node (new-node old-node &optional sibling)
                ;; let ((old-node (find-node (id new-node) old-tree)))
                (cond ((not old-node)
-                      (insert-node (parent new-node) :after sibling)
+                      (insert-node new-node :after sibling)
                       (sync-nodes (coerce (children new-node) 'list) '()))
 
                      ((not (nodes-equivalent/shallow new-node old-node))
                       (remove-node old-node)
-                      (insert-node (parent new-node) :after sibling)
+                      (insert-node new-node :after sibling)
                       (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list)))
 
                      ((not (nodes-equivalent/children new-node old-node))
@@ -48,4 +50,4 @@
                       ))
                new-node))
       (node (root new-tree) (root old-tree)))
-    (nreverse result)))
+    (coerce result 'list))) ; TODO temp

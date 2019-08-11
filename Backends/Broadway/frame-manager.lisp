@@ -3,6 +3,17 @@
 (defclass broadway-frame-manager (frame-manager)
   ())
 
+;;; Frames
+
+(defmethod adopt-frame :before ((frame-manager broadway-frame-manager)
+                                (frame         climi::menu-frame))
+  ;; Temporary kludge.
+  (when (eq (slot-value frame 'climi::top) nil)
+    (setf (slot-value frame 'climi::left) 1 ; HACK can't result in identity transformation?
+          (slot-value frame 'climi::top)  1)))
+
+;;; Panes
+
 (defclass top-level-sheet-pane (mirrored-sheet-mixin
                                 climi::top-level-sheet-pane)
   ()

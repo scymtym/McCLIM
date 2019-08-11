@@ -64,7 +64,7 @@
 
 ;;; Sheet
 
-(defclass surface (mcclim-render-internals::image-mirror-mixin)
+(defclass surface1 (mcclim-render-internals::image-mirror-mixin)
   ((%id              :initarg  :id
                      :reader   id)
                                                   ;(%texture-id )
@@ -89,7 +89,7 @@
    (%nodes           :reader   nodes
                      :initform (make-array 0 :adjustable t :fill-pointer t))))
 
-(defmethod make-node ((surface surface) (data t) &key parent)
+#+unused (defmethod make-node ((surface surface) (data t) &key parent)
   (let ((id (next-node-id surface)))
     (setf (next-node-id surface) (1+ id))
     (make-instance 'node :id id :data data :parent parent)))
@@ -111,7 +111,7 @@
       (vector-push-extend texture (textures surface))
       texture)))
 
-(defclass node ()
+#+unused (defclass node ()
   ((%id       :initarg  :id
               :reader   id)
    (%data     :initarg  :data
@@ -150,8 +150,6 @@
                          (show-surface stream id))))))
     (climi::port-register-mirror port mirrored-sheet mirror)
 
-    (distribute-event port (make-instance 'window-repaint-event :sheet mirrored-sheet :region +everywhere+))
-
     (make-texture mirror 0 0 0 0)
     (with-port-locked (port)
       (appendf (queued-operations port)
@@ -168,104 +166,48 @@
 (defmethod climb:port-set-mirror-name ((port broadway-port) (mirror t) (name t))
   (setf (name mirror) name)) ; TODO update
 
-(defun make-nodes (surface x1 y1 x2 y2)
-  (let* ((corner-radius    8)
-         (border-width     4)
-         (border-color     #xff0000ff)
-
-         (width            (- x2 x1))
-         (height           (- y2 y1))
-
-         (effective-x1     x1)
-         (effective-y1     y1)
-         (effective-x2     (+ x2 (* 2 border-width)))
-         (effective-y2     (+ y2 20 (* 2 border-width)))
-         (effective-width  (- effective-x2 effective-x1))
-         (effective-height (- effective-y2 effective-y1))
-
-         (shadow (make-node surface (make-instance 'outset-shadow
-                                                   :x               (float 0                1.0f0)
-                                                   :y               (float 0                1.0f0)
-                                                   :width           (float effective-width  1.0f0)
-                                                   :height          (float effective-height 1.0f0)
-
-                                                   :top-radius-x    (float corner-radius 1.0f0)
-                                                   :top-radius-y    (float corner-radius 1.0f0)
-                                                   :right-radius-x  (float corner-radius 1.0f0)
-                                                   :right-radius-y  (float corner-radius 1.0f0)
-                                                   :bottom-radius-x (float corner-radius 1.0f0)
-                                                   :bottom-radius-y (float corner-radius 1.0f0)
-                                                   :left-radius-x   (float corner-radius 1.0f0)
-                                                   :left-radius-y   (float corner-radius 1.0f0)
-
-                                                   :red             0
-                                                   :green           0
-                                                   :blue            0
-                                                   :alpha           128
-
-                                                   :dx              4.0f0
-                                                   :dy              4.0f0
-                                                   :spread          4.0f0
-                                                   :blur            4.0f0)))
-         (border (make-node surface (make-instance 'border :x               (float 0                1.0f0)
-                                                           :y               (float 0                1.0f0)
-                                                           :width           (float effective-width  1.0f0)
-                                                           :height          (float effective-height 1.0f0)
-
-                                                           :top-radius-x    (float corner-radius 1.0f0)
-                                                           :top-radius-y    (float corner-radius 1.0f0)
-                                                           :right-radius-x  (float corner-radius 1.0f0)
-                                                           :right-radius-y  (float corner-radius 1.0f0)
-                                                           :bottom-radius-x (float corner-radius 1.0f0)
-                                                           :bottom-radius-y (float corner-radius 1.0f0)
-                                                           :left-radius-x   (float corner-radius 1.0f0)
-                                                           :left-radius-y   (float corner-radius 1.0f0)
-
-                                                           :top-width     (float border-width 1.0f0)
-                                                           :right-width   (float border-width 1.0f0)
-                                                           :bottom-width  (float border-width 1.0f0)
-                                                           :left-width    (float border-width 1.0f0)
-
-                                                           :top-color     border-color
-                                                           :right-color   border-color
-                                                           :bottom-color  border-color
-                                                           :left-color    border-color)))
-         (title-bar (make-node surface (make-instance 'color :x      (float 0     1.0f0)
-                                                             :y      (float 0     1.0f0)
-                                                             :width  (float width 1.0f0)
-                                                             :height (float 20    1.0f0)
-                                                             :red    128
-                                                             :green  128
-                                                             :blue   255
-                                                             :alpha  200)
-                               :parent border))
-         (texture   (make-node surface (reinitialize-instance (first-elt (textures surface))
-                                                              :x 0.0f0 :y 20.0f0 :width (float width 1.0f0) :height (float height 1.0f0))
-                               :parent border)))
-
-    (values shadow border title-bar texture effective-x1 effective-y1 effective-width effective-height)))
-
 (defmethod climb:port-set-mirror-region ((port          broadway-port)
                                          (mirror        surface)
                                          (mirror-region t))
-  (let ((surface mirror) )
+  (let ((surface mirror))
     (with-bounding-rectangle* (x1 y1 x2 y2) mirror-region
       (with-port-locked (port)
         (appendf (queued-operations port)
                  (list (lambda (connection)
-                         (multiple-value-bind (shadow border title-bar texture effective-x1 effective-y1 effective-width effective-height)
-                             (make-nodes surface x1 y1 x2 y2)
+                         (let* ((border-width     4)
+
+                                (width            (- x2 x1))
+                                (height           (- y2 y1))
+
+                                (effective-x1     x1)
+                                (effective-y1     y1)
+                                (effective-x2     (+ x2 (* 2 border-width)))
+                                (effective-y2     (+ y2 20 (* 2 border-width)))
+                                (effective-width  (- effective-x2 effective-x1))
+                                (effective-height (- effective-y2 effective-y1)))
                            (print (list effective-x1 effective-y1 effective-width effective-height))
                            (resize-surface connection (id surface) effective-x1 effective-y1 effective-width effective-height)
-                           (set-nodes connection (id surface) (list (data shadow)) :new-node-id (id shadow))
-                           (set-nodes connection (id surface) (list (data border)) :new-node-id (id border))
-                           (set-nodes connection (id surface) (list (data title-bar)) :new-node-id (id title-bar) :parent-id (id (parent title-bar)))
-                           (set-nodes connection (id surface) (list (data texture)) :new-node-id (id texture) :parent-id (id (parent texture)))))))))))
+                           (setf (values (textures surface) (tiles surface))
+                                 (apply #'resize-surface-nodes (tree surface)
+                                        (append (nodes surface) (list width height))))
+
+                           (loop :with pixels =   (clime:pattern-array
+                                                   (mcclim-render-internals::image-mirror-image mirror))
+                                 :for texture :in (textures surface)
+                                 :for tile    :in (tiles surface)
+                                 :do (upload-texture connection (id (data texture)) (tile->png tile pixels)))
+
+                           (let ((ops (synchronize (make-instance 'tree) (tree surface))))
+                             #+no (setf (clouseau:root-object *inspector* :run-hook-p t)
+                                   (list port surface ops))
+                             (set-nodes2 connection (id surface) ops))))))))))
 
 (defmethod climb:port-enable-sheet ((port  broadway-port)
                                     (sheet mirrored-sheet-mixin))
   (let* ((mirror (sheet-mirror sheet))
          (id     (id mirror)))
+
+    (repaint-sheet sheet +everywhere+)
 
     (with-port-locked (port)
       (appendf (queued-operations port)
@@ -357,20 +299,20 @@
     (when-let* ((sheet  (climi::port-pointer-sheet port))
                 (mirror (sheet-mirror sheet))
                 (surface mirror))
-      (repaint-sheet sheet +everywhere+)
       (with-port-locked (port)
         (when (null (queued-operations port))
           (appendf (queued-operations port)
                    (list (lambda (connection)
-                           (let ((texture (first-elt (textures surface))))
-                             (loop :for image = (mcclim-render-internals::image-mirror-image mirror)
-                                   :until image
-                                   :finally (print (slot-value surface 'mcclim-render-internals::dirty-region))
-                                            (when-let ((dirty (slot-value surface 'mcclim-render-internals::dirty-region)))
-                                              (draw-design (make-medium port (gethash surface (slot-value port 'climi::mirror->sheet)))
-                                                           dirty :ink +red+ :filled nil))
-                                            (upload-image connection (id texture) image)
-                                            (setf (slot-value surface 'mcclim-render-internals::dirty-region) nil))
-                             (patch-texture connection (id surface) (id (gethash texture (%texture->node mirror))) (id texture)))
-                                        ; (write-operation stream 0 (make-instance 'roundtrip :id 0 :tag 0 ))
+                           (when (slot-value surface 'mcclim-render-internals::dirty-region)
+                             (loop :with pixels = (clime:pattern-array
+                                                   (mcclim-render-internals::image-mirror-image mirror))
+                                   :with dirty  = (slot-value surface 'mcclim-render-internals::dirty-region)
+                                   :for texture :in (textures surface)
+                                   :for tile    :in (tiles surface)
+                                   :when (or (not dirty)
+                                             (region-intersects-region-p (region tile) dirty))
+                                   :do (upload-texture connection (id (data texture)) (tile->png tile pixels))
+                                       (patch-texture connection (id surface) (id texture) (id (data texture))))
+                             (setf (slot-value surface 'mcclim-render-internals::dirty-region) nil))
+                           ;; (write-operation stream 0 (make-instance 'roundtrip :id 0 :tag 0 ))
                            ))))))))

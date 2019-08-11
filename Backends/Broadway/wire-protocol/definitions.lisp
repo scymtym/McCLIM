@@ -170,6 +170,13 @@
 
   ((inset-shadow 5))
 
+  ((transform 11 :print-spec ("~A, ~A" dx dy))
+   (kind 4)
+   (dx   :float32)
+   (dy   :float32)
+   ; child node
+   )
+
   ((reuse 13)))
 
 ;;; Node operations
