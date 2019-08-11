@@ -52,16 +52,6 @@
                                                         *load-truename*)))
                   stream)))
 
-(defun handle-incoming-message (payload)
-  ;; (utilities.binary-dump:binary-dump payload :base 16 :offset-base 16)
-  ;; (fresh-line)
-  (let ((offset 0))
-    (loop :while (< (+ offset 12) (length payload))
-          :for (event new-offset) = (multiple-value-list
-                                     (deserialize-event payload offset))
-          :collect (print event)
-          :do (setf offset new-offset))))
-
 (defun upload-image (connection id image)
   (let* ((width  (pattern-width image))
          (height (pattern-height image))
@@ -111,6 +101,16 @@
           (flexi-streams:get-output-stream-sequence stream))
 
       (port-deallocate-pixmap port pixmap))))
+
+(defun handle-incoming-message (payload)
+  ;; (utilities.binary-dump:binary-dump payload :base 16 :offset-base 16)
+  ;; (fresh-line)
+  (let ((offset 0))
+    (loop :while (< (+ offset 12) (length payload))
+          :for (event new-offset) = (multiple-value-list
+                                     (deserialize-event payload offset))
+          :collect (print event)
+          :do (setf offset new-offset))))
 
 (defun handle-incoming-event (port event)
   (with-simple-restart (continue "Skip the event")
@@ -183,7 +183,7 @@
 
 (defun serve-socket (socket port)
   (let* ((stream     (usocket:socket-stream socket))
-         (connection (make-instance 'connection- :stream stream)))
+         (connection (make-instance 'connection :stream stream)))
     (establish-websocket socket)
 
     (loop (with-simple-restart (continue "Skip the operation")
