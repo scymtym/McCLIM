@@ -14,6 +14,7 @@ const BROADWAY_NODE_CLIP = 10;
 const BROADWAY_NODE_TRANSFORM = 11;
 const BROADWAY_NODE_DEBUG = 12;
 const BROADWAY_NODE_REUSE = 13;
+const BROADWAY_NODE_CANVAS = 14;
 
 const BROADWAY_NODE_OP_INSERT_NODE = 0;
 const BROADWAY_NODE_OP_REMOVE_NODE = 1;
@@ -38,6 +39,7 @@ const BROADWAY_OP_UPLOAD_TEXTURE = 13;
 const BROADWAY_OP_RELEASE_TEXTURE = 14;
 const BROADWAY_OP_SET_NODES = 15;
 const BROADWAY_OP_ROUNDTRIP = 16;
+const BROADWAY_OP_PUT_BUFFER = 17;
 
 const BROADWAY_EVENT_ENTER = 0;
 const BROADWAY_EVENT_LEAVE = 1;
@@ -593,15 +595,32 @@ TransformNodes.prototype.insertNode = function(parent, previousSibling, is_tople
 
     switch (type)
     {
-        /* Reuse divs from last frame */
-        case BROADWAY_NODE_REUSE:
+    case BROADWAY_NODE_REUSE: /* Reuse divs from last frame */
         {
             oldNode = this.nodes[id];
         }
         break;
-        /* Leaf nodes */
 
-        case BROADWAY_NODE_TEXTURE:
+    /* Leaf nodes */
+
+    case BROADWAY_NODE_TEXTURE:
+        {
+            var rect = this.decode_rect();
+            var texture_id = this.decode_uint32();
+            var image = this.createImage(id);
+            image.width = rect.width;
+            image.height = rect.height;
+            image.style["position"] = "absolute";
+            set_rect_style(image, rect);
+            var texture = textures[texture_id].ref();
+            image.src = texture.url;
+            // Unref blob url when loaded
+            image.onload = function() { texture.unref(); };
+            newNode = image;
+        }
+        break;
+
+    case BROADWAY_NODE_CANVAS:
         {
             var rect = this.decode_rect();
             var texture_id = this.decode_uint32();
@@ -1180,6 +1199,12 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
         case BROADWAY_OP_SET_SHOW_KEYBOARD:
             showKeyboard = cmd.get_16() != 0;
             showKeyboardChanged = true;
+            break;
+
+        case BROADWAY_OP_PUT_BUFFER:
+            var context = document.getElementById("testCanvas").getContext("2d");
+            var newImageData = decodeBuffer(context, context.getImageData(0, 0, 800, 600), 800, 600, cmd, false);
+            context.putImageData(newImageData, 0, 0);
             break;
 
         default:

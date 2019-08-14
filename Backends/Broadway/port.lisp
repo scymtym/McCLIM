@@ -1,7 +1,6 @@
 (cl:in-package #:clim-broadway)
 
 (defclass broadway-port (climi::standard-port
-                         climi::standard-event-port-mixin
                          mcclim-render-internals::render-port-mixin)
   ((%listen-port       :initarg  :listen-port
                        :reader   listen-port

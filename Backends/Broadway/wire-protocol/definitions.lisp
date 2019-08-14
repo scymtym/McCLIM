@@ -74,7 +74,9 @@
 
   ((roundtrip 16 :print-spec ("~D ~A" id tag))
    (id  2)
-   (tag 4)))
+   (tag 4))
+
+  ((put-buffer 17)))
 
 ;;; Node creation operations
 
