@@ -50,6 +50,10 @@
     (write-string (read-file-into-string
                    (merge-pathnames "broadway.js" #.(or *compile-file-truename*
                                                         *load-truename*)))
+                  stream)
+    (write-string (read-file-into-string
+                   (merge-pathnames "buffer.js" #.(or *compile-file-truename*
+                                                      *load-truename*)))
                   stream)))
 
 (defun upload-image (connection id image)
@@ -190,8 +194,8 @@
             (when-let ((op (with-port-locked (port)
                              (pop (queued-operations port)))))
               (funcall op connection)))
-
-          (sleep .01)
+          (put-buffer connection)
+          (sleep 1.01)
           (loop :while (listen stream)
                 :for (payload opcode) = (multiple-value-list (read-frame stream))
                 :when payload

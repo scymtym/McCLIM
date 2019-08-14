@@ -79,6 +79,11 @@
                                                               :size (truncate (output-length connection) 4)))
   (send-message connection))
 
+(defun put-buffer (connection)
+  (append-message-chunk connection (make-instance 'put-buffer))
+  (append-message-chunk connection (encode-buffer))
+  (send-message connection))
+
 ;;; Node creation operations
 ;;;
 ;;; We only sent these to the client, so we only need the serializer.
