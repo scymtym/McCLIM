@@ -79,9 +79,44 @@
                                                               :size (truncate (output-length connection) 4)))
   (send-message connection))
 
-(defun put-buffer (connection)
+(defvar *previous* nil)
+
+#+old (defun put-buffer (connection surface)
   (append-message-chunk connection (make-instance 'put-buffer))
-  (append-message-chunk connection (encode-buffer))
+
+  (let* ((image  (mcclim-render-internals::image-mirror-image surface))
+         (a      (clime:pattern-array image))
+         (width  (array-dimension a 1))
+         (height (array-dimension a 0))
+         #+no (b      (make-array (* width height) :element-type '(unsigned-byte 32))))
+    #+no (loop :for y :below height
+               :do (loop :for x :below width
+                         :do (setf (aref b (+ (* 3 (+ (* y width) x)) 0)) (ldb (byte 8 24) (aref a y x))
+                                   (aref b (+ (* 3 (+ (* y width) x)) 1)) (ldb (byte 8  16) (aref a y x))
+                                   (aref b (+ (* 3 (+ (* y width) x)) 2)) (ldb (byte 8 8) (aref a y x)))))
+    (print (list width height))
+    (append-message-chunk connection (let ((e (encode-buffer a (or *previous* a) width height)))
+                                       (subseq (encoder-buffer e) 0 (1- (encoder-index e)))))
+    (setf *previous* (copy-array a)))
+
+        (send-message connection))
+
+(defun put-buffer (connection pixels)
+  (append-message-chunk connection (make-instance 'put-buffer))
+
+  (let* ((width  (array-dimension pixels 1))
+         (height (array-dimension pixels 0))
+         #+no (b      (make-array (* width height) :element-type '(unsigned-byte 32))))
+    #+no (loop :for y :below height
+               :do (loop :for x :below width
+                         :do (setf (aref b (+ (* 3 (+ (* y width) x)) 0)) (ldb (byte 8 24) (aref a y x))
+                                   (aref b (+ (* 3 (+ (* y width) x)) 1)) (ldb (byte 8  16) (aref a y x))
+                                   (aref b (+ (* 3 (+ (* y width) x)) 2)) (ldb (byte 8 8) (aref a y x)))))
+    (print (list width height))
+    (append-message-chunk connection (let ((e (encode-buffer pixels (or *previous* pixels) width height)))
+                                       (subseq (encoder-buffer e) 0 (1- (encoder-index e)))))
+    (setf *previous* (copy-array pixels)))
+
   (send-message connection))
 
 ;;; Node creation operations

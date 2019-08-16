@@ -121,7 +121,8 @@
     (typecase event
       (screen-size-changed
        (setf (slot-value (graft port) 'region)
-             (make-bounding-rectangle 0 0 (width event) (height event))))
+             (make-bounding-rectangle 0 0 (width event) (height event)))
+       nil)
 
       (pointer-move
        (setf (%pointer-position (port-pointer port)) (list (root-x event) (root-y event)))
@@ -134,7 +135,8 @@
                               :y (- (root-y event) 20)
                               :graft-x (root-x event)
                               :graft-y (root-y event)
-                              :modifier-state 0))))
+                              :modifier-state 0))
+         sheet))
 
       ((or button-press button-release)
        (when-let ((sheet (surface->sheet port (surface event))))
@@ -151,7 +153,8 @@
                                         (1 +pointer-left-button+)
                                         (2 +pointer-middle-button+)
                                         (3 +pointer-right-button+))
-                              :modifier-state 0))))
+                              :modifier-state 0))
+         sheet))
 
       (scroll
        (when-let ((sheet (surface->sheet port (surface event))))
@@ -166,7 +169,8 @@
                               :delta-y (case (direction event)
                                          (0 -1)
                                          (1 1))
-                              :modifier-state 0))))
+                              :modifier-state 0))
+         sheet))
 
       ((or key-press key-release)
        (when-let ((sheet (climi::port-pointer-sheet port)))
@@ -183,24 +187,44 @@
                                 :y 0    ; (- (root-y eent) 20)
                                 :key-name (char-name character)
                                 :key-character character
-                                :modifier-state 0))))))))
+                                :modifier-state 0)))
+         sheet)))))
+
+(defun request-frame-data (port connection sheet)
+  (flet ((upload-frame-data (pixels)
+           (print (list "uploading frame for " sheet) *trace-output*)
+                                        ; (put-buffer connection )
+           (with-port-locked (port)
+             (appendf (queued-operations port)
+                      (list (lambda (connection)
+                              (put-buffer connection pixels)))))))
+    (distribute-event port (make-instance 'get-frame-data-event
+                                          :sheet sheet
+                                          :callback #'upload-frame-data))))
 
 (defun serve-socket (socket port)
   (let* ((stream     (usocket:socket-stream socket))
          (connection (make-instance 'connection :stream stream)))
     (establish-websocket socket)
 
-    (loop (with-simple-restart (continue "Skip the operation")
-            (when-let ((op (with-port-locked (port)
-                             (pop (queued-operations port)))))
-              (funcall op connection)))
-          (put-buffer connection)
-          (sleep 1.01)
-          (loop :while (listen stream)
-                :for (payload opcode) = (multiple-value-list (read-frame stream))
-                :when payload
-                :do (loop :for message :in (handle-incoming-message payload)
-                          :do (handle-incoming-event port message))))))
+    (loop :for dirty-sheets = '()
+          :do (with-simple-restart (continue "Skip the operation")
+                (when-let ((op (with-port-locked (port)
+                                 (pop (queued-operations port)))))
+                  (funcall op connection)))
+              (sleep .01)
+              (loop :while (listen stream)
+                    :for (payload opcode) = (multiple-value-list
+                                             (read-frame stream))
+                    :when payload
+                    :do (loop :for message :in (handle-incoming-message payload)
+                              :for sheet = (handle-incoming-event port message)
+                              :when sheet
+                              :do (pushnew sheet dirty-sheets :test #'eq)))
+          :when dirty-sheets
+          :do  (print (list "dirty sheets " dirty-sheets))
+               (map nil (curry #'request-frame-data port connection)
+                    dirty-sheets))))
 
 (defun surface->sheet (port id)
   (when-let* ((mirror->sheet (slot-value port 'climi::mirror->sheet))
