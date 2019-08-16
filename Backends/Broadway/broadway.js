@@ -1039,6 +1039,8 @@ function handleDisplayCommands(display_commands)
     }
 }
 
+debugDecoding = false;
+
 function handleCommands(cmd, display_commands, new_textures, modified_trees)
 {
     var res = true;
@@ -1202,8 +1204,23 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             break;
 
         case BROADWAY_OP_PUT_BUFFER:
-            var context = document.getElementById("testCanvas").getContext("2d");
-            var newImageData = decodeBuffer(context, context.getImageData(0, 0, 800, 600), 800, 600, cmd, false);
+            var canvas = document.getElementById("testCanvas");
+            var context = canvas.getContext("2d");
+            var width = canvas.width;
+            var height = canvas.height;
+            if (canvas.oldImage == undefined) {
+                canvas.oldImage = context.getImageData(0, 0, width, height);
+            }
+            var oldPos = cmd.pos;
+            var newImageData = decodeBuffer(context, canvas.oldImage, width, height, cmd, debugDecoding);
+
+            if (debugDecoding) {
+                cmd.pos = oldPos;
+                canvas.oldImage = decodeBuffer (context, canvas.oldImage, width, height, cmd, false);
+            } else {
+                canvas.oldImage = newImageData;
+            }
+
             context.putImageData(newImageData, 0, 0);
             break;
 

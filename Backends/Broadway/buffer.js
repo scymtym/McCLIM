@@ -82,7 +82,7 @@ function decodeBuffer(context, oldData, w, h, data, debug)
     var src = 0;
     var dest = 0;
 
-    while (data.pos < data.length)  {
+    while (data.pos < (data.length - 20))  {
         var b = data.get_uint8();
         var g = data.get_uint8();
         var r = data.get_uint8();
@@ -138,7 +138,7 @@ function decodeBuffer(context, oldData, w, h, data, debug)
 
             case COLOR_RUN:
                 len = (r & 0xf) << 16 | g << 8 | b;
-                //log("Got color run, len: " + len);
+                // log("Got color run, len: " + len);
 
                 b = data.get_uint8();
                 g = data.get_uint8();
@@ -189,6 +189,7 @@ function decodeBuffer(context, oldData, w, h, data, debug)
             }
         }
     }
+    data.pos = data.length; // TODO temp
 
     return imageData;
 }

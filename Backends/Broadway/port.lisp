@@ -291,10 +291,14 @@
 
 ;;; Events
 
+(defclass get-frame-data-event (climi::standard-event)
+  ((%callback :initarg :callback
+              :reader callback)))
+
 (defmethod distribute-event :around ((port broadway-port) (event pointer-event))
   (call-next-method)
 
-  (with-simple-restart (continue "Skip the texture update")
+  #+no (with-simple-restart (continue "Skip the texture update")
     (when-let* ((sheet  (climi::port-pointer-sheet port))
                 (mirror (sheet-mirror sheet))
                 (surface mirror))
@@ -302,7 +306,8 @@
         (when (null (queued-operations port))
           (appendf (queued-operations port)
                    (list (lambda (connection)
-                           (when (slot-value surface 'mcclim-render-internals::dirty-region)
+                           (put-buffer connection surface)
+                           #+no (when (slot-value surface 'mcclim-render-internals::dirty-region)
                              (loop :with pixels = (clime:pattern-array
                                                    (mcclim-render-internals::image-mirror-image mirror))
                                    :with dirty  = (slot-value surface 'mcclim-render-internals::dirty-region)

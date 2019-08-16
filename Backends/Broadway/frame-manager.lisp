@@ -20,6 +20,13 @@
   (:default-initargs
    :device-transformation +identity-transformation+)) ; TODO HACK
 
+(defmethod handle-event ((client top-level-sheet-pane)
+                         (event  get-frame-data-event))
+  (let* ((mirror (sheet-mirror client))
+         (pixels (clime:pattern-array
+                  (mcclim-render-internals::image-mirror-image mirror))))
+    (funcall (callback event) (copy-array pixels))))
+
 (defmethod make-pane-1 ((realizer            broadway-frame-manager)
                         (frame               application-frame)
                         (abstract-class-name (eql 'climi::top-level-sheet-pane))
