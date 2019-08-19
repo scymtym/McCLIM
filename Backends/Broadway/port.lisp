@@ -86,7 +86,12 @@
    (%root            :initarg  :root
                      :accessor root)
    (%nodes           :reader   nodes
-                     :initform (make-array 0 :adjustable t :fill-pointer t))))
+                     :initform (make-array 0 :adjustable t :fill-pointer t))
+   ;; Back buffers
+   (%old-back-buffer :accessor old-back-buffer
+                     :initform nil)
+   (%new-back-buffer :accessor new-back-buffer
+                     :initform nil)))
 
 #+unused (defmethod make-node ((surface surface) (data t) &key parent)
   (let ((id (next-node-id surface)))
@@ -99,7 +104,7 @@
     (setf (gethash data (%texture->node surface)) node)
     node))
 
-(defmethod make-texture ((surface surface) x y width height)
+#+unused (defmethod make-texture ((surface surface) x y width height)
   (let ((id (next-texture-id surface)))
     (setf (next-texture-id surface) (1+ id))
     (let ((texture (make-instance 'texture :x      (float x      1.0f0)
@@ -138,7 +143,7 @@
                                 (mirrored-sheet t))
                                         ; (setf (sheet-parent pixmap) (graft port))
   (let* ((id     (incf (next-surface-id port)))
-         (mirror (make-instance 'surface :id id))
+         (mirror (make-instance 'surface :id id :name (clime:sheet-pretty-name mirrored-sheet))) ; TODO sheet may be unnamed
          (showp  (sheet-enabled-p mirrored-sheet)))
 
     (with-port-locked (port)
@@ -149,8 +154,8 @@
                          (show-surface stream id))))))
     (climi::port-register-mirror port mirrored-sheet mirror)
 
-    (make-texture mirror 0 0 0 0)
-    (with-port-locked (port)
+    ; (make-texture mirror 0 0 0 0)
+    #+no (with-port-locked (port)
       (appendf (queued-operations port)
                (list (lambda (stream)
                        (loop :for image = (mcclim-render-internals::image-mirror-image mirror)
@@ -163,20 +168,42 @@
     mirror))
 
 (defmethod climb:port-set-mirror-name ((port broadway-port) (mirror t) (name t))
-  (setf (name mirror) name)) ; TODO update
+  (setf (name mirror) name)
+  (let ((surface mirror))
+    (with-port-locked (port)
+      (appendf (queued-operations port)
+               (list (lambda (connection)
+                       (let ((ops (synchronize (tree surface) (tree surface))))
+                         (set-nodes2 connection (id surface) ops))))))))
+
+(defmethod climb:port-set-mirror-transformation ((port                  broadway-port)
+                                                 (mirror                surface)
+                                                 (mirror-transformation t))
+  (break)
+  (let ((sheet (climi::port-lookup-sheet port mirror)))
+    (with-port-locked (port)
+      (appendf (queued-operations port)
+               (list (lambda (connection)
+                       (with-bounding-rectangle* (x1 y1 x2 y2)
+                           (transform-region (climi::%sheet-mirror-transformation sheet)
+                                             (climi::%sheet-mirror-region sheet))
+                         (resize-surface connection (id mirror) x1 y1 (- x2 x1) (- y2 y1)))))))))
 
 (defmethod climb:port-set-mirror-region ((port          broadway-port)
                                          (mirror        surface)
                                          (mirror-region t))
   (let ((surface mirror))
-    (with-bounding-rectangle* (x1 y1 x2 y2) mirror-region
+    (with-bounding-rectangle* (x1 y1 x2 y2)
+        (print (transform-region (climi::%sheet-mirror-transformation
+                            (climi::port-lookup-sheet port mirror))
+                           mirror-region))
       (with-port-locked (port)
         (appendf (queued-operations port)
                  (list (lambda (connection)
                          (let* ((border-width     4)
 
-                                (width            (- x2 x1))
-                                (height           (- y2 y1))
+                                (width            (1+ (- x2 x1)))
+                                (height           (1+ (- y2 y1)))
 
                                 (effective-x1     x1)
                                 (effective-y1     y1)
@@ -184,21 +211,21 @@
                                 (effective-y2     (+ y2 20 (* 2 border-width)))
                                 (effective-width  (- effective-x2 effective-x1))
                                 (effective-height (- effective-y2 effective-y1)))
+
+                           (setf (old-back-buffer surface) (make-array (list height width) :element-type 'argb-pixel)
+                                 (new-back-buffer surface) (make-array (list height width) :element-type 'argb-pixel))
+
                            (print (list effective-x1 effective-y1 effective-width effective-height))
-                           (resize-surface connection (id surface) effective-x1 effective-y1 effective-width effective-height)
+                           (resize-surface connection (id surface)
+                                           (max 0 effective-x1) (max 0 effective-y1)
+                                           effective-width effective-height)
+
                            (setf (values (textures surface) (tiles surface))
                                  (apply #'resize-surface-nodes (tree surface)
                                         (append (nodes surface) (list width height))))
 
-                           (loop :with pixels =   (clime:pattern-array
-                                                   (mcclim-render-internals::image-mirror-image mirror))
-                                 :for texture :in (textures surface)
-                                 :for tile    :in (tiles surface)
-                                 :do (upload-texture connection (id (data texture)) (tile->png tile pixels)))
-
-                           (let ((ops (synchronize (make-instance 'tree) (tree surface))))
-                             #+no (setf (clouseau:root-object *inspector* :run-hook-p t)
-                                   (list port surface ops))
+                           (let ((ops (synchronize (old-tree surface) (tree surface))))
+                             (setf (old-tree surface) (tree surface))
                              (set-nodes2 connection (id surface) ops))))))))))
 
 (defmethod climb:port-enable-sheet ((port  broadway-port)
@@ -270,7 +297,12 @@
 
 ;;; Cursor
 
-(defmethod set-sheet-pointer-cursor ((port broadway-port) sheet cursor))
+(defmethod set-sheet-pointer-cursor ((port broadway-port) sheet cursor)
+  (let ((mirror (climi::port-lookup-mirror port sheet)))
+    (with-port-locked (port)
+      (appendf (queued-operations port)
+               (list (lambda (connection)
+                       (set-cursor connection (id mirror) cursor)))))))
 
 ;;; Pointer
 
@@ -288,35 +320,3 @@
                  :pointer 0 :button 0 :modifier-state 0
                  :x 0 :y 0 :graft-x 0 :graft-y 0
                  :sheet (climi::port-pointer-sheet (port pointer))))
-
-;;; Events
-
-(defclass get-frame-data-event (climi::standard-event)
-  ((%callback :initarg :callback
-              :reader callback)))
-
-(defmethod distribute-event :around ((port broadway-port) (event pointer-event))
-  (call-next-method)
-
-  #+no (with-simple-restart (continue "Skip the texture update")
-    (when-let* ((sheet  (climi::port-pointer-sheet port))
-                (mirror (sheet-mirror sheet))
-                (surface mirror))
-      (with-port-locked (port)
-        (when (null (queued-operations port))
-          (appendf (queued-operations port)
-                   (list (lambda (connection)
-                           (put-buffer connection surface)
-                           #+no (when (slot-value surface 'mcclim-render-internals::dirty-region)
-                             (loop :with pixels = (clime:pattern-array
-                                                   (mcclim-render-internals::image-mirror-image mirror))
-                                   :with dirty  = (slot-value surface 'mcclim-render-internals::dirty-region)
-                                   :for texture :in (textures surface)
-                                   :for tile    :in (tiles surface)
-                                   :when (or (not dirty)
-                                             (region-intersects-region-p (region tile) dirty))
-                                   :do (upload-texture connection (id (data texture)) (tile->png tile pixels))
-                                       (patch-texture connection (id surface) (id texture) (id (data texture))))
-                             (setf (slot-value surface 'mcclim-render-internals::dirty-region) nil))
-                           ;; (write-operation stream 0 (make-instance 'roundtrip :id 0 :tag 0 ))
-                           ))))))))

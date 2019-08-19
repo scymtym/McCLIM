@@ -2,6 +2,10 @@
 
 ;;; Server -> client operations
 
+(define-enum cursor-styles
+  (:default 0)
+  (:move    1))
+
 (define-protocol operation
     ((opcode 1)
      (serial 4))
@@ -76,7 +80,11 @@
    (id  2)
    (tag 4))
 
-  ((put-buffer 17)))
+  ((put-buffer 17))
+
+  ((set-cursor 18 :print-spec ("~D ~D" id style))
+   (id    2)
+   (style 1))) ; TODO use enum
 
 ;;; Node creation operations
 
@@ -179,7 +187,23 @@
    ; child node
    )
 
-  ((reuse 13)))
+  ((reuse 13))
+
+  ((canvas 14)
+   (x      :float32)
+   (y      :float32)
+   (width  :float32)
+   (height :float32))
+
+  ((text 15 :print-spec ("\"~A\"" text))
+   (x      :float32)
+   (y      :float32)
+   (width  :float32)
+   (height :float32)
+
+   (color  4)
+
+   (text   string)))
 
 ;;; Node operations
 

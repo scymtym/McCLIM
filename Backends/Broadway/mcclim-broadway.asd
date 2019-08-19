@@ -17,7 +17,8 @@
                 :components ((:file "meta-model")
                              (:file "definitions")
                              (:file "code-generation")
-                             (:file "connection")))
+                             (:file "connection")
+                             (:file "buffer")))
 
                (:module     "dom"
                 :serial     t
