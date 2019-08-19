@@ -4,6 +4,8 @@
 ;;;
 ;;; We only sent these to the client, so we only need the serializer.
 
+; TODO (generate cursor-styles :enum)
+
 #.`(progn
      ,(generate operation :class)
      ,(generate operation 'print-object)
@@ -29,31 +31,6 @@
 (defun upload-texture (connection id data)
   (append-message-chunk connection (make-instance 'upload-texture :id id :size (length data)))
   (append-message-chunk connection data)
-  (send-message connection))
-
-(defun set-nodes (connection surface-id nodes
-                  &key
-                  (new-node-id         1)
-                  (parent-id           0)
-                  (previous-sibling-id 0)
-                  delete)
-  ;; (fresh-line )
-  ;; (utilities.binary-dump:binary-dump nodes :base 16 :offset-base 16 :print-type t)
-  ;; (fresh-line)
-
-  (when delete
-    (append-message-chunk connection (serialize-node-operation (make-instance 'remove-node :id 1))))
-  (append-message-chunk connection (serialize-node-operation (print (make-instance 'insert-node
-                                                                             :parent-id           parent-id
-                                                                             :previous-sibling-id previous-sibling-id))))
-  (map nil (lambda (node)
-             (print (list new-node-id :-> node))
-             (append-message-chunk connection (serialize-make-node new-node-id node)))
-       nodes)
-  (prepend-message-chunk connection (print (make-instance 'set-nodes :id   surface-id
-                                                               :size (truncate
-                                                                      (+ (output-length connection))
-                                                                      4))))
   (send-message connection))
 
 (defun set-nodes2 (connection surface-id operations)
@@ -101,22 +78,34 @@
 
         (send-message connection))
 
-(defun put-buffer (connection pixels)
+(defun put-buffer (connection new-pixels old-pixels)
   (append-message-chunk connection (make-instance 'put-buffer))
 
-  (let* ((width  (array-dimension pixels 1))
-         (height (array-dimension pixels 0))
+  (let* ((width  (array-dimension new-pixels 1))
+         (height (array-dimension new-pixels 0))
          #+no (b      (make-array (* width height) :element-type '(unsigned-byte 32))))
     #+no (loop :for y :below height
                :do (loop :for x :below width
                          :do (setf (aref b (+ (* 3 (+ (* y width) x)) 0)) (ldb (byte 8 24) (aref a y x))
                                    (aref b (+ (* 3 (+ (* y width) x)) 1)) (ldb (byte 8  16) (aref a y x))
                                    (aref b (+ (* 3 (+ (* y width) x)) 2)) (ldb (byte 8 8) (aref a y x)))))
-    (print (list width height))
-    (append-message-chunk connection (let ((e (encode-buffer pixels (or *previous* pixels) width height)))
-                                       (subseq (encoder-buffer e) 0 (1- (encoder-index e)))))
-    (setf *previous* (copy-array pixels)))
+    ; (print (list width height))
+    (let* ((encoder (encode-buffer (encoder connection) new-pixels old-pixels width height))
+           (index   (encoder-index encoder)))
+      ; (print (list (length (encoder-used-chunks encoder)) "chunks"))
+      (map nil (curry #'append-message-chunk connection)
+           (encoder-used-chunks encoder))
+      (when (plusp index)
+        (append-message-chunk connection (subseq (encoder-buffer encoder) 0 index)))) ; TODO avoid SUBSEQ
 
+    ; (setf *previous* (copy-array pixels))
+    )
+
+  (send-message connection))
+
+(defun set-cursor (connection surface cursor)
+  (let ((style (symbol->number cursor-styles cursor)))
+    (append-message-chunk connection (make-instance 'set-cursor :id surface :style style)))
   (send-message connection))
 
 ;;; Node creation operations

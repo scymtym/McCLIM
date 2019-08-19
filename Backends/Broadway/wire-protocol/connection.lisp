@@ -1,22 +1,69 @@
 (cl:in-package #:clim-broadway)
 
 (defclass connection ()
-  ((%stream        :initarg  :stream
-                   :reader   stream*)
+  ((%stream         :initarg  :stream
+                    :reader   stream*)
+   ;; Input
+   (%modifier-state :accessor modifier-state
+                    :initform 0)
    ;; Output
-   (%serial        :initarg  :serial
-                   :accessor serial
-                   :initform 0)
-   (%output-length :accessor output-length
-                   :initform 0)
-   (%output-chunks :reader   output-chunks
-                   :initform (make-array 0 :adjustable t :fill-pointer 0)))
+   (%serial         :initarg  :serial
+                    :accessor serial
+                    :initform 0)
+   (%output-length  :accessor output-length
+                    :initform 0)
+   (%output-chunks  :reader   output-chunks
+                    :initform (make-array 0 :adjustable t :fill-pointer 0))
+   ;; Encoder
+   (%encoder        :reader   encoder
+                    :initform (make-encoder)))
   (:default-initargs
    :stream (error "Missing required initarg :STREAM")))
 
 ;;; Input
 
+(defmethod receive-frame ((connection connection))
+  (multiple-value-bind (payload opcode) (read-frame (stream* connection))
+    (when (eql opcode 2)
+      payload)))
 
+(defmethod decode-frame ((connection connection) (payload t))
+  (declare (cl:type nibbles:simple-octet-vector payload))
+  (loop :with length = (length payload)
+        :for offset :of-type array-index = 0 :then new-offset
+        :while (< (+ offset 12) length)
+        :for (event new-offset) = (multiple-value-list
+                                   (deserialize-event payload offset))
+
+        :when (and (typep event 'key-press)
+                   (= (keysym event) 65507)) ; control
+        :do (setf (modifier-state connection)
+                  (logior +control-key+ (modifier-state connection)))
+
+        :when (and (typep event 'key-release)
+                   (= (keysym event) 65507))
+        :do (setf (modifier-state connection)
+                  (logandc1 +control-key+ (modifier-state connection)))
+
+        :when (and (typep event 'key-press)
+                   (= (keysym event) 65513)) ; alt
+        :do (setf (modifier-state connection)
+                  (logior +meta-key+ (modifier-state connection)))
+
+        :when (and (typep event 'key-release)
+                   (= (keysym event) 65513))
+        :do (setf (modifier-state connection)
+                  (logandc1 +meta-key+ (modifier-state connection)))
+
+        ; :do (:update-inspector)
+
+        :unless (and (typep event '(or key-press key-release))
+                     (member (keysym event) '(65507 65513)))
+        :collect (print event)))
+
+(defmethod receive-message ((connection connection))
+  (when-let ((payload (receive-frame connection)))
+    (decode-frame connection payload)))
 
 ;;; Output
 

@@ -15,6 +15,7 @@ const BROADWAY_NODE_TRANSFORM = 11;
 const BROADWAY_NODE_DEBUG = 12;
 const BROADWAY_NODE_REUSE = 13;
 const BROADWAY_NODE_CANVAS = 14;
+const BROADWAY_NODE_TEXT = 15;
 
 const BROADWAY_NODE_OP_INSERT_NODE = 0;
 const BROADWAY_NODE_OP_REMOVE_NODE = 1;
@@ -40,6 +41,7 @@ const BROADWAY_OP_RELEASE_TEXTURE = 14;
 const BROADWAY_OP_SET_NODES = 15;
 const BROADWAY_OP_ROUNDTRIP = 16;
 const BROADWAY_OP_PUT_BUFFER = 17;
+const BROADWAY_OP_SET_CURSOR = 18;
 
 const BROADWAY_EVENT_ENTER = 0;
 const BROADWAY_EVENT_LEAVE = 1;
@@ -623,24 +625,43 @@ TransformNodes.prototype.insertNode = function(parent, previousSibling, is_tople
     case BROADWAY_NODE_CANVAS:
         {
             var rect = this.decode_rect();
-            var texture_id = this.decode_uint32();
-            var image = this.createImage(id);
-            image.width = rect.width;
-            image.height = rect.height;
-            image.style["position"] = "absolute";
-            set_rect_style(image, rect);
-            var texture = textures[texture_id].ref();
-            image.src = texture.url;
-            // Unref blob url when loaded
-            image.onload = function() { texture.unref(); };
-            newNode = image;
+            var canvas = document.createElement("canvas");
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            canvas.style["position"] = "absolute";
+            set_rect_style(canvas, rect);
+            canvas.id = "testCanvas"; // TODO temp hack
+            newNode = canvas;
+        }
+        break;
+
+    case BROADWAY_NODE_TEXT:
+        {
+            var rect = this.decode_rect();
+            var color = this.decode_color();
+            var text = this.decode_string();
+            var div = document.createElement("div");
+            div.width = rect.width;
+            div.height = rect.height;
+            div.style["position"] = "absolute";
+
+            div.style["text-align"] = "center";
+
+            div.style["color"] = color;
+            div.style["font-family"] = "sans-serif";
+            div.style["font-weight"] = "bold";
+            // div.style["font-size"] = "larger";
+
+            set_rect_style(div, rect);
+            div.innerText = text;
+            newNode = div;
         }
         break;
 
     case BROADWAY_NODE_COLOR:
         {
             var rect = this.decode_rect();
-            var c = this.decode_color ();
+            var c = this.decode_color();
             var div = this.createDiv(id);
             div.style["position"] = "absolute";
             set_rect_style(div, rect);
@@ -1222,6 +1243,14 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             }
 
             context.putImageData(newImageData, 0, 0);
+            break;
+
+        case BROADWAY_OP_SET_CURSOR:
+            id = cmd.get_16();
+            surface = surfaces[id];
+            var style = cmd.get_uint8();
+            var styleNames = [ "default", "move" ]
+            surface.div.style.cursor = styleNames[style]; // TODO should we defer this via display ops?
             break;
 
         default:

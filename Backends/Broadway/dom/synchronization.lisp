@@ -1,7 +1,7 @@
 (cl:in-package #:clim-broadway)
 
 (defmethod nodes-equivalent/shallow ((left node) (right node))
-  (and (= (id left) (id right))
+  nil #+later (and (= (id left) (id right))
        (eq (class-of (data left)) (class-of (data right)))))
 
 (defmethod nodes-equivalent/children ((left node) (right node))
@@ -41,7 +41,7 @@
                      ((not (nodes-equivalent/shallow new-node old-node))
                       (remove-node old-node)
                       (insert-node new-node :after sibling)
-                      (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list)))
+                      (sync-nodes (coerce (children new-node) 'list) '() #+later (coerce (children old-node) 'list)))
 
                      ((not (nodes-equivalent/children new-node old-node))
                       (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list)))

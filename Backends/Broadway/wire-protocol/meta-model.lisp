@@ -12,7 +12,7 @@
     (error "unknown value: ~S" number)))
 
 (defmethod symbol->number ((enum enum) (symbol symbol))
-  (if-let ((pair (find symbol (pairs enum) :test #'eql :key #'cdr)))
+  (if-let ((pair (find symbol (pairs enum) :test #'eq :key #'cdr)))
     (car pair)
     (error "unknown symbol: ~S" symbol)))
 
@@ -33,6 +33,10 @@
    (%type :initarg :type
           :reader  type)))
 
+(defmethod print-object ((object field) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (format stream "\"~A\" ~S" (name object) (type object))))
+
 (defclass message ()
   ((%name       :initarg  :name
                 :reader   name)
@@ -41,6 +45,10 @@
    (%print-spec :initarg  :print-spec
                 :reader   print-spec
                 :initform nil)))
+
+(defmethod print-object ((object message) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (format stream "\"~A\" (~D)" (name object) (length (fields object)))))
 
 (defmacro field (name type)
   (let ((type (case type
@@ -103,10 +111,11 @@
          (initarg (make-keyword name))
          (type    (type description))
          (type    (ecase type
-                    (boolean   type)
-                    (:float32  'single-float)
-                    ((1 2 3 4) `(unsigned-byte ,(* 8 type)))
-                    (symbol    `(member ,@(map 'list #'cdr (pairs (symbol-value type))))))))
+                    ((boolean string) type)
+                    (:float32         'single-float)
+                    ((1 2 3 4)        `(unsigned-byte ,(* 8 type)))
+                    (symbol           (let ((pairs (symbol-value type)))
+                                        `(member ,@(map 'list #'cdr pairs)))))))
     `(,name :initarg  ,initarg
             :type     ,type
             :reader   ,name)))
@@ -135,11 +144,17 @@
 (defmethod generate ((description integer) (target (eql :size)) &key)
   description)
 
+(defmethod generate ((description (eql 'string)) (target (eql :size)) &key)
+  `(+ 4 (* 4 (ceiling (length (babel:string-to-octets value :encoding :utf-8)) 4)))) ; TODO hack
+
 (defmethod generate ((description field) (target (eql :size)) &key)
-  (generate (type description) target))
+  (if (eq (type description) 'string)
+      `(let ((value (,(name description) value))) ; TODO hack
+         ,(generate (type description) target))
+      (generate (type description) target)))
 
 (defmethod generate ((description message) (target (eql :size)) &key)
-  (reduce #'+ (fields description) :key (rcurry #'generate target)))
+  `(+ ,@(map 'list (rcurry #'generate target) (fields description))))
 
 ;;;
 
@@ -213,6 +228,14 @@
             (setf (nibbles:ub32ref/le buffer offset) value)
           (incf offset 4)))))
 
+(defmethod generate ((description (eql 'string)) (target (eql :serialize)) &key)
+  `(let* ((octets (babel:string-to-octets value :encoding :utf-8))
+          (length (length octets)))
+     (setf (nibbles:ub32ref/le buffer offset) length)
+     (incf offset 4)
+     (setf (subseq buffer offset) octets)
+     (incf offset length)))
+
 (defmethod generate ((description field) (target (eql :serialize)) &key)
   (let* ((name   (name description))
          (reader name)
@@ -226,7 +249,7 @@
 
 (defmethod generate ((description protocol) (target (eql :serialize)) &key)
   (let* ((fields        (fields description))
-         (protocol-size (reduce #'+ fields :key (rcurry #'generate :size)))
+         (protocol-size (map 'list (rcurry #'generate :size) fields))
          (ids           (ids description)))
     `(progn
        (etypecase value
@@ -236,7 +259,7 @@
                                (size   (generate message :size)))
                           `(,name
                             (let ((buffer (nibbles:make-octet-vector
-                                           ,(+ protocol-size size)))
+                                           (+ ,@protocol-size ,size)))
                                   (offset 0))
                               ;; (declare (dynamic-extent buffer))
                               (let ((value ,number))
