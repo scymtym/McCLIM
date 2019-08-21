@@ -378,9 +378,10 @@ translated, so they begin at different position than [0,0])."))
 
 ;;; XXX: both PM and MM pixmaps should be freed with (xlib:free-pixmap pixmap)
 ;;; when not used. We do not do that right now.
-(defun compute-rgb-mask (drawable image)
-  (let* ((width (pattern-width image))
-         (height (pattern-height image))
+(defun compute-rgb-mask (drawable image &key (width (pattern-width image))
+                                             (height (pattern-height image)))
+  (let* ((width* (pattern-width image))
+         (height* (pattern-height image))
          (idata (climi::pattern-array image)))
     (let* ((mm (xlib:create-pixmap :drawable drawable
                                    :width width
@@ -395,12 +396,10 @@ translated, so they begin at different position than [0,0])."))
                                         :depth  1
                                         :data   mdata)))
       (declare (type (simple-array (unsigned-byte 32) (* *)) idata))
-      (loop for x fixnum from 0 below width do
-           (loop for y fixnum from 0 below height do
-                (let ((elt (aref idata y x)))
-                  (if (< (ldb (byte 8 0) elt) #x80)
-                      (setf (aref mdata y x) 0)
-                      (setf (aref mdata y x) 1)))))
+      (loop for x fixnum from 0 below width
+            do (loop for y fixnum from 0 below height
+                     do (setf (aref mdata y x)
+                              (ldb (byte 1 7) (aref idata (mod y height*) (mod x width*))))))
       (put-image-recursively mm mm-gc mm-image width height 0 0)
       (xlib:free-gcontext mm-gc)
       (push #'(lambda () (xlib:free-pixmap mm)) ^cleanup)
@@ -425,7 +424,7 @@ translated, so they begin at different position than [0,0])."))
                                    :height height
                                    :depth depth))
            (pm-gc (xlib:create-gcontext :drawable pm))
-           (pdata (make-array (list height width) :element-type '(unsigned-byte 32)))
+           (pdata (make-array (list height width) :element-type '(unsigned-byte 32))) ; TODO make-image-data-array
            (pm-image (xlib:create-image :width  width
                                         :height height
                                         :depth  depth
@@ -448,7 +447,12 @@ translated, so they begin at different position than [0,0])."))
          (rgba-pattern (climi::%collapse-pattern ink))
          (pm (compute-rgb-image drawable rgba-pattern))
          (mask (if (typep ink* 'clime:rectangular-tile)
-                   nil
+                   (compute-rgb-mask drawable rgba-pattern :width (ceiling
+                                                                   (bounding-rectangle-width
+                                                                    (sheet-region (medium-sheet medium))))
+                                                           :height (ceiling
+                                                                    (bounding-rectangle-height
+                                                                     (sheet-region (medium-sheet medium)))))
                    (compute-rgb-mask drawable rgba-pattern))))
     (let ((gc (xlib:create-gcontext :drawable drawable)))
       (setf (xlib:gcontext-fill-style gc) :tiled
