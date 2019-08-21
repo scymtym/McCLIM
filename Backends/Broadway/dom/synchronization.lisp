@@ -1,8 +1,8 @@
 (cl:in-package #:clim-broadway)
 
 (defmethod nodes-equivalent/shallow ((left node) (right node))
-  nil #+later (and (= (id left) (id right))
-       (eq (class-of (data left)) (class-of (data right)))))
+  (and (= (id left) (id right))
+       (nodes-equivalent (data left) (data right))))
 
 (defmethod nodes-equivalent/children ((left node) (right node))
   (let ((left-children  (children left))
@@ -20,34 +20,54 @@
                (if node (id node) 0))
              (remove-node (node)
                (vector-push-extend (make-instance 'remove-node :id (id node)) result))
-             (insert-node (node &key after)
-               (vector-push-extend (make-instance 'insert-node
-                                    :parent-id           (maybe-id (parent node))
-                                    :previous-sibling-id (maybe-id after))
-                     result)
+             (insert-node (node &key after (data (data node)))
+               (vector-push-extend
+                (make-instance 'insert-node
+                               :parent-id           (maybe-id (parent node))
+                               :previous-sibling-id (maybe-id after))
+                result)
                (vector-push-extend (id node) result)
-               (vector-push-extend (data node) result))
-             (sync-nodes (new-nodes old-nodes)
+               (vector-push-extend data result))
+             (reuse-node (node &key after)
+               (insert-node node :after after :data (make-instance 'reuse)))
+             (sync-nodes (new-nodes old-nodes &key parent-removed-p)
                (loop :for sibling  =   nil :then (node new-node old-node
-                                                       sibling)
+                                                       :sibling         sibling
+                                                       :parent-removed-p parent-removed-p)
                      :for new-node :in new-nodes
                      :for old-node =   (pop old-nodes)))
-             (node (new-node old-node &optional sibling)
+             (node (new-node old-node &key sibling parent-removed-p)
                ;; let ((old-node (find-node (id new-node) old-tree)))
                (cond ((not old-node)
                       (insert-node new-node :after sibling)
                       (sync-nodes (coerce (children new-node) 'list) '()))
 
                      ((not (nodes-equivalent/shallow new-node old-node))
-                      (remove-node old-node)
+                      (unless parent-removed-p
+                        (remove-node old-node))
                       (insert-node new-node :after sibling)
-                      (sync-nodes (coerce (children new-node) 'list) '() #+later (coerce (children old-node) 'list)))
+                      (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list)
+                                  :parent-removed-p t))
 
                      ((not (nodes-equivalent/children new-node old-node))
-                      (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list)))
+                      (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list)
+                                  :parent-removed-p parent-removed-p))
+
+                     ;; equivalent
+                     (parent-removed-p
+                      (reuse-node old-node :after sibling))
 
                      (t                 ; completely equivalent
                       ))
                new-node))
       (node (root new-tree) (root old-tree)))
     (coerce result 'list))) ; TODO temp
+
+;;;
+
+(defmethod nodes-equivalent ((left standard-object) (right standard-object))
+  (let ((class (class-of left)))
+    (and (eq class (class-of right))
+         (loop :for slot :in (c2mop:class-slots class)
+               :for name = (c2mop:slot-definition-name slot)
+               :always (equal (slot-value left name) (slot-value right name))))))

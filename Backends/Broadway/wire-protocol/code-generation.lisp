@@ -16,17 +16,23 @@
 (defun new-surface (connection id x y width height)
   (write-operation connection (make-instance 'new-surface :id id :x x :y y :width width :height height :temp? nil)))
 
+(defun destroy-surface (connection id)
+  (write-operation connection (make-instance 'destroy-surface :id id)))
+
 (defun show-surface (connection id)
   (write-operation connection (make-instance 'show-surface :id id)))
 
 (defun hide-surface (connection id)
   (write-operation connection (make-instance 'hide-surface :id id)))
 
-(defun destroy-surface (connection id)
-  (write-operation connection (make-instance 'destroy-surface :id id)))
-
 (defun resize-surface (connection id x y width height)
   (write-operation connection (make-instance 'move-resize :id id :flags 3 :x x :y y :width width :height height)))
+
+(defun raise-surface (connection id)
+  (write-operation connection (make-instance 'raise-surface :id id)))
+
+(defun lower-surface (connection id)
+  (write-operation connection (make-instance 'lower-surface :id id)))
 
 (defun upload-texture (connection id data)
   (append-message-chunk connection (make-instance 'upload-texture :id id :size (length data)))
@@ -78,8 +84,8 @@
 
         (send-message connection))
 
-(defun put-buffer (connection new-pixels old-pixels)
-  (append-message-chunk connection (make-instance 'put-buffer))
+(defun put-buffer (connection surface-id new-pixels old-pixels)
+  (append-message-chunk connection (make-instance 'put-buffer :id surface-id))
 
   (let* ((width  (array-dimension new-pixels 1))
          (height (array-dimension new-pixels 0))

@@ -5,8 +5,10 @@
   ((%listen-port       :initarg  :listen-port
                        :reader   listen-port
                        :writer   (setf %listen-port))
-   (%next-surface-id   :accessor next-surface-id
-                       :initform 0)
+   ;;
+   (%surface-manager   :reader   surface-manager
+                       :initform (make-instance 'surface-manager))
+   ;;
    (%queued-operations :accessor queued-operations
                        :initform '())
    (%pointer           :reader   port-pointer
@@ -91,7 +93,12 @@
    (%old-back-buffer :accessor old-back-buffer
                      :initform nil)
    (%new-back-buffer :accessor new-back-buffer
-                     :initform nil)))
+                     :initform nil)
+   ;; HACK
+   (%createdp        :accessor createdp
+                     :initform nil)
+   (%upload-pending-p :accessor upload-pending-p
+                      :initform nil)))
 
 #+unused (defmethod make-node ((surface surface) (data t) &key parent)
   (let ((id (next-node-id surface)))
@@ -135,6 +142,7 @@
     (with-port-locked (port)
       (appendf (queued-operations port)
                (list (lambda (stream)
+                       (destroy-surface* (surface-manager port) mirror)
                        (destroy-surface stream id)))))
 
     (climi::port-unregister-mirror port mirrored-sheet mirror)))
@@ -142,16 +150,19 @@
 (defmethod clim:realize-mirror ((port           broadway-port)
                                 (mirrored-sheet t))
                                         ; (setf (sheet-parent pixmap) (graft port))
-  (let* ((id     (incf (next-surface-id port)))
-         (mirror (make-instance 'surface :id id :name (clime:sheet-pretty-name mirrored-sheet))) ; TODO sheet may be unnamed
+  (let* ((mirror (make-surface (surface-manager port)
+                               :name  (clime:sheet-pretty-name mirrored-sheet) ; TODO sheet may be unnamed
+                               :sheet mirrored-sheet))
+         (id     (id mirror))
          (showp  (sheet-enabled-p mirrored-sheet)))
 
     (with-port-locked (port)
       (appendf (queued-operations port)
-               (list (lambda (stream)
-                       (new-surface stream id (random 500) (random 500) 100 100)
+               (list (lambda (connection)
+                       (new-surface connection id 0 0 100 100)
                        (when showp
-                         (show-surface stream id))))))
+                         (show-surface connection id))
+                       (setf (createdp mirror) t)))))
     (climi::port-register-mirror port mirrored-sheet mirror)
 
     ; (make-texture mirror 0 0 0 0)
@@ -168,18 +179,11 @@
     mirror))
 
 (defmethod climb:port-set-mirror-name ((port broadway-port) (mirror t) (name t))
-  (setf (name mirror) name)
-  (let ((surface mirror))
-    (with-port-locked (port)
-      (appendf (queued-operations port)
-               (list (lambda (connection)
-                       (let ((ops (synchronize (tree surface) (tree surface))))
-                         (set-nodes2 connection (id surface) ops))))))))
+  (setf (name mirror) name))
 
 (defmethod climb:port-set-mirror-transformation ((port                  broadway-port)
                                                  (mirror                surface)
                                                  (mirror-transformation t))
-  (break)
   (let ((sheet (climi::port-lookup-sheet port mirror)))
     (with-port-locked (port)
       (appendf (queued-operations port)
@@ -192,11 +196,11 @@
 (defmethod climb:port-set-mirror-region ((port          broadway-port)
                                          (mirror        surface)
                                          (mirror-region t))
-  (let ((surface mirror))
+  (let* ((surface mirror)
+         (sheet   (climi::port-lookup-sheet port mirror)))
     (with-bounding-rectangle* (x1 y1 x2 y2)
-        (print (transform-region (climi::%sheet-mirror-transformation
-                            (climi::port-lookup-sheet port mirror))
-                           mirror-region))
+        (print (transform-region (climi::%sheet-mirror-transformation sheet)
+                                 mirror-region))
       (with-port-locked (port)
         (appendf (queued-operations port)
                  (list (lambda (connection)
@@ -220,13 +224,11 @@
                                            (max 0 effective-x1) (max 0 effective-y1)
                                            effective-width effective-height)
 
-                           (setf (values (textures surface) (tiles surface))
-                                 (apply #'resize-surface-nodes (tree surface)
-                                        (append (nodes surface) (list width height))))
-
-                           (let ((ops (synchronize (old-tree surface) (tree surface))))
-                             (setf (old-tree surface) (tree surface))
-                             (set-nodes2 connection (id surface) ops))))))))))
+                           (unless (and (= (width surface) (- x2 x1))
+                                        (= (height surface) (- y2 y1)))
+                             (setf (values (textures surface) (tiles surface))
+                                   (apply #'resize-surface-nodes (tree surface)
+                                          (append (nodes surface) (list width height)))))))))))))
 
 (defmethod climb:port-enable-sheet ((port  broadway-port)
                                     (sheet mirrored-sheet-mixin))

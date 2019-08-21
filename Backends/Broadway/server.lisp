@@ -56,7 +56,7 @@
                                                       *load-truename*)))
                   stream)))
 
-(defun upload-image (connection id image)
+#+unused (defun upload-image (connection id image)
   (let* ((width  (pattern-width image))
          (height (pattern-height image))
          (array  (let ((a (clime:pattern-array image))
@@ -116,167 +116,179 @@
           :collect (print event)
           :do (setf offset new-offset))))
 
-(defvar *dragging* nil)
-
 (defun handle-incoming-event (port connection event)
-  (typecase event
-    (screen-size-changed
-     (setf (slot-value (graft port) 'region)
-           (make-bounding-rectangle 0 0 (width event) (height event)))
-     nil)
+  (or (handle-event (surface-manager port) event)
 
-    (pointer-move
-     (setf (%pointer-position (port-pointer port)) (list (root-x event) (root-y event)))
+      (typecase event
+        (screen-size-changed
+         (setf (slot-value (graft port) 'region)
+               (make-bounding-rectangle 0 0 (width event) (height event)))
+         nil)
 
-     (when-let ((sheet (surface->sheet port (surface event))))
-       (if *dragging*
-           (progn
-             (destructuring-bind (start-x . start-y) *dragging*
-               (setf (sheet-transformation sheet)
-                     (make-translation-transformation (- (root-x event) start-x) (- (root-y event) start-y)))
-               ; (:update-inspector)
-               )
-             nil)
-           (progn
-             (distribute-event
-              port (make-instance 'pointer-motion-event
-                                  :sheet sheet
-                                  :x (root-x event)
-                                  :y (- (root-y event) 20)
-                                  :graft-x (root-x event)
-                                  :graft-y (root-y event)
-                                  :modifier-state 0))
-             sheet))))
+        (pointer-move
+         (setf (%pointer-position (port-pointer port)) (list (root-x event) (root-y event)))
 
-    ((or button-press button-release)
-     (cond ((and (<= (win-y event ) 20)
-                 (not *dragging*)
-                 (typep event 'button-press))
-            (setf *dragging* (cons (root-x event) (root-y event)))
-            nil)
-           ((and *dragging* (typep event 'button-release))
-            (setf *dragging* nil)
-            nil)
-           (t
-            (when-let ((sheet (surface->sheet port (surface event))))
-              (distribute-event
-               port (make-instance (if (typep event 'button-press)
-                                       'pointer-button-press-event
-                                       'pointer-button-release-event)
-                                   :sheet sheet
-                                   :x (root-x event)
-                                   :y (- (root-y event) 20)
-                                   :graft-x (root-x event)
-                                   :graft-y (root-y event)
-                                   :button (ecase (button event)
-                                             (1 +pointer-left-button+)
-                                             (2 +pointer-middle-button+)
-                                             (3 +pointer-right-button+))
-                                   :modifier-state 0))
-              sheet))))
+         (when-let ((sheet (surface->sheet port (surface event))))
+           (distribute-event
+            port (make-instance 'pointer-motion-event
+                                :sheet sheet
+                                :x (root-x event)
+                                :y (- (root-y event) 20)
+                                :graft-x (root-x event)
+                                :graft-y (root-y event)
+                                :modifier-state 0))))
 
-    (scroll
-     (when-let ((sheet (surface->sheet port (surface event))))
-       (distribute-event
-        port (make-instance 'climi::pointer-scroll-event
-                            :sheet sheet
-                            :x (root-x event)
-                            :y (- (root-y event) 20)
-                            :graft-x (root-x event)
-                            :graft-y (root-y event)
-                            :delta-x 0
-                            :delta-y (case (direction event)
-                                       (0 -1)
-                                       (1 1))
-                            :modifier-state 0))
-       sheet))
+        ((or button-press button-release)
+         (when-let ((sheet (surface->sheet port (surface event))))
+           (distribute-event
+            port (make-instance (if (typep event 'button-press)
+                                    'pointer-button-press-event
+                                    'pointer-button-release-event)
+                                :sheet sheet
+                                :x (root-x event)
+                                :y (- (root-y event) 20)
+                                :graft-x (root-x event)
+                                :graft-y (root-y event)
+                                :button (ecase (button event)
+                                          (1 +pointer-left-button+)
+                                          (2 +pointer-middle-button+)
+                                          (3 +pointer-right-button+))
+                                :modifier-state 0))))
 
-    ((or key-press key-release)
-     (when-let* ((sheet           (climi::port-pointer-sheet port))
-                 (top-level-sheet (sheet-mirrored-ancestor sheet))
-                 (keysym          (keysym event)))
-       (cond ((= keysym 65505)        ; shift
-              )
+        (scroll
+         (when-let ((sheet (surface->sheet port (surface event))))
+           (distribute-event
+            port (make-instance 'climi::pointer-scroll-event
+                                :sheet sheet
+                                :x (root-x event)
+                                :y (- (root-y event) 20)
+                                :graft-x (root-x event)
+                                :graft-y (root-y event)
+                                :delta-x 0
+                                :delta-y (case (direction event)
+                                           (0 -1)
+                                           (1 1))
+                                :modifier-state 0))))
 
-             (t
-              (when-let* ((key-name (case keysym
-                                      (65293 #\Return)
-                                      (65288 #\Backspace)
-                                      (65289 #\Tab)
-                                      (65362 :up)
-                                      (65364 :down)
-                                      (t     (code-char keysym)))))
-                (distribute-event
-                 port (make-instance (if (typep event 'key-press)
-                                         'key-press-event
-                                         'key-release-event)
-                                     :sheet sheet
-                                     :x 0 ; (root-x eent)
-                                     :y 0 ; (- (root-y eent) 20)
-                                     :key-name key-name
-                                     :key-character (when (characterp key-name)
-                                                      key-name)
-                                     :modifier-state (modifier-state connection))))))
-       top-level-sheet))
+        ((or key-press key-release)
+         (when-let* ((sheet           (climi::port-pointer-sheet port))
+                     (top-level-sheet (sheet-mirrored-ancestor sheet))
+                     (keysym          (keysym event)))
+           (cond ((= keysym 65505)      ; shift
+                  )
 
-    ((or enter leave)
-     (let ((surface (surface event))
+                 (t
+                  (when-let* ((key-name (case keysym
+                                          (65293 #\Return)
+                                          (65288 #\Backspace)
+                                          (65289 #\Tab)
+                                          (65362 :up)
+                                          (65364 :down)
+                                          (t     (code-char keysym)))))
+                    (distribute-event
+                     port (make-instance (if (typep event 'key-press)
+                                             'key-press-event
+                                             'key-release-event)
+                                         :sheet sheet
+                                         :x 0 ; (root-x eent)
+                                         :y 0 ; (- (root-y eent) 20)
+                                         :key-name key-name
+                                         :key-character (when (characterp key-name)
+                                                          key-name)
+                                         :modifier-state (modifier-state connection))))))
+           top-level-sheet))
+
+        ((or enter leave)
+         (let ((surface (surface event))
                                         ; (node    (id event))
-           )
-       (print event))
-     nil)))
+               )
+           (print event))
+         nil))))
 
 (defun request-frame-data (port connection sheet)
   (when-let ((mirror (climi::port-lookup-mirror port sheet))) ; TODO hack
-    (flet ((upload-frame-data (pixels dirty-region)
-             (print (list "uploading frame for " sheet) *trace-output*)
-             #+old (lambda (connection)
-                     (when (slot-value surface 'mcclim-render-internals::dirty-region)
-                       (loop :with pixels = (clime:pattern-array
-                                             (mcclim-render-internals::image-mirror-image mirror))
-                             :with dirty  = (slot-value surface 'mcclim-render-internals::dirty-region)
-                             :for texture :in (textures surface)
-                             :for tile    :in (tiles surface)
-                             :when (or (not dirty)
-                                       (region-intersects-region-p (region tile) dirty))
-                             :do (upload-texture connection (id (data texture)) (tile->png tile pixels))
-                                 (patch-texture connection (id surface) (id texture) (id (data texture))))
-                       (setf (slot-value surface 'mcclim-render-internals::dirty-region) nil))
-                     ;; (write-operation stream 0 (make-instance 'roundtrip :id 0 :tag 0 ))
-                     )
-             (with-port-locked (port)
-               (appendf (queued-operations port)
-                        (list (lambda (connection)
-                                (time (put-buffer connection pixels (or (new-back-buffer mirror)
-                                                                        (error "no back-buffer"))))
-                                (shiftf (old-back-buffer mirror) (new-back-buffer mirror) pixels)))))))
-      (distribute-event port (make-instance 'get-frame-data-event
-                                            :sheet    sheet
-                                            :pixels   (old-back-buffer mirror)
-                                            :callback #'upload-frame-data)))))
+    (setf (upload-pending-p mirror) t)
+    (when (old-back-buffer mirror)
+      (flet ((upload-frame-data (pixels dirty-region)
+               (print (list "uploading frame for " sheet) *trace-output*)
+               #+old (lambda (connection)
+                       (when (slot-value surface 'mcclim-render-internals::dirty-region)
+                         (loop :with pixels = (clime:pattern-array
+                                               (mcclim-render-internals::image-mirror-image mirror))
+                               :with dirty  = (slot-value surface 'mcclim-render-internals::dirty-region)
+                               :for texture :in (textures surface)
+                               :for tile    :in (tiles surface)
+                               :when (or (not dirty)
+                                         (region-intersects-region-p (region tile) dirty))
+                               :do (upload-texture connection (id (data texture)) (tile->png tile pixels))
+                                   (patch-texture connection (id surface) (id texture) (id (data texture))))
+                         (setf (slot-value surface 'mcclim-render-internals::dirty-region) nil))
+                       ;; (write-operation stream 0 (make-instance 'roundtrip :id 0 :tag 0 ))
+                       )
+               (with-port-locked (port)
+                 (appendf (queued-operations port)
+                          (list (lambda (connection)
+                                  (time (put-buffer connection (id mirror)
+                                                    pixels (or (new-back-buffer mirror)
+                                                               (error "no back-buffer"))))
+                                  (setf (slot-value mirror 'mcclim-render-internals::dirty-region) nil)
+                                  (shiftf (old-back-buffer mirror) (new-back-buffer mirror) pixels)
+                                  (setf (upload-pending-p mirror) nil)))))))
+        (distribute-event port (make-instance 'get-frame-data-event
+                                              :sheet    sheet
+                                              :pixels   (old-back-buffer mirror)
+                                              :callback #'upload-frame-data))))))
 
 (defun serve-socket (socket port)
   (let* ((stream     (usocket:socket-stream socket))
          (connection (make-instance 'connection :stream stream)))
     (establish-websocket socket)
 
-    (loop :for dirty-sheets = '()
-          :do (loop :for op = (with-port-locked (port)
+    (loop :do (loop :while (listen stream)
+                    :do (loop :for event :in (receive-message connection)
+                              :do (with-simple-restart (continue "Skip the event")
+                                    (handle-incoming-event port connection event))))
+              (loop :for op = (with-port-locked (port)
                                 (pop (queued-operations port)))
                     :while op
                     :do (with-simple-restart (continue "Skip the operation")
                           (funcall op connection)))
-              (loop :while (listen stream)
-                    :do (loop :for event :in (receive-message connection)
-                              :for sheet = (with-simple-restart (continue "Skip the event")
-                                             (handle-incoming-event port connection event))
-                              :when sheet
-                              :do (pushnew sheet dirty-sheets :test #'eq)))
               (sleep .01)
-          :when dirty-sheets
-          :do  (print (list "dirty sheets " dirty-sheets))
-               (map nil (curry #'request-frame-data port connection)
-                    dirty-sheets))))
+
+          :do (when-let ((dirty-surfaces (remove-if-not #'nodes-dirty-p (surfaces (surface-manager port)))))
+                ; (print (list "dirty nodes " dirty-surfaces))
+                (dolist (surface dirty-surfaces)
+                  (when (createdp surface)
+                    (let ((ops (synchronize (old-tree surface) (tree surface))))
+                      (setf (old-tree surface) (tree surface))
+                      (multiple-value-bind (new-tree seen)
+                          (copy (tree surface) (make-hash-table :test #'eq))
+                        (setf (%tree surface) new-tree)
+                        (setf (%nodes surface) (map 'list (rcurry #'gethash seen) (nodes surface))))
+                      (setf (nodes-dirty-p surface) nil)
+                      (when ops
+                        (set-nodes2 connection (id surface) ops))))))
+
+
+          :do (when-let ((dirty-sheets (remove-if-not (lambda (surface)
+                                                        (slot-value surface 'mcclim-render-internals::dirty-region))
+                                                      (surfaces (surface-manager port)))))
+                ; (print (list "dirty sheets " dirty-sheets))
+                (map nil (lambda (sheet)
+                           (with-simple-restart (continue "Skip requesting the frame data")
+                             (request-frame-data port connection sheet)))
+                     (mapcan (lambda (surface)
+                               (when (and (createdp surface) (not (upload-pending-p surface))
+                                          )
+                                 (when-let ((sheet (gethash surface (slot-value port 'climi::mirror->sheet))))
+                                   (list sheet))))
+                          dirty-sheets))))))
+
+(defun lookup-surface (port id)
+  (when-let* ((mirror->sheet (slot-value port 'climi::mirror->sheet)))
+    (find id (remove-if-not (of-type 'surface)
+                            (hash-table-keys mirror->sheet))
+          :test #'eql :key #'id)))
 
 (defun surface->sheet (port id)
   (when-let* ((mirror->sheet (slot-value port 'climi::mirror->sheet))

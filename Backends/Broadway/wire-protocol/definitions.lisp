@@ -80,7 +80,8 @@
    (id  2)
    (tag 4))
 
-  ((put-buffer 17))
+  ((put-buffer 17)
+   (id 2))
 
   ((set-cursor 18 :print-spec ("~D ~D" id style))
    (id    2)
@@ -123,10 +124,7 @@
    (width  :float32)
    (height :float32)
 
-   (red    1)
-   (green  1)
-   (blue   1)
-   (alpha  1))
+   (color  4))
 
   ((border 3)
    (x             :float32)
@@ -193,7 +191,8 @@
    (x      :float32)
    (y      :float32)
    (width  :float32)
-   (height :float32))
+   (height :float32)
+   (id     4))
 
   ((text 15 :print-spec ("\"~A\"" text))
    (x      :float32)
