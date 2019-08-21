@@ -3,6 +3,8 @@
 (defclass surface (surface1)
   ((%name        :initarg  :name
                  :accessor name)
+   (%sheet       :initarg  :sheet
+                 :reader   sheet)
    ;; Nodes
    (%old-tree    :accessor old-tree
                  :initform (make-instance 'tree))
@@ -16,6 +18,12 @@
 
 (defmethod initialize-instance :after ((instance surface) &key)
   (setf (values (%tree instance) (%nodes instance)) (make-surface-tree instance)))
+
+(defmethod nodes-dirty-p ((surface surface))
+  (dirty-p (tree surface)))
+
+(defmethod (setf nodes-dirty-p) ((new-value t) (surface surface))
+  (setf (dirty-p (tree surface)) new-value))
 
 (defun make-surface-tree (surface)
   (multiple-value-bind (shadow border title-bar title-text close-button content)
@@ -93,10 +101,7 @@
                            :width  1.0f0
                            :height (float title-bar-height 0.0f0)
 
-                           :red    (ldb (byte 8  0) title-bar-color)
-                           :green  (ldb (byte 8  8) title-bar-color)
-                           :blue   (ldb (byte 8 16) title-bar-color)
-                           :alpha  (ldb (byte 8 24) title-bar-color))
+                           :color  title-bar-color)
             (make-instance 'text
                            :x      0.0f0
                            :y      0.0f0
@@ -125,13 +130,14 @@
             (make-instance 'canvas :x      0.0f0
                                    :y      (float title-bar-height 0.0f0)
                                    :width  1.0f0
-                                   :height 1.0f0)
+                                   :height 1.0f0
+                                   :id     (id surface))
             #+no (make-instance 'transform :kind  0
                                       :dx    0.0f0
                                       :dy   20.0f0))))
 
 (defun resize-surface-nodes (tree shadow border title-bar title-text close-button content width height)
-  ; (declare (ignore content))
+                                        ; (declare (ignore content))
   (let* ((border-width     4)
 
          (title-bar-height 20)
@@ -139,23 +145,39 @@
          (effective-width  (+ width (* 2 border-width)))
          (effective-height (+ height title-bar-height (* 2 border-width)))
 
-         ; (tiles            (make-tiles width height 256))
+                                        ; (tiles            (make-tiles width height 256))
          )
-    (reinitialize-instance (data shadow)       :width  (float effective-width  1.0f0)
-                                               :height (float effective-height 1.0f0))
-    (reinitialize-instance (data border)       :width  (float effective-width  1.0f0)
-                                               :height (float effective-height 1.0f0))
-    (reinitialize-instance (data title-bar)    :width  (float width            1.0f0))
-    (reinitialize-instance (data title-text)   :width  (float width            1.0f0))
-    (reinitialize-instance (data close-button) :x      (float (- width title-bar-height) 1.0f0))
-    (reinitialize-instance (data content)      :width  (float width            1.0f0)
-                                               :height (float height           1.0f0))
-    ; (values (make-tile-nodes tree content tiles) tiles)
+    (update-node shadow       :width  (float effective-width  1.0f0)
+                              :height (float effective-height 1.0f0))
+    (update-node border       :width  (float effective-width  1.0f0)
+                              :height (float effective-height 1.0f0))
+    (update-node title-bar    :width  (float width            1.0f0))
+    (update-node title-text   :width  (float width            1.0f0))
+    (update-node close-button :x      (float (- width title-bar-height) 1.0f0))
+    (update-node content      :width  (float width            1.0f0)
+                              :height (float height           1.0f0))
+                                        ; (values (make-tile-nodes tree content tiles) tiles)
     ))
+
+(defmethod width ((object surface))
+  (width (data (nth 4 (nodes object)))))
+
+(defmethod height ((object surface))
+  (height (data (nth 4 (nodes object)))))
 
 (defmethod (setf name) :after ((new-value string) (object surface))
   (let ((title-text (nth 3 (nodes object))))
-    (reinitialize-instance (data title-text) :text new-value)))
+    (update-node title-text :text new-value)))
+
+(defmethod (setf focusedp) ((new-value t) (object surface))
+  (let ((color     (if new-value #xff303030 #xff606060))
+        (border    (nth 1 (nodes object)))
+        (title-bar (nth 2 (nodes object))))
+    (update-node border :top-color    color
+                        :right-color  color
+                        :left-color   color
+                        :bottom-color color)
+    (update-node title-bar :color color)))
 
 ;;; Old
 

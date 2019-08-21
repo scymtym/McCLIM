@@ -14,7 +14,8 @@
 
 ;;; Panes
 
-(defclass top-level-sheet-pane (mirrored-sheet-mixin
+(defclass top-level-sheet-pane (climi::always-repaint-background-mixin
+                                mirrored-sheet-mixin
                                 climi::top-level-sheet-pane)
   ()
   (:default-initargs

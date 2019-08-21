@@ -599,7 +599,9 @@ TransformNodes.prototype.insertNode = function(parent, previousSibling, is_tople
     {
     case BROADWAY_NODE_REUSE: /* Reuse divs from last frame */
         {
+            // console.log("available nodes", this.nodes);
             oldNode = this.nodes[id];
+            // console.log("reusing node", id, oldNode);
         }
         break;
 
@@ -625,12 +627,14 @@ TransformNodes.prototype.insertNode = function(parent, previousSibling, is_tople
     case BROADWAY_NODE_CANVAS:
         {
             var rect = this.decode_rect();
+            var canvasId = this.decode_uint32();
             var canvas = document.createElement("canvas");
+            this.nodes[id] = canvas;
+            textures[canvasId] = canvas
             canvas.width = rect.width;
             canvas.height = rect.height;
             canvas.style["position"] = "absolute";
             set_rect_style(canvas, rect);
-            canvas.id = "testCanvas"; // TODO temp hack
             newNode = canvas;
         }
         break;
@@ -640,7 +644,7 @@ TransformNodes.prototype.insertNode = function(parent, previousSibling, is_tople
             var rect = this.decode_rect();
             var color = this.decode_color();
             var text = this.decode_string();
-            var div = document.createElement("div");
+            var div = this.createDiv(id);
             div.width = rect.width;
             div.height = rect.height;
             div.style["position"] = "absolute";
@@ -903,6 +907,7 @@ TransformNodes.prototype.execute = function(display_commands)
         var op = this.decode_uint32();
         var parentId, parent;
 
+        // console.log("before", this.nodes);
         switch (op) {
         case BROADWAY_NODE_OP_INSERT_NODE:
             parentId = this.decode_uint32();
@@ -923,10 +928,11 @@ TransformNodes.prototype.execute = function(display_commands)
         case BROADWAY_NODE_OP_REMOVE_NODE:
             var removeId = this.decode_uint32();
             var remove = this.nodes[removeId];
+            console.log("remove ", removeId)
+
             delete this.nodes[removeId];
             if (remove == null)
                 console.log("Wanted to delete node " + removeId + " but it is unknown");
-
             this.display_commands.push([DISPLAY_OP_DELETE_NODE, remove]);
             break;
         case BROADWAY_NODE_OP_MOVE_AFTER_CHILD:
@@ -958,6 +964,7 @@ TransformNodes.prototype.execute = function(display_commands)
             break;
         }
 
+        // console.log("after", this.nodes);
     }
 }
 
@@ -1225,7 +1232,8 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             break;
 
         case BROADWAY_OP_PUT_BUFFER:
-            var canvas = document.getElementById("testCanvas");
+            id = cmd.get_16();
+            var canvas = textures[id];
             var context = canvas.getContext("2d");
             var width = canvas.width;
             var height = canvas.height;
