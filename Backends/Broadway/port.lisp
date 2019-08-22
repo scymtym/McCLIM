@@ -29,9 +29,11 @@
     ;;
     (setf (%listen-port instance) port)
     (setf (slot-value instance 'climi::event-process)
-          (clim-sys:make-process (curry #'run-server
-                                        :port     (listen-port instance)
-                                        :the-port instance)))))
+          (clim-sys:make-process
+           (curry #'run-server
+                  :port     (listen-port instance)
+                  :the-port instance)
+           :name (format nil "~A's event process" instance)))))
 
 #+later (defun parse-path (path)
   (destructuring-bind (type &key (port 9090)) path

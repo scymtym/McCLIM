@@ -132,8 +132,8 @@
            (distribute-event
             port (make-instance 'pointer-motion-event
                                 :sheet sheet
-                                :x (root-x event)
-                                :y (- (root-y event) 20)
+                                :x (win-x event)
+                                :y (- (win-y event) 20)
                                 :graft-x (root-x event)
                                 :graft-y (root-y event)
                                 :modifier-state 0))))
@@ -145,8 +145,8 @@
                                     'pointer-button-press-event
                                     'pointer-button-release-event)
                                 :sheet sheet
-                                :x (root-x event)
-                                :y (- (root-y event) 20)
+                                :x (win-x event)
+                                :y (- (win-y event) 20)
                                 :graft-x (root-x event)
                                 :graft-y (root-y event)
                                 :button (ecase (button event)
@@ -160,8 +160,8 @@
            (distribute-event
             port (make-instance 'climi::pointer-scroll-event
                                 :sheet sheet
-                                :x (root-x event)
-                                :y (- (root-y event) 20)
+                                :x (win-x event)
+                                :y (- (win-y event) 20)
                                 :graft-x (root-x event)
                                 :graft-y (root-y event)
                                 :delta-x 0
