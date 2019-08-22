@@ -1,8 +1,8 @@
 (defsystem "mcclim-broadway"
   :depends-on ("nibbles"
-               "utilities.binary-dump"
+               "utilities.binary-dump" ; TODO not anymore
                "ironclad"
-               "cl-base64"
+               "cl-base64" ; TODO not anymore
 
                "usocket"
 
