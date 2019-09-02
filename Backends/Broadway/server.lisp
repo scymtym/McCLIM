@@ -117,93 +117,86 @@
           :do (setf offset new-offset))))
 
 (defun handle-incoming-event (port connection event)
-  (or (handle-event (surface-manager port) event)
-
-      (typecase event
-        (screen-size-changed
-         (setf (slot-value (graft port) 'region)
-               (make-bounding-rectangle 0 0 (width event) (height event)))
-         nil)
-
-        (pointer-move
-         (setf (%pointer-position (port-pointer port)) (list (root-x event) (root-y event)))
-
-         (when-let ((sheet (surface->sheet port (surface event))))
+  (flet ((translate-event (event sheet class
+                           &rest initargs &key (x (win-x event))
+                                               (y (win-y event))
+                                               (graft-x (root-x event))
+                                               (graft-y (root-y event))
+                           &allow-other-keys)
            (distribute-event
-            port (make-instance 'pointer-motion-event
-                                :sheet sheet
-                                :x (win-x event)
-                                :y (- (win-y event) 20)
-                                :graft-x (root-x event)
-                                :graft-y (root-y event)
-                                :modifier-state 0))))
+            port (apply #'make-instance class :sheet sheet
+                                              :x x :y y :graft-x graft-x :graft-y graft-y
+                                              initargs))))
+    (or (handle-event (surface-manager port) event)
 
-        ((or button-press button-release)
-         (when-let ((sheet (surface->sheet port (surface event))))
-           (distribute-event
-            port (make-instance (if (typep event 'button-press)
-                                    'pointer-button-press-event
-                                    'pointer-button-release-event)
-                                :sheet sheet
-                                :x (win-x event)
-                                :y (- (win-y event) 20)
-                                :graft-x (root-x event)
-                                :graft-y (root-y event)
-                                :button (ecase (button event)
-                                          (1 +pointer-left-button+)
-                                          (2 +pointer-middle-button+)
-                                          (3 +pointer-right-button+))
-                                :modifier-state 0))))
+        (typecase event
+          (screen-size-changed
+           (setf (slot-value (graft port) 'region)
+                 (make-bounding-rectangle 0 0 (width event) (height event)))
+           nil)
 
-        (scroll
-         (when-let ((sheet (surface->sheet port (surface event))))
-           (distribute-event
-            port (make-instance 'climi::pointer-scroll-event
-                                :sheet sheet
-                                :x (win-x event)
-                                :y (- (win-y event) 20)
-                                :graft-x (root-x event)
-                                :graft-y (root-y event)
-                                :delta-x 0
-                                :delta-y (case (direction event)
-                                           (0 -1)
-                                           (1 1))
-                                :modifier-state 0))))
+          (pointer-move
+           (setf (%pointer-position (port-pointer port)) (list (root-x event) (root-y event)))
 
-        ((or key-press key-release)
-         (when-let* ((sheet           (climi::port-pointer-sheet port))
-                     (top-level-sheet (sheet-mirrored-ancestor sheet))
-                     (keysym          (keysym event)))
-           (cond ((= keysym 65505)      ; shift
-                  )
+           (when-let ((sheet (surface->sheet port (surface event))))
+             (setf (climi::port-pointer-sheet port) sheet)
+             (translate-event event sheet 'pointer-motion-event :modifier-state 0)))
 
-                 (t
-                  (when-let* ((key-name (case keysym
-                                          (65293 #\Return)
-                                          (65288 #\Backspace)
-                                          (65289 #\Tab)
-                                          (65362 :up)
-                                          (65364 :down)
-                                          (t     (code-char keysym)))))
-                    (distribute-event
-                     port (make-instance (if (typep event 'key-press)
-                                             'key-press-event
-                                             'key-release-event)
-                                         :sheet sheet
-                                         :x 0 ; (root-x eent)
-                                         :y 0 ; (- (root-y eent) 20)
-                                         :key-name key-name
-                                         :key-character (when (characterp key-name)
-                                                          key-name)
-                                         :modifier-state (modifier-state connection))))))
-           top-level-sheet))
+          ((or button-press button-release)
+           (when-let ((sheet (surface->sheet port (surface event))))
+             (setf (climi::port-pointer-sheet port) sheet)
+             (translate-event
+              event sheet (if (typep event 'button-press)
+                              'pointer-button-press-event
+                              'pointer-button-release-event)
+              :button (ecase (button event)
+                        (1 +pointer-left-button+)
+                        (2 +pointer-middle-button+)
+                        (3 +pointer-right-button+))
+              :modifier-state 0)))
 
-        ((or enter leave)
-         (let ((surface (surface event))
+          (scroll
+           (when-let ((sheet (surface->sheet port (surface event))))
+             (setf (climi::port-pointer-sheet port) sheet)
+             (translate-event event sheet 'climi::pointer-scroll-event
+                              :delta-x 0
+                              :delta-y (case (direction event)
+                                         (0 -1)
+                                         (1 1))
+                              :modifier-state 0)))
+
+          ((or key-press key-release)
+           (when-let* ((sheet           (climi::port-pointer-sheet port))
+                       (top-level-sheet (sheet-mirrored-ancestor sheet))
+                       (keysym          (keysym event)))
+             (cond ((= keysym 65505)    ; shift
+                    )
+
+                   (t
+                    (when-let* ((key-name (case keysym
+                                            (65293 #\Return)
+                                            (65288 #\Backspace)
+                                            (65289 #\Tab)
+                                            (65362 :up)
+                                            (65364 :down)
+                                            (t     (code-char keysym)))))
+                      (translate-event
+                       event sheet (if (typep event 'key-press)
+                                       'key-press-event
+                                       'key-release-event)
+                       :x 0 :y 0 :graft-x 0 :graft-y 0
+                       :key-name key-name
+                       :key-character (when (characterp key-name)
+                                        key-name)
+                       :modifier-state (modifier-state connection)))))
+             top-level-sheet))
+
+          ((or enter leave)
+           (let ((surface (surface event))
                                         ; (node    (id event))
-               )
-           (print event))
-         nil))))
+                 )
+             (print event))
+           nil)))))
 
 (defun request-frame-data (port connection sheet)
   (when-let ((mirror (climi::port-lookup-mirror port sheet))) ; TODO hack
