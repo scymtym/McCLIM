@@ -93,4 +93,5 @@
         (labelling (:label "Face") face)
         (labelling (:label "Rectangle") rectangle))
       (labelling (:label "Size") size)
-      (:fill canvas)))))
+      (:fill canvas))))
+  (:menu-bar nil))

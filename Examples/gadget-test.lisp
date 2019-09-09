@@ -31,14 +31,6 @@
 	:frame-manager (make-instance frame-manager-name :port (find-port)))
        (make-application-frame 'gadget-test))))
 
-(defun run-pixie-test (name)
-  (when name
-    (run-frame-top-level
-     (make-application-frame
-      name
-      :frame-manager (make-instance 'clim-internals::pixie/clx-look
-		       :port (find-port))))))
-
 (defmethod gadget-test-frame-top-level
     ((frame application-frame)
      &key (command-parser 'command-line-command-parser)
@@ -80,10 +72,6 @@
                     :menu '(("Search" :command test)
                             ("Search" :command test)
                             ("Search" :command test)))
-
-(define-command test ()
-  (format *error-output* "That was just a test~%")
-  (finish-output *error-output*))
 
 (macrolet ((make-pane-constructor (class-name)
              `(defmacro ,class-name (&rest options)
@@ -220,7 +208,12 @@
 	     scroll
 	     radio-box
 	     check-box)))))
-    (:top-level (gadget-test-frame-top-level . nil)))
+    ; (:top-level (gadget-test-frame-top-level . nil))
+  )
+
+(define-command (test :command-table gadget-test) ()
+  (format *trace-output* "That was just a test~%")
+  (finish-output *trace-output*))
 
 (defmethod run-frame-top-level :around ((frame gadget-test) &key &allow-other-keys)
   ;; FIXME: Timer events appear to have rotted.
