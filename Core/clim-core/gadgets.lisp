@@ -2008,12 +2008,10 @@ and must never be nil.")
     (deactivate-gadget pane)))
 
 (defmethod deactivate-gadget :after ((box check-box-pane))
-  (dolist (c (sheet-children box))
-    (deactivate-gadget c)))
+  (map nil #'deactivate-gadget (sheet-children box)))
 
 (defmethod activate-gadget :after ((box check-box-pane))
-  (dolist (c (sheet-children box))
-    (activate-gadget c)))
+  (map nil #'activate-gadget (sheet-children box)))
 
 ;;; ------------------------------------------------------------------------------------------
 ;;;  30.4.7 The concrete list-pane and option-pane Gadgets
