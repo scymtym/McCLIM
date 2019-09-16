@@ -715,3 +715,32 @@ to list all faces of a font family."))
      (5 :large)
      (6 :very-large)
      (7 :huge))))
+
+;;; Animation support
+
+(defclass tick-source-mixin ()
+  ((%tick-receivers :accessor %tick-receivers
+                    :initform nil)))
+
+(defmethod port-register-tick-receiver ((port tick-source-mixin) (receiver t))
+  ;; TODO locking
+  (if (find receiver (%tick-receivers port) :test #'eq)
+      (error "~@<Receiver ~A is already registered in ~A.~@:>" receiver port)
+      (push receiver (%tick-receivers port))))
+
+(defmethod port-unregister-tick-receiver ((port tick-source-mixin) (receiver t))
+  ;; TODO (error "~@<Receiver ~A is not registered in ~A.~@:>" receiver port)
+  ;; TODO locking
+  (alexandria:removef (%tick-receivers port) receiver :test #'eq))
+
+(defmethod port-distribute-tick ((port tick-source-mixin) (timestamp t))
+  (loop :for receiver :in (%tick-receivers port)
+        :do (dispatch-event receiver (make-instance 'climi::tick-event
+                                                    :sheet receiver
+                                                    :timestamp timestamp))))
+
+;; TODO make a tick-receiver-mixin class using
+;; (defmethod note-sheet-disowned)
+;; (defmethod note-sheet-grafted)
+;; (defmethod note-sheet-degrafted)
+;; ...

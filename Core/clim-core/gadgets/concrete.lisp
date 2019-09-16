@@ -618,6 +618,9 @@
         (make-space-requirement :min-width  major :width  major
                                 :min-height minor :height minor))))
 
+(defmethod handle-event ((pane slider-pane) (event tick-event))
+  (setf (gadget-value pane :invoke-callback nil) (* 10 (1+ (sin (* 2 (event-timestamp event)))))))
+
 (defmethod handle-event ((pane slider-pane) (event pointer-enter-event))
   (with-slots (armed) pane
     (unless armed

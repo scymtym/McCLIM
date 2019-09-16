@@ -139,7 +139,9 @@
 (defmethod initialize-instance :after ((pane logic-cube-pane) &rest args)
   (declare (ignore args))
   (generate-better-cube-puzzle pane 6)
-  (cleanup-cube pane))
+  (cleanup-cube pane)
+
+  (climi::port-register-tick-receiver (port pane) pane))
 
 (defmethod compose-space ((pane logic-cube-pane) &key width height)
   (declare (ignore width height))
@@ -332,6 +334,10 @@
   (values nil nil nil))
 
 ;;; Game interaction:
+
+(defmethod handle-event ((pane logic-cube-pane) (event climi::tick-event))
+  (setf (yaw pane) (* (/ pi 4) (cos (clim-internals::event-timestamp event))))
+  (repaint-sheet pane (sheet-region pane)))
 
 (defmethod handle-event ((pane logic-cube-pane) (event pointer-exit-event))
   (setf (dragging pane) nil))

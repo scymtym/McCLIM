@@ -24,7 +24,8 @@
 
 (in-package :clim-clx)
 
-(defclass clx-basic-port (standard-port)
+(defclass clx-basic-port (standard-port
+                          climi::tick-source-mixin)
   ((display :initform nil
 	    :accessor clx-port-display)
    (screen :initform nil
@@ -121,7 +122,9 @@
         :for frame-end-time = (* 1/30 (ceiling now 1/30))
         :do (process-next-event port :timeout (- frame-end-time now))
         :when (> (/ (get-internal-real-time) internal-time-units-per-second) frame-end-time)
-        :do (maphash (lambda (sheet mirror)
+        :do (climi::port-distribute-tick port now)
+
+            (maphash (lambda (sheet mirror)
                        (when (and (typep sheet 'double-buffering-mixin)
                                   (sheet-viewable-p sheet))
                          (swap-buffers-in-sheet sheet mirror)))

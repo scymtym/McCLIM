@@ -103,6 +103,11 @@
          (defmethod event-type ((event ,name))
            ',type)))))
 
+(define-event-class tick-event (standard-event)
+  ())
+
+(defmethod handle-event ((client t) (event tick-event)))
+
 (define-event-class device-event (standard-event)
   ((modifier-state :initarg :modifier-state
                    :reader event-modifier-state)
