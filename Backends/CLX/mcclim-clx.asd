@@ -19,7 +19,8 @@
              (:file "keysymdef" :depends-on ("keysyms-common"))
              (:file "graft" :depends-on ("basic"))
              (:file "cursor" :depends-on ("basic"))
-             (:file "mirror" :depends-on ("basic"))))
+             (:file "mirror" :depends-on ("basic"))
+             (:file "double-buffering" :depends-on ("basic"))))
    (:module "output" :pathname "" :components
             ((:file "bidi" :depends-on ())
              (:file "fonts" :depends-on ("bidi"))

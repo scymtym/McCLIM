@@ -262,7 +262,9 @@
       (otherwise
        (multiple-value-bind (x1 y1 width height)
            (region->clipping-values clipping-region)
-         (let* ((drawable (sheet-xmirror (medium-sheet medium)))
+         (let* ((drawable (if (typep (medium-sheet medium) 'double-buffering-mixin)
+                              (pixmap-mirror (pixmap (medium-sheet medium)))
+                              (sheet-xmirror (medium-sheet medium))))
                 (mask (xlib:create-pixmap :drawable drawable
                                           :depth 1
                                           :width (+ x1 width)
@@ -295,10 +297,27 @@ specialized on class too. Keep in mind, that inks may be transformed (i.e
 translated, so they begin at different position than [0,0])."))
 
 (defmethod medium-gcontext :before ((medium clx-medium) ink)
-  (with-slots (gc) medium
-    (unless gc
-      (setf gc (xlib:create-gcontext :drawable (medium-drawable medium))
-            (xlib:gcontext-fill-style gc) :solid))))
+  (cond
+    ((typep (medium-sheet medium) 'double-buffering-mixin)
+
+     (let ((pixmap (pixmap (medium-sheet medium))))
+       (with-slots (gc) medium
+         (unless gc
+           (setf gc (xlib:create-gcontext :drawable (climi::pixmap-mirror pixmap))
+                 (xlib:gcontext-fill-style gc) :solid)))))
+
+    ((typep (sheet-mirrored-ancestor (medium-sheet medium)) 'double-buffering-mixin)
+     (let ((pixmap (pixmap (sheet-mirrored-ancestor (medium-sheet medium)))))
+       (with-slots (gc) medium
+         (unless gc
+           (setf gc (xlib:create-gcontext :drawable (climi::pixmap-mirror pixmap))
+                 (xlib:gcontext-fill-style gc) :solid)))))
+
+    (t
+     (with-slots (gc) medium
+       (unless gc
+         (setf gc (xlib:create-gcontext :drawable (medium-drawable medium))
+               (xlib:gcontext-fill-style gc) :solid))))))
 
 (defmethod medium-gcontext ((medium clx-medium) (ink color))
   (declare (optimize (debug 3)))
@@ -477,7 +496,9 @@ translated, so they begin at different position than [0,0])."))
 (defmethod design-gcontext ((medium clx-medium) (ink clime:pattern)
                             &aux (ink* (climi::transformed-design-design
                                         (clime:effective-transformed-design ink))))
-  (let* ((drawable (sheet-xmirror (medium-sheet medium)))
+  (let* ((drawable (if (typep (medium-sheet medium) 'double-buffering-mixin)
+                       (pixmap-mirror (pixmap (medium-sheet medium)))
+                       (sheet-xmirror (medium-sheet medium))))
          (rgba-pattern (climi::%collapse-pattern ink))
          (pm (compute-rgb-image drawable rgba-pattern))
          (mask (if (typep ink* 'clime:rectangular-tile)
@@ -527,10 +548,20 @@ translated, so they begin at different position than [0,0])."))
                                         (line-style 'line-style)
                                         (ink 'ink)
                                         (gcontext 'gc))
-                                medium &body body)
+                             medium &body body)
   (let ((medium-var (gensym)))
     `(let* ((,medium-var ,medium)
-            (,mirror (medium-drawable ,medium-var))
+            (,mirror (cond
+                       ((typep (medium-sheet ,medium-var) 'double-buffering-mixin)
+                        (when-let* ((sheet (medium-sheet ,medium-var))
+                                    (pixmap (pixmap sheet)))
+                          (pixmap-mirror pixmap)))
+                       ((typep (sheet-mirrored-ancestor (medium-sheet ,medium-var)) 'double-buffering-mixin)
+                        (when-let* ((sheet (sheet-mirrored-ancestor (medium-sheet ,medium-var)))
+                                    (pixmap (pixmap sheet)))
+                          (pixmap-mirror pixmap)))
+                       (t
+                        (medium-drawable ,medium-var))))
             (^cleanup nil))
        (when ,mirror
          (unwind-protect (let* ((,line-style (medium-line-style ,medium-var))
@@ -557,7 +588,9 @@ translated, so they begin at different position than [0,0])."))
         (multiple-value-bind (width height)
             (transform-distance (medium-transformation from-drawable)
                                 width height)
-          (xlib:copy-area (sheet-xmirror (medium-sheet from-drawable))
+          (xlib:copy-area (if (typep (medium-sheet from-drawable) 'double-buffering-mixin)
+                              (pixmap-mirror (pixmap (medium-sheet from-drawable)))
+                              (sheet-xmirror (medium-sheet from-drawable)))
                           ;; why using the context of from-drawable?
                           (medium-gcontext from-drawable +background-ink+)
                           (round-coordinate from-x) (round-coordinate from-y)
@@ -571,7 +604,9 @@ translated, so they begin at different position than [0,0])."))
          (from-transformation (sheet-native-transformation from-sheet)))
     (with-transformed-position (from-transformation from-x from-y)
       (climi::with-pixmap-medium (to-medium to-drawable)
-        (xlib:copy-area (sheet-xmirror (medium-sheet from-drawable))
+        (xlib:copy-area (if (typep (medium-sheet from-drawable) 'double-buffering-mixin)
+                            (pixmap-mirror (pixmap (medium-sheet from-drawable)))
+                            (sheet-xmirror (medium-sheet from-drawable)))
                         ;; we can not use from-drawable
                         (medium-gcontext to-medium +background-ink+)
                         (round-coordinate from-x) (round-coordinate from-y)
@@ -960,10 +995,12 @@ translated, so they begin at different position than [0,0])."))
 ;;; Other Medium-specific Output Functions
 
 (defmethod medium-finish-output ((medium clx-medium))
-  (xlib:display-finish-output (clx-port-display (port medium))))
+  (unless (typep (sheet-mirrored-ancestor (medium-sheet medium)) 'double-buffering-mixin)
+    (xlib:display-finish-output (clx-port-display (port medium)))))
 
 (defmethod medium-force-output ((medium clx-medium))
-  (xlib:display-force-output (clx-port-display (port medium))))
+  (unless (typep (sheet-mirrored-ancestor (medium-sheet medium)) 'double-buffering-mixin)
+    (xlib:display-force-output (clx-port-display (port medium)))))
 
 (defmethod medium-clear-area ((medium clx-medium) left top right bottom)
   (let ((tr (sheet-native-transformation (medium-sheet medium))))
@@ -974,7 +1011,12 @@ translated, so they begin at different position than [0,0])."))
               (max-x (round-coordinate (max left right)))
               (max-y (round-coordinate (max top bottom))))
           (let ((^cleanup nil))
-            (unwind-protect (xlib:draw-rectangle (medium-drawable medium)
+            (unwind-protect (xlib:draw-rectangle (cond ((typep (medium-sheet medium) 'double-buffering-mixin)
+                                                        (pixmap-mirror (pixmap (medium-sheet medium))))
+                                                       ((typep (sheet-mirrored-ancestor (medium-sheet medium)) 'double-buffering-mixin)
+                                                        (pixmap-mirror (pixmap (sheet-mirrored-ancestor (medium-sheet medium)))))
+                                                       (t
+                                                        (medium-drawable medium)))
                                                  (medium-gcontext medium (medium-background medium))
                                                  (clamp min-x           #x-8000 #x7fff)
                                                  (clamp min-y           #x-8000 #x7fff)

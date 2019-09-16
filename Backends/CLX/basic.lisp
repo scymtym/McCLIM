@@ -93,15 +93,39 @@
     (make-graft port)
     (when clim-sys:*multiprocessing-p*
       (setf (port-event-process port)
-        (clim-sys:make-process
-         (lambda ()
-           (loop
-             (with-simple-restart
-                 (restart-event-loop
-                  "Restart CLIM's event loop.")
-                 (loop
-                   (process-next-event port)) )))
-         :name (format nil "~S's event process." port))))))
+            (clim-sys:make-process
+             (lambda ()
+               (loop
+                 (with-simple-restart
+                     (restart-event-loop "Restart CLIM's event loop.")
+                   (run-event-loop port))))
+             :name (format nil "~S's event process." port))))))
+
+(defun swap-buffers-in-sheet (sheet mirror)
+  (handler-bind ((error (lambda (condition)
+                          (break "~A" condition))))
+    (climi::invoke-with-suspended-sheet-event-processing
+     (lambda ()
+       ;; Copy the content of SHEET's off-screen buffer onto SHEET's
+       ;; mirror.
+       (let* ((off-screen-buffer (pixmap sheet))
+              (width (pixmap-width off-screen-buffer))
+              (height (pixmap-height off-screen-buffer)))
+         (xlib:copy-area (pixmap-mirror off-screen-buffer)
+                         (medium-gcontext (sheet-medium sheet) +black+)
+                         0 0 width height mirror 0 0)))
+     sheet)))
+
+(defun run-event-loop (port)
+  (loop :for now = (/ (get-internal-real-time) internal-time-units-per-second)
+        :for frame-end-time = (* 1/30 (ceiling now 1/30))
+        :do (process-next-event port :timeout (- frame-end-time now))
+        :when (> (/ (get-internal-real-time) internal-time-units-per-second) frame-end-time)
+        :do (maphash (lambda (sheet mirror)
+                       (when (and (typep sheet 'double-buffering-mixin)
+                                  (sheet-viewable-p sheet))
+                         (swap-buffers-in-sheet sheet mirror)))
+                     (slot-value port 'climi::sheet->mirror))))
 
 (defmethod destroy-port :before ((port clx-basic-port))
   (handler-case

@@ -11,18 +11,33 @@
 
 (defun clx-render-medium-picture (medium)
   (with-slots (picture) medium
-    (when-let* ((mirror (medium-drawable medium))
-                (format (xlib:find-window-picture-format (xlib:drawable-root mirror))))
-      (cond
-        ((null picture)
-         (setf picture (xlib:render-create-picture mirror :format format)))
-        ;; We need this comparison to mitigate a rogue mirror swaps with a
-        ;; pixmap, i.e in WITH-TEMP-MIRROR%%% for double buffering.
-        ((eq mirror (xlib:picture-drawable picture))
-         picture)
-        (T ;; mirror has been swapped!
-         (xlib:render-free-picture picture)
-         (setf picture (xlib:render-create-picture mirror :format format)))))))
+    (if (typep (medium-sheet medium) 'double-buffering-mixin)
+
+        (when-let* ((pixmap (pixmap-mirror (pixmap (medium-sheet medium))))
+                    (format (xlib:find-window-picture-format (xlib:drawable-root pixmap))))
+          (cond
+            ((null picture)
+             (setf picture (xlib:render-create-picture pixmap :format format)))
+            ;; We need this comparison to mitigate a rogue mirror swaps with a
+            ;; pixmap, i.e in WITH-TEMP-MIRROR%%% for double buffering.
+            ((eq pixmap (xlib:picture-drawable picture))
+             picture)
+            (T ;; mirror has been swapped!
+             (xlib:render-free-picture picture)
+             (setf picture (xlib:render-create-picture pixmap :format format)))))
+
+        (when-let* ((mirror (medium-drawable medium))
+                    (format (xlib:find-window-picture-format (xlib:drawable-root mirror))))
+          (cond
+            ((null picture)
+             (setf picture (xlib:render-create-picture mirror :format format)))
+            ;; We need this comparison to mitigate a rogue mirror swaps with a
+            ;; pixmap, i.e in WITH-TEMP-MIRROR%%% for double buffering.
+            ((eq mirror (xlib:picture-drawable picture))
+             picture)
+            (T ;; mirror has been swapped!
+             (xlib:render-free-picture picture)
+             (setf picture (xlib:render-create-picture mirror :format format))))))))
 
 
 (defun medium-draw-rectangle-xrender (medium x1 y1 x2 y2 filled)
