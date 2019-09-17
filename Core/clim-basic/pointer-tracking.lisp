@@ -155,16 +155,16 @@
                    (values x y)
                    (with-sheet-medium (medium sheet)
                      (transform-position (medium-transformation medium) x y)))))))
-    (loop
-       for event = (event-read sheet)
-       do (if (and (not multiple-window)
-                   (not (eql sheet (event-sheet event))))
-              ;; Event is not intercepted.
-              (handle-event (event-sheet event) event)
-              (multiple-value-bind (x y)
-                  (when (typep event 'pointer-event)
-                    (pointer-event-position event))
-                (track-event state event x y))))))
+    (loop for event = (event-read sheet)
+          do (if (or (and (not multiple-window)
+                          (not (eql sheet (event-sheet event))))
+                     (typep event 'pointer-boundary-event))
+                 ;; Event is not intercepted.
+                 (handle-event (event-sheet event) event)
+                 (multiple-value-bind (x y)
+                     (when (typep event 'pointer-event)
+                       (pointer-event-position event))
+                   (track-event state event x y))))))
 
 (defmacro tracking-pointer
     ((sheet &rest args &key pointer multiple-window transformp context-type highlight)
