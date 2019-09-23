@@ -1,0 +1,230 @@
+#+TITLE: Boundary Event Thoughts
+#+OPTIONS: toc:nil num:nil date:nil
+
+* Port Event Distribution
+
+** Overview
+
+   TODO what about enabled/disabled sheets?
+
+   Ports generate "raw" events $(\text{\it{KIND}}, s, p)$ where /KIND/
+   is the event kind, $s$ is the event sheet (a mirrored sheet) and
+   $p$ is the event position in $s$. These raw events are processed in
+   ~distribute-event~ which does one or more of the following for each
+   event:
+
+   + dispatch event $e$ to its event sheet $s_e$
+
+   + dispatch event $e$ to a different
+
+   + dispatch synthesized events instead of or in addition to $e$
+
+   #+BEGIN_EXAMPLE
+     raw event -> distribute-event
+       maybe -> synthesize -> synthesized event -> dispatch event
+       maybe -> dispatch event
+   #+END_EXAMPLE
+
+** Definitions
+
+   + port pointer sheet :: Let $e$ be the most recent pointer event
+        distributed by a given port, let $s_e$ be $e$'s sheet and let
+        $p_e$ be $e$'s position.
+
+     + If $e$ is not an exit event, the /port pointer sheet/ after
+       processing $e$ is the sheet (mirrored or not) $s$ such that $s$
+       is a descendant of $s_e$ and $p_e \in region(s)$ and there is
+       no descendant $s'$ of $s$ such that $p_e \in region(s')$.
+
+     + If $e$ is an exit event, let $s_m$ be $s_e$'s first mirrored
+       ancestor. The /port pointer sheet/ after processing $e$ is
+
+       + $s_m$ if $s_m$ is not a graft
+
+       + ~nil~ if $s_m$ is a graft
+
+   + port pressed sheet :: Let $e_\text{press}$ be the most recent
+        button press event and $e_\text{release}$ the most recent
+        button release event distributed by a given port. Let let
+        $s_e$ be $e_\text{press}$'s sheet and let $p_e$ be
+        $e_\text{press}$'s position.
+
+     + If $e_\text{release}$ occurred after $e_\text{press}$, the
+       /port pressed sheet/ is ~nil~.
+
+     + If $e_\text{release}$ did not occur after $e_\text{press}$, the
+       /port pressed sheet/ is the sheet (mirrored or not) $s$ such
+       that $s$ is a descendant of $s_e$ and $p_e \in region(s)$ and
+       there is no descendant $s'$ of $s$ such that $p_e \in
+       region(s')$.
+
+   + port grabbed sheet :: TODO
+
+** Synthesis of Boundary Events
+
+*** Specification
+
+    Let $e_1, e_2, \dots$ be the sequence of (/potentially
+    synthesized/) boundary events /dispatched/ by a given
+    port[fn:1]. Let $\text{stack}_i$ be the state of a stack that is
+    maintained according to
+
+    \begin{eqnarray*}
+      \text{stack}_0 & = & ()\\
+      \text{stack}_i & = & \begin{cases}
+        (s_{e_i}, \text{stack}_{i-1})                                        & \text{if $e_i$ is an enter event}\\
+        \text{rest} ~~~ \text{where} ~ \text{stack}_{i-1} = (s, \text{rest}) & \text{if $e_i$ is an exit event}
+      \end{cases}
+    \end{eqnarray*}
+
+    The following properties must hold for each $\text{stack}_i =
+    (s_{i,1}, \dots, s_{i,n_{i}})$:
+
+    1) $parent(s_{i,n_{i}})$ is a graft (the parent of the sheet at the
+       bottom of the stack must be a graft)
+
+    2) $\forall s_{i,j}, s_{i,{j+1}}, 1 \leq j \leq n_{i} - 1: parent(s_{i,j}) = s_{i,{j+1}}$
+       (adjacent sheets on the stack must be parent and child)
+
+    3) If $e_i$ is an exit event, then $\text{stack}_i = (s_{e_i},
+       \dots)$ (exit events must only refer to the sheet at the top of
+       the stack)
+
+    These properties ensure that
+
+    + It is not possible to dispatch two enter events for a given
+      sheet without an exit event between them. Otherwise
+      property 2) would be violated.
+
+    + There fore, no sheet appears on the stack twice.
+
+    + It is not possible to dispatch two exit events for a given
+      sheet without an enter event between them. Other property 3)
+      would be violated when dispatching the second exit event.
+
+*** Algorithm
+
+    Let $e'$ and $e$ be the two most recent events with $e'$ occurring
+    before $e$. Let $s_e$ be $e$'s sheet and let $p_e$ be $e$'s
+    position. Let $s'_\text{pointer}$ and $s_\text{pointer}$ be the
+    /port pointer sheets/ after processing $e'$ and $e$ respectively.
+
+    1) If $e$ is neither an enter nor an exit event, it must be true that
+       $\text{mirrored-ancestor}(s'_\text{pointer}) = \text{mirrored-ancestor}(s_\text{pointer})$.
+       Let $s_\text{ma} = \text{mirrored-ancestor}(s_\text{pointer})$
+       and $s_\text{ca} = \text{common-ancestor}(s'_\text{pointer}, s_\text{pointer})$.
+       $s_\text{ma} = s_\text{ca}$ may or may not hold, but it is true that
+       $s_\text{ma}$ is an ancestor of $s_\text{ca}$.
+
+       + Dispatch a sequence of /synthesized/ exit events:
+
+         $(\text{exit}, s'_\text{pointer}, p_e)$
+
+         $(\text{exit}, \text{parent}(s'_\text{pointer}), p_e)$
+
+         $\vdots$
+
+         $(\text{exit}, s, p_e) ~~~ \text{where} ~ \text{parent}(s) = s_{ca}$
+
+       + Dispatch a sequence of /synthesized/ enter events:
+
+         $(\text{enter}, s_1, p_e) ~~~ \text{where} ~ \text{parent}(s_1) = s_{ca} ~ \wedge ~ s_1 ~ \text{ancestor of} ~ s_\text{pointer}$
+
+         $(\text{enter}, s_2, p_e) ~~~ \text{where} ~ \text{parent}(s_2) = s_1 ~ \wedge ~ s_2 ~ \text{ancestor of} ~ s_\text{pointer}$
+
+         $\vdots$
+
+         $(\text{enter}, s_\text{pointer}, p_e)$
+
+    2) If $e$ is an enter event
+
+       1) Dispatch synthesized exit events
+
+       2) Dispatch $e$
+
+       3) Dispatch synthesized enter events
+
+    3) Exit
+
+       1) Dispatch synthesized exit events
+
+       2) Dispatch $e$
+
+       3) Dispatch synthesized enter events
+
+*** Specifics of X
+
+    Has multiple kinds of boundary events, some of which must be
+    handled specially to fit our model:
+
+    + "inferior" enter/exit events :: The events are generated when
+         the pointer moves from a parent X window to a child X window
+         or the other way around.
+
+         For the first case (parent → child), X generates an exit
+         event for parent X window. However, since [[*Specification]["entered" sheets
+         from a stack]], entering a child does equate exiting the
+         parent.
+
+         Similarly, for the second case (child → parent), X generates
+         an enter event for the parent X window.
+
+    + Grab/ungrab enter/exit events :: When a pointer button is
+         pressed, X generates enter/exit events. TODO
+
+*** Ideas                                                          :noexport:
+
+    + Rename synthesize function?
+    + Define functions for mirrored ancestor, common ancestor, etc.
+    +
+
+* Feedback
+
+** overview
+
+ - "raw" events doesn't have necessarily a target sheet (if you look
+   from the CLIM specification perspective). It is true that in McCLIM
+   device event has a slot sheet and backends are expected to
+   initialize it
+
+ - not all events have the event position in x (i.e
+   window-repaint-event or window-destroy-event)). Most of them do
+
+** definitions
+
+ - three special types of sheets are defined, but given this is a
+   roadmap we should also specify the "focused sheet" for keyboard
+   events: pointer, pressed, grabbed and port-keyboard-input-focus
+   sheets
+
+ - port-pointer-sheet description should at least hint that z-ordering
+   should play a role here when leaf sheets overlap, otherwise it is
+   ambigous (because there may be multiple sheets with region
+   containing the pointer which are i.e siblings)
+
+ - in port-pressed-sheet instead of repeating definition for
+   port-pointer-sheet I'd simply say: if e-release did not occur after
+   epress, the port pressed sheet is the port-pointer-sheet of the
+   e-press event
+
+ - port-grabbed-sheet is a sheet which is set (programmatically) with a
+   macro ~with-pointer-grabbed~
+
+ - port-keyboard-input-focus is a sheet which is set either
+   programmatically or in response to window-manager-focus-event
+
+** synthesis of boundary events
+
+ - the stack description is clear and describes accurately how that
+   should behave
+
+ - in the algorithm: 1. OK, 2. true (b, c are glued in the PR), 3. True
+   (a,b are glued in the PR)
+
+* Footnotes
+
+[fn:1] I.e., this specification describes the expected /event output/
+       of a port after potentially discarding, re-routing and
+       synthesizing events. It does not describe the root causes of
+       the eventually produced events or /how/ the port processes
+       events.
