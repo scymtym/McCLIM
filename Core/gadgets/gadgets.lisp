@@ -201,12 +201,6 @@
   ()
   (:default-initargs :text-style (make-text-style :sans-serif nil nil)))
 
-(defgeneric armed-callback (gadget client gadget-id)
-  (:argument-precedence-order client gadget-id gadget))
-
-(defgeneric disarmed-callback (gadget client gadget-id)
-  (:argument-precedence-order client gadget-id gadget))
-
 ;; "The default methods (on basic-gadget) call the function stored
 ;; in gadget-armed-callback or gadget-disarmed-callback with one argument,
 ;; the gadget."
@@ -226,8 +220,6 @@
 ;; Redrawing is supposed to be handled on an :AFTER method on arm- and
 ;; disarm-callback.
 
-(defgeneric arm-gadget (gadget &optional value))
-
 (defmethod arm-gadget ((gadget basic-gadget) &optional (value t))
   (with-slots (armed) gadget
     (unless (eql armed value)
@@ -236,19 +228,12 @@
           (armed-callback gadget (gadget-client gadget) (gadget-id gadget))
           (disarmed-callback gadget (gadget-client gadget) (gadget-id gadget))))))
 
-(defgeneric disarm-gadget (gadget))
-
 (defmethod disarm-gadget ((gadget basic-gadget))
   (arm-gadget gadget nil))
 
 ;;;
 ;;; Activation
 ;;;
-
-(defgeneric activate-gadget (gadget))
-(defgeneric deactivate-gadget (gadget))
-(defgeneric note-gadget-activated (client gadget))
-(defgeneric note-gadget-deactivated (client gadget))
 
 (defmethod activate-gadget ((gadget gadget))
   (with-slots (active-p) gadget
@@ -301,9 +286,6 @@
                               (gadget-client gadget)
                               (gadget-id gadget)
                               value))))
-
-(defgeneric value-changed-callback (gadget client gadget-id value)
-  (:argument-precedence-order client gadget-id value gadget))
 
 (defmethod value-changed-callback ((gadget value-gadget) client gadget-id value)
   (declare (ignore client gadget-id))
@@ -378,22 +360,13 @@
   ;; Try to be compatible with Lispworks' CLIM.
   ())
 
-(defgeneric gadget-range (range-gadget)
-  (:documentation
-   "Returns the difference of the maximum and minimum value of RANGE-GADGET."))
-
 (defmethod gadget-range ((gadget range-gadget))
   (- (gadget-max-value gadget)
      (gadget-min-value gadget)))
 
-(defgeneric gadget-range* (range-gadget)
-  (:documentation
-   "Returns the minimum and maximum value of RANGE-GADGET as two values."))
-
 (defmethod gadget-range* ((gadget range-gadget))
   (values (gadget-min-value gadget)
           (gadget-max-value gadget)))
-
 
 ;;;; ------------------------------------------------------------------------------------------
 ;;;;
@@ -418,27 +391,6 @@
   (:documentation "The value is a button"))
 
 ;;; 30.4.4 The abstract scroll-bar Gadget
-
-(defgeneric drag-callback (pane client gadget-id value)
-  (:argument-precedence-order client gadget-id value pane))
-
-(defgeneric scroll-to-top-callback (scroll-bar client gadget-id)
-  (:argument-precedence-order client gadget-id scroll-bar))
-
-(defgeneric scroll-to-bottom-callback (scroll-bar client gadget-id)
-  (:argument-precedence-order client gadget-id scroll-bar))
-
-(defgeneric scroll-up-line-callback (scroll-bar client gadget-id)
-  (:argument-precedence-order client gadget-id scroll-bar))
-
-(defgeneric scroll-up-page-callback (scroll-bar client gadget-id)
-  (:argument-precedence-order client gadget-id scroll-bar))
-
-(defgeneric scroll-down-line-callback (scroll-bar client gadget-id)
-  (:argument-precedence-order client gadget-id scroll-bar))
-
-(defgeneric scroll-down-page-callback (scroll-bar client gadget-id)
-  (:argument-precedence-order client gadget-id scroll-bar))
 
 (defclass scroll-bar (value-gadget oriented-gadget-mixin range-gadget-mixin)
   ((drag-callback :initarg :drag-callback
@@ -540,23 +492,16 @@ and must never be nil.")
   (:default-initargs
    :value nil))
 
-;; RADIO-BOX-CURRENT-SELECTION is just a synonym for GADGET-VALUE:
-
-(defgeneric radio-box-current-selection (radio-box))
-
 (defmethod radio-box-current-selection ((radio-box radio-box))
+  ;; RADIO-BOX-CURRENT-SELECTION is just a synonym for GADGET-VALUE
   (gadget-value radio-box))
-
-(defgeneric (setf radio-box-current-selection) (new-value radio-box))
 
 (defmethod (setf radio-box-current-selection) (new-value (radio-box radio-box))
   (setf (gadget-value radio-box) new-value))
 
-(defgeneric radio-box-selections (radio-box))
-
 (defmethod radio-box-selections ((pane radio-box))
-  (let ((v (radio-box-current-selection pane)))
-    (and v (list v))))
+  (when-let ((v (radio-box-current-selection pane)))
+    (list v)))
 
 (defmethod value-changed-callback :before (value-gadget (client radio-box) gadget-id value)
   (declare (ignorable value-gadget gadget-id value))
@@ -580,24 +525,18 @@ and must never be nil.")
    :value nil
    :orientation :vertical))
 
-;; CHECK-BOX-CURRENT-SELECTION is just a synonym for GADGET-VALUE:
-
-(defgeneric check-box-current-selection (check-box))
-
 (defmethod check-box-current-selection ((check-box check-box))
+  ;; CHECK-BOX-CURRENT-SELECTION is just a synonym for GADGET-VALUE:
   (gadget-value check-box))
-
-(defgeneric (setf check-box-current-selection) (new-value check-box))
 
 (defmethod (setf check-box-current-selection) (new-value (check-box check-box))
   (setf (gadget-value check-box) new-value))
 
 (defmethod value-changed-callback :before (value-gadget (client check-box) gadget-id value)
   (declare (ignorable gadget-id))
-  (if value
-      (setf (gadget-value client :invoke-callback t)
-            (adjoin value-gadget (gadget-value client)))
-      (setf (gadget-value client :invoke-callback t)
+  (setf (gadget-value client :invoke-callback t)
+        (if value
+            (adjoin value-gadget (gadget-value client))
             (remove value-gadget (gadget-value client)))))
 
 (defmethod (setf gadget-value) :after (buttons (check-box check-box) &key invoke-callback)
@@ -610,9 +549,7 @@ and must never be nil.")
 (defmacro with-radio-box ((&rest options
                            &key (type :one-of) (orientation :vertical) &allow-other-keys)
                           &body body)
-  (let ((contents (gensym "CONTENTS-"))
-        (selected-p (gensym "SELECTED-P-"))
-        (initial-selection (gensym "INITIAL-SELECTION-")))
+  (with-unique-names (contents selected-p initial-selection)
     `(let ((,contents nil)
            (,selected-p nil)
            (,initial-selection nil))
@@ -795,20 +732,17 @@ and must never be nil.")
 
 ;;;; Common behavior on `basic-gadget'
 
-;;
-;; When a gadget is not activated, it receives no device events.
-;;
 (defmethod handle-event :around ((pane basic-gadget) (event device-event))
+  ;; When a gadget is not activated, it receives no device events.
   (when (gadget-active-p pane)
     (call-next-method)))
 
-;; When a gadget is deactivated, it cannot be armed.
-
-;; Glitch: upon re-activation the mouse might happen to be in the
-;; gadget and thus re-arm it immediately, that is not implemented.
-
 (defmethod note-gadget-deactivated :after (client (gadget basic-gadget))
   (declare (ignorable client))
+  ;; When a gadget is deactivated, it cannot be armed.
+
+  ;; Glitch: upon re-activation the mouse might happen to be in the
+  ;; gadget and thus re-arm it immediately, that is not implemented.
   (disarm-gadget gadget))
 
 ;;;; ------------------------------------------------------------------------------------------
@@ -817,8 +751,6 @@ and must never be nil.")
 ;;;;
 
 ;;; Labels
-
-(defgeneric compose-label-space (gadget &key wider higher))
 
 (defmethod compose-label-space ((gadget labelled-gadget-mixin) &key (wider 0) (higher 0))
   (with-slots (label align-x align-y) gadget
@@ -829,8 +761,6 @@ and must never be nil.")
            (h  (+ as ds higher)))
       (make-space-requirement :width w  :min-width w  :max-width  +fill+
                               :height h :min-height h :max-height +fill+))))
-
-(defgeneric draw-label* (pane x1 y1 x2 y2 &key ink))
 
 (defmethod draw-label* ((pane labelled-gadget-mixin) x1 y1 x2 y2
                         &key (ink +foreground-ink+))
@@ -1062,8 +992,6 @@ and must never be nil.")
    (border-style :initarg :border-style :initform :outset)
    (border-color :initarg :border-color :initform "???")))
 
-(defgeneric pane-inner-region (pane))
-
 (defmethod pane-inner-region ((pane 3D-border-mixin))
   (with-slots (border-width) pane
     (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
@@ -1088,13 +1016,9 @@ and must never be nil.")
 
 ;;; Common colors:
 
-(defgeneric gadget-highlight-background (gadget))
-
 (defmethod gadget-highlight-background ((gadget basic-gadget))
   (compose-over (compose-in #|+paleturquoise+|# +white+ (make-opacity .5))
                 (pane-background gadget)))
-
-(defgeneric effective-gadget-foreground (gadget))
 
 (defmethod effective-gadget-foreground ((gadget basic-gadget))
   (if (gadget-active-p gadget)
@@ -1103,14 +1027,10 @@ and must never be nil.")
                                 (make-opacity .5))
                     (pane-background gadget))))
 
-(defgeneric effective-gadget-background (gadget))
-
 (defmethod effective-gadget-background ((gadget basic-gadget))
   (if (slot-value gadget 'armed)
       (gadget-highlight-background gadget)
       (pane-background gadget)))
-
-(defgeneric effective-gadget-input-area-color (gadget))
 
 (defmethod effective-gadget-input-area-color ((gadget basic-gadget))
   (if (gadget-active-p gadget)
@@ -1481,16 +1401,6 @@ and must never be nil.")
 
 ;;;; Redisplay
 
-(defgeneric scroll-bar-transformation (scroll-bar))
-
-(defgeneric scroll-bar-up-region (scroll-bar))
-
-(defgeneric scroll-bar-down-region (scroll-bar))
-
-(defgeneric scroll-bar-thumb-bed-region (scroll-bar-pane))
-
-(defgeneric scroll-bar-thumb-region (scroll-bar-pane &optional value))
-
 (defun scroll-bar/update-display (scroll-bar &optional (value (gadget-value scroll-bar)))
   (with-slots (up-state dn-state tb-state tb-y1 tb-y2
                old-up-state old-dn-state old-tb-state old-tb-y1 old-tb-y2
@@ -1796,21 +1706,6 @@ and must never be nil.")
 ;; sheet for this drawing (this sheet would be inside the
 ;; slider's sheet, probably his child).
 ;; ----------------------------------------------------------
-
-(defgeneric convert-position-to-value (slider-pane position)
-  (:documentation
-   "Return gadget value for SLIDER-PANE corresponding to POSITION.
-
-    POSITION can be a real number or a pointer event. Both designate a
-    horizontal or vertical position in the gadget's coordinate
-    system."))
-
-(defgeneric convert-value-to-position (slider-pane)
-  (:documentation
-   "Return a position for SLIDER-PANE's gadget value.
-
-    The returned position measures a distance along the horizontal or
-    vertical axis of the gadget's coordinate system."))
 
 ;; This values should be changeable by user. That's
 ;; why they are parameters, and not constants.
@@ -2242,8 +2137,6 @@ response to scroll wheel events."))
                       (mapcar #'(lambda (item) (position item (generic-list-pane-item-values gadget) :test test))
                               (gadget-value gadget))))))))
 
-(defgeneric generic-list-pane-item-strings (generic-list-pane))
-
 (defmethod generic-list-pane-item-strings ((pane generic-list-pane))
   (with-slots (item-strings) pane
     (or item-strings
@@ -2255,15 +2148,11 @@ response to scroll wheel events."))
                              (princ-to-string s)))) ;defensive programming!
                 (list-pane-items pane))))))
 
-(defgeneric generic-list-pane-item-values (generic-list-pane))
-
 (defmethod generic-list-pane-item-values ((pane generic-list-pane))
   (with-slots (item-values) pane
     (or item-values
         (setf item-values
           (map 'vector (list-pane-value-key pane) (list-pane-items pane))))))
-
-(defgeneric generic-list-pane-items-width (generic-list-pane))
 
 (defmethod generic-list-pane-items-width ((pane generic-list-pane))
   (with-slots (items-width) pane
@@ -2274,15 +2163,11 @@ response to scroll wheel events."))
                                  (generic-list-pane-item-strings pane))
                       :initial-value 0)))))
 
-(defgeneric generic-list-pane-items-length (generic-list-pane))
-
 (defmethod generic-list-pane-items-length ((pane generic-list-pane))
   (with-slots (items-length) pane
     (or items-length
         (setf items-length
               (length (generic-list-pane-item-strings pane))))))
-
-(defgeneric generic-list-pane-item-height (generic-list-pane))
 
 (defmethod generic-list-pane-item-height ((pane generic-list-pane))
   (+ (text-style-ascent  (pane-text-style pane) pane)
@@ -2507,14 +2392,6 @@ Returns two values, the item itself, and the index within the item list."
         (generic-list-pane-handle-click-from-event pane event))
       (when (next-method-p) (call-next-method))))
 
-(defgeneric (setf list-pane-items)
-    (newval pane &key invoke-callback)
-  (:documentation
-   "Set the current list of items for this list pane.
-The current GADGET-VALUE will be adjusted by removing values not
-specified by the new items.  VALUE-CHANGED-CALLBACK will be called
-if INVOKE-CALLBACK is given."))
-
 (defmethod (setf list-pane-items)
     (newval (pane meta-list-pane) &key invoke-callback)
   (declare (ignore invoke-callback))
@@ -2608,8 +2485,6 @@ if INVOKE-CALLBACK is given."))
   (setf (slot-value gadget 'current-label)
         (generic-option-pane-compute-label-from-value gadget new-value)))
 
-(defgeneric generic-option-pane-widget-size (pane))
-
 (defmethod generic-option-pane-widget-size (pane)
   ;; We now always make the widget occupying a square.
   (let ((h (bounding-rectangle-height pane)))
@@ -2668,8 +2543,6 @@ if INVOKE-CALLBACK is given."))
                             :min-height total-height
                             :height total-height
                             :max-height +fill+)))
-
-(defgeneric generic-option-pane-draw-widget (pane))
 
 (defmethod generic-option-pane-draw-widget (pane)
   (with-bounding-rectangle* (x0 y0 x1 y1) pane
@@ -2997,8 +2870,6 @@ if INVOKE-CALLBACK is given."))
 
 (defclass orientation-from-parent-mixin () ())
 
-(defgeneric orientation (gadget))
-
 (defmethod orientation ((gadget orientation-from-parent-mixin))
   (etypecase (sheet-parent gadget)
     ((or hbox-pane hrack-pane) :vertical)
@@ -3017,7 +2888,7 @@ if INVOKE-CALLBACK is given."))
    (%total-size   :initarg :total-size
                   :reader  dragging-state-total-size)))
 
-(defclass clim-extensions::box-adjuster-gadget
+(defclass clim-extensions:box-adjuster-gadget
     (basic-gadget 3d-border-mixin orientation-from-parent-mixin)
   ((dragging-state :initform nil
                    :accessor dragging-state))
