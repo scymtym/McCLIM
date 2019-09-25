@@ -270,6 +270,7 @@ documentation produced by presentations.")
         (prog1
             (call-next-method)
           (alexandria:when-let ((menu-bar-pane (frame-menu-bar-pane frame)))
+            ;; TODO define in gadgets system
             (update-menu-bar menu-bar-pane new-command-table)))
         (call-next-method))))
 

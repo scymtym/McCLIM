@@ -695,7 +695,7 @@ is run for the last time"))
              (gesture (car activation-gestures)))
         (when gesture
           (let ((c (character-gesture-name gesture)))
-            (activate-stream estream c)
+            (activate-stream estream c) ; TODO dependency problem
             (reset-scan-pointer estream)
             (av-do-accept query record nil)))))))
 
