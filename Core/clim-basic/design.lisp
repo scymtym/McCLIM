@@ -571,7 +571,7 @@ identity-transformation) then source design is returned."
 (defun make-uniform-compositum (ink opacity-value)
   (cond ((= opacity-value 0)
          +transparent-ink+)
-        ((= opacity-value 1)
+        ((>= opacity-value 1)
          ink)
         (t
          (make-instance 'uniform-compositum
@@ -777,9 +777,7 @@ identity-transformation) then source design is returned."
         (opacity-value (compositum-mask foreground))
         (color-rgb (compositum-ink background))
         (opacity-value (compositum-mask background)))
-    (make-uniform-compositum
-     (make-rgb-color r g b)
-     o)))
+    (make-uniform-compositum (make-rgb-color r g b) o)))
 
 (defmethod compose-over ((foreground uniform-compositum) (background opacity))
   (make-instance 'over-compositum
@@ -793,9 +791,10 @@ identity-transformation) then source design is returned."
         (opacity-value (compositum-mask foreground))
         (color-rgb background)
         1)
-    (make-uniform-compositum
-     (make-rgb-color r g b)
-     o)))
+    (make-uniform-compositum (make-rgb-color r g b) o)))
+
+(defmethod compose-over ((foreground (eql +transparent-ink+)) (background t))
+  background)
 
 (defmethod compose-over ((foreground opacity) (background uniform-compositum))
   (multiple-value-bind (r g b o)
@@ -803,9 +802,7 @@ identity-transformation) then source design is returned."
         (color-rgb foreground)
         (color-rgb (compositum-ink background))
         (opacity-value (compositum-mask background)))
-    (make-uniform-compositum
-     (make-rgb-color r g b)
-     o)))
+    (make-uniform-compositum (make-rgb-color r g b) o)))
 
 ;;; IN-COMPOSITUM
 

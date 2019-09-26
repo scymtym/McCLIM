@@ -259,6 +259,9 @@
 
    ))
 
+(defmethod gadget-armed-p ((gadget gadget))
+  (slot-value gadget 'armed))
+
 
 ;;;; Part VIII: Appendices
 

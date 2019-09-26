@@ -549,7 +549,7 @@ and must never be nil.")
 (defmacro with-radio-box ((&rest options
                            &key (type :one-of) (orientation :vertical) &allow-other-keys)
                           &body body)
-  (with-unique-names (contents selected-p initial-selection)
+  (alexandria:with-unique-names (contents selected-p initial-selection)
     `(let ((,contents nil)
            (,selected-p nil)
            (,initial-selection nil))
@@ -1028,7 +1028,7 @@ and must never be nil.")
                     (pane-background gadget))))
 
 (defmethod effective-gadget-background ((gadget basic-gadget))
-  (if (slot-value gadget 'armed)
+  (if (gadget-armed-p gadget)
       (gadget-highlight-background gadget)
       (pane-background gadget)))
 
@@ -1041,14 +1041,21 @@ and must never be nil.")
 ;;; ------------------------------------------------------------------------------------------
 ;;; 30.4.1 The concrete push-button Gadget
 
-(defclass push-button-pane  (push-button
+(defclass push-button-pane  (animated-mixin
+
+                             activate/deactivate-transitions-mixin
+                             enter/exit-transitions-mixin
+                             press/release-transitions-mixin
+                             sfm-gadget-mixin
+
+                             push-button
                              labelled-gadget-mixin
                              changing-label-invokes-layout-protocol-mixin
-                             arm/disarm-repaint-mixin
-                             activate/deactivate-repaint-mixin
-                             enter/exit-arms/disarms-mixin
+                             ; arm/disarm-repaint-mixin
+                             ; activate/deactivate-repaint-mixin
+                             ; enter/exit-arms/disarms-mixin
                              sheet-leaf-mixin)
-  ((pressedp          :initform nil)
+  (#+no (pressedp          :initform nil)
    (show-as-default-p :type boolean
                       :initform nil
                       :initarg :show-as-default-p
@@ -1077,27 +1084,16 @@ and must never be nil.")
                          :min-height 2*border-thickness
                          :height 2*border-thickness)))
 
-(defmethod handle-event ((pane push-button-pane) (event pointer-button-press-event))
-  (with-slots (pressedp) pane
-    (setf pressedp t)
-    (dispatch-repaint pane +everywhere+)))
-
-(defmethod handle-event ((pane push-button-pane) (event pointer-button-release-event))
-  (with-slots (armed pressedp) pane
-    (when pressedp
-      (setf pressedp nil)
-      (when armed
-        (activate-callback pane (gadget-client pane) (gadget-id pane)))
-      (dispatch-repaint pane +everywhere+))))
-
 (defmethod handle-repaint ((pane push-button-pane) region)
   (declare (ignore region))
-  (with-slots (armed pressedp) pane
+  (let* ((state (state pane))
+         (armed (typep state 'armed))
+         (pressed (typep state 'pressed)))
     (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
       (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-background pane))
       (draw-bordered-rectangle* pane x1 y1 x2 y2
                                 :border-width 1
-                                :style (if (and pressedp armed) :inset :outset))
+                                :style (if (and pressed armed) :inset :outset))
       (let* ((x-spacing (pane-x-spacing pane))
              (y-spacing (pane-y-spacing pane))
              (border-thickness *3d-border-thickness*)
@@ -1109,42 +1105,29 @@ and must never be nil.")
             (draw-label* pane x1 y1 x2 y2 :ink (effective-gadget-foreground pane))
             (draw-engraved-label* pane x1 y1 x2 y2))))))
 
-
-
 ;;; ------------------------------------------------------------------------------------------
 ;;;  30.4.2 The concrete toggle-button Gadget
 
-(defclass inactive () ())
+(defclass toggle-button-pane (sfm-gadget-mixin
+                              activate/deactivate-transitions-mixin
+                              enter/exit-transitions-mixin
+                              press/release-transitions-mixin
 
-(defclass active () ())
-
-(defclass armed (active) ())
-
-(defclass disarmed (active) ())
-
-(defclass pressed () ())
-
-(defclass pressed+armed (pressed armed) ())
-
-(defclass pressing (pressed)
-  ((%progress :initarg :progress :accessor progress :initform 0)))
-
-(defclass toggle-button-pane (toggle-button
+                              toggle-button
                               ;; repaint behavior:
-                              arm/disarm-repaint-mixin
-                              activate/deactivate-repaint-mixin
+                              ; arm/disarm-repaint-mixin
+                              ; activate/deactivate-repaint-mixin
                               value-changed-repaint-mixin
                               ;; callback behavior:
                               changing-label-invokes-layout-protocol-mixin
                               ;; event handling:
-                              enter/exit-arms/disarms-mixin
+                              ; enter/exit-arms/disarms-mixin
                               ;; other
                               sheet-leaf-mixin)
   ((indicator-type :type (member :one-of :some-of)
                    :initarg :indicator-type
                    :reader toggle-button-indicator-type
-                   :initform :some-of)
-   (%state :accessor state :initform (make-instance 'active)))
+                   :initform :some-of))
   (:default-initargs
    :value nil
    :align-x :left
@@ -1258,56 +1241,22 @@ and must never be nil.")
                              :ink (effective-gadget-foreground pane))
                 (draw-engraved-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2))))))))
 
-(defmethod handle-event ((pane toggle-button-pane) (event pointer-button-press-event))
-  (multiple-value-bind (new-state repaintp)
-      (handle-event-using-state pane (state pane) event)
-    (setf (state pane) new-state)
-    (when repaintp
-      (dispatch-repaint pane (or (pane-viewport-region pane)
-                                 (sheet-region pane))))))
-
-(defmethod handle-event ((pane toggle-button-pane) (event pointer-button-release-event))
-  (multiple-value-bind (new-state repaintp)
-      (handle-event-using-state pane (state pane) event)
-    (setf (state pane) new-state)
-    (when repaintp
-      (dispatch-repaint pane (or (pane-viewport-region pane)
-                                 (sheet-region pane))))))
-
 (defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state t)
-                                     (event t))
-  (state pane))
-
-(defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state active)
+                                     (state not-armed)
                                      (event arm))
   (values (make-instance 'armed) t))
 
 (defmethod handle-event-using-state ((pane  toggle-button-pane)
                                      (state armed)
                                      (event disarm))
-  (values (make-instance 'active) t))
+  (values (make-instance 'not-armed) t))
+
+
 
 (defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state armed)
-                                     (event pointer-button-press-event))
-  (values (make-instance 'pressed+armed) t))
-
-(defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state pressed)
+                                     (state pressed+not-armed)
                                      (event arm))
   (values (make-instance 'pressed+armed) t))
-
-(defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state pressed)
-                                     (event pointer-button-release-event))
-  (values (make-instance 'active) t))
-
-(defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state pressed+armed)
-                                     (event disarm))
-  (values (make-instance 'pressed) t))
 
 (defmethod handle-event-using-state ((pane  toggle-button-pane)
                                      (state pressed+armed)
@@ -1711,10 +1660,17 @@ and must never be nil.")
 ;; why they are parameters, and not constants.
 (defparameter slider-button-short-dim 10)
 
-(defclass slider-pane (slider
-                       gadget-color-mixin
+(defclass slider-pane (animated-mixin
+
+                       activate/deactivate-transitions-mixin
+                       enter/exit-transitions-mixin
+                       press/release-transitions-mixin
+                       sfm-gadget-mixin
+
+                       slider
+                       ; gadget-color-mixin
                        value-changed-repaint-mixin
-                       activate/deactivate-repaint-mixin
+                       ; activate/deactivate-repaint-mixin
                        basic-pane)
   ())
 
@@ -1737,51 +1693,38 @@ and must never be nil.")
         (make-space-requirement :min-width  major :width  major
                                 :min-height minor :height minor))))
 
-(defmethod handle-event ((pane slider-pane) (event pointer-enter-event))
-  (with-slots (armed) pane
-    (unless armed
-      (setf armed t))
-    (armed-callback pane (gadget-client pane) (gadget-id pane))))
+(defmethod handle-event-using-state ((pane slider-pane)
+                                     (state pressed+armed)
+                                     (event pointer-motion-event))
+  (let ((value (convert-position-to-value pane event)))
+    (setf (gadget-value pane :invoke-callback nil) value)
+    (drag-callback pane (gadget-client pane) (gadget-id pane) value))
+  (values nil t))
 
-(defmethod handle-event ((pane slider-pane) (event pointer-exit-event))
-  (with-slots (armed) pane
-    (when (and armed
-               (not (eq armed ':button-press)))
-      (setf armed nil)
-      (disarmed-callback pane (gadget-client pane) (gadget-id pane)))))
+(defmethod handle-event-using-state ((pane slider-pane)
+                                     (state pressed+armed)
+                                     (event pointer-button-release-event))
+  (let ((old-value (gadget-value pane))
+        (new-value (convert-position-to-value pane event)))
+    (setf (gadget-value pane :invoke-callback t) new-value) ; TODO do not repaint here
+    (setf (current-animation pane) (make-instance 'sliding-to-value
+                                                  :gadget pane
+                                                  :start-value old-value
+                                                  :end-value new-value)))
+  (call-next-method))
 
-(defmethod handle-event ((pane slider-pane) (event pointer-button-press-event))
-  (with-slots (armed) pane
-     (when armed
-       (setf armed ':button-press))))
-
-(defmethod handle-event ((pane slider-pane) (event pointer-motion-event))
-  (with-slots (armed) pane
-    (when (eq armed ':button-press)
-      (let ((value (convert-position-to-value pane event)))
-        (setf (gadget-value pane :invoke-callback nil) value)
-        (drag-callback pane (gadget-client pane) (gadget-id pane) value)
-        (dispatch-repaint pane (sheet-region pane))))))
-
-(defmethod handle-event ((pane slider-pane) (event pointer-button-release-event))
-  (with-slots (armed) pane
-    (when armed
-      (setf armed t
-            (gadget-value pane :invoke-callback t)
-            (convert-position-to-value pane event))
-      (dispatch-repaint pane (sheet-region pane)))))
-
-(defmethod handle-event ((pane slider-pane) (event pointer-scroll-event))
-  (with-slots (armed) pane
-    (when (eq armed t) ; when armed and not currently dragging
-      (let* ((old-value (gadget-value pane))
-             (new-value (+ old-value (- (pointer-event-delta-y event))))
-             (effective-new-value (alexandria:clamp new-value
-                                                    (gadget-min-value pane)
-                                                    (gadget-max-value pane))))
-        (unless (eql effective-new-value old-value)
-          (setf (gadget-value pane :invoke-callback t) effective-new-value)
-          (dispatch-repaint pane (sheet-region pane)))))))
+(defmethod handle-event-using-state ((pane slider-pane)
+                                     (state armed)
+                                     (event pointer-scroll-event))
+  (unless (typep state 'pressed) ; when armed and not currently dragging
+    (let* ((old-value (gadget-value pane))
+           (new-value (+ old-value (- (pointer-event-delta-y event))))
+           (effective-new-value (alexandria:clamp new-value
+                                                  (gadget-min-value pane)
+                                                  (gadget-max-value pane))))
+      (unless (eql effective-new-value old-value)
+        (setf (gadget-value pane :invoke-callback t) effective-new-value)
+        (values nil t)))))
 
 (defun format-value (value decimal-places)
   (if (<= decimal-places 0)
@@ -1789,17 +1732,29 @@ and must never be nil.")
       (let ((control-string (format nil "~~,~DF" decimal-places)))
         (format nil control-string value))))
 
+(defclass sliding-to-value (animation)
+  ((%start-value :initarg :start-value
+                 :reader start-value)
+   (%end-value :initarg :end-value
+               :reader end-value)))
+
+(defmethod update ((animation sliding-to-value) (event animation-tick))
+  (call-next-method)
+  (setf (gadget-value (gadget animation) :invoke-callback nil)
+        (alexandria:lerp (clamp (progress animation) 0 1) (start-value animation) (end-value animation))))
+
 (defmethod handle-repaint ((pane slider-pane) region)
   (declare (ignore region))
-  (let ((position (convert-value-to-position pane))
+  (let ((state (state pane))
+        (position (convert-value-to-position pane))
         (slider-button-half-short-dim (floor slider-button-short-dim 2))
-        (background-color (pane-background pane))
+        (background-color (effective-gadget-background pane))
         (inner-color (gadget-current-color pane)))
     (flet ((draw-knob (x y)
              (if (gadget-active-p pane)
                  (progn
                    (draw-circle* pane x y 8.0 :filled t :ink inner-color)
-                   (draw-circle* pane x y 8.0 :filled nil :ink +black+)
+                   (draw-circle* pane x y 8.0 :filled nil :ink (if (typep state 'pressed) +red+ +black+))
                    (draw-circle* pane x y 7.0
                                  :filled nil :ink +white+
                                  :start-angle (* 0.25 pi)

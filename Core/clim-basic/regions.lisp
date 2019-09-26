@@ -55,8 +55,8 @@
 
 (in-package :clim-internals)
 
-(defclass nowhere-region (region nowhere-mixin) ())
-(defclass everywhere-region (region everywhere-mixin) ())
+(defclass nowhere-region (nowhere-mixin region) ())
+(defclass everywhere-region (everywhere-mixin region) ())
 
 ;;; coordinate is defined in coordinates.lisp
 
