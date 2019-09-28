@@ -115,8 +115,8 @@
 
 (defmethod activate-gadget ((gadget sfm-gadget-mixin))
   (let ((new-state (if (eq gadget (port-pointer-sheet (port gadget)))
-                       (make-instance 'not-armed)
-                       (make-instance 'armed))))
+                       (make-instance 'armed)
+                       (make-instance 'not-armed))))
     (update-gadget-state gadget new-state t)))
 
 (defmethod deactivate-gadget ((gadget sfm-gadget-mixin))
@@ -166,23 +166,26 @@
 (defmethod handle-event-using-state ((pane  press/release-transitions-mixin)
                                      (state not-armed)
                                      (event pointer-button-press-event))
-  (values (make-instance 'pressed+not-armed) t))
+  (when (= (pointer-event-button event) 1)
+    (values (make-instance 'pressed+not-armed) t)))
 
 (defmethod handle-event-using-state ((pane  press/release-transitions-mixin)
                                      (state armed)
                                      (event pointer-button-press-event))
-  (values (make-instance 'pressed+armed) t))
+  (when (= (pointer-event-button event) 1)
+    (values (make-instance 'pressed+armed) t)))
 
 (defmethod handle-event-using-state ((pane  press/release-transitions-mixin)
                                      (state pressed+not-armed)
                                      (event pointer-button-release-event))
-  (values (make-instance 'not-armed) t))
+  (when (= (pointer-event-button event) 1)
+    (values (make-instance 'not-armed) t)))
 
 (defmethod handle-event-using-state ((pane  press/release-transitions-mixin)
                                      (state pressed+armed)
                                      (event pointer-button-release-event))
-
-  (values (make-instance 'armed) t))
+  (when (= (pointer-event-button event) 1)
+    (values (make-instance 'armed) t)))
 
 ;;;
 

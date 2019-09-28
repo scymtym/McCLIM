@@ -175,7 +175,7 @@
 (define-event-class pointer-button-press-event          (pointer-button-event) ())
 (define-event-class pointer-button-release-event        (pointer-button-event) ())
 (define-event-class pointer-button-hold-event           (pointer-button-event) ())
-(define-event-class pointer-button-click-event          (pointer-button-event) ())
+(define-event-class pointer-button-click-event          (pointer-button-event) ()) ; TODO unused?
 (define-event-class pointer-button-double-click-event   (pointer-button-event) ())
 (define-event-class pointer-button-click-and-hold-event (pointer-button-event) ())
 

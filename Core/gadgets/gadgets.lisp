@@ -1703,10 +1703,8 @@ and must never be nil.")
   (let ((old-value (gadget-value pane))
         (new-value (convert-position-to-value pane event)))
     (setf (gadget-value pane :invoke-callback t) new-value) ; TODO do not repaint here
-    (setf (current-animation pane) (make-instance 'sliding-to-value
-                                                  :gadget pane
-                                                  :start-value old-value
-                                                  :end-value new-value)))
+    (add-or-change-animation 'sliding-to-value 'sliding-to-value pane
+                             :start-value old-value :end-value new-value))
   (call-next-method))
 
 (defmethod handle-event-using-state ((pane slider-pane)
@@ -1735,9 +1733,10 @@ and must never be nil.")
                :reader end-value)))
 
 (defmethod update ((animation sliding-to-value) (event animation-tick))
-  (call-next-method)
-  (setf (gadget-value (gadget animation) :invoke-callback nil)
-        (alexandria:lerp (clamp (progress animation) 0 1) (start-value animation) (end-value animation))))
+  (prog1
+      (call-next-method)
+    (setf (gadget-value (gadget animation) :invoke-callback nil)
+          (alexandria:lerp (clamp (progress animation) 0 1) (start-value animation) (end-value animation)))))
 
 (defmethod handle-repaint ((pane slider-pane) region)
   (declare (ignore region))
