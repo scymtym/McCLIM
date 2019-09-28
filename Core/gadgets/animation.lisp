@@ -2,7 +2,9 @@
 
 ;;; Animation protocol
 
-(defgeneric property-value (property thing))
+(defgeneric property-value (property thing)
+  (:method ((property t) (thing t))
+    0))
 
 (defgeneric update (thing event))
 
@@ -84,9 +86,7 @@
            (setf (current-animation gadget) nil))
           (t
            (update animation event)
-           (dispatch-repaint gadget +everywhere+)))
-                                        ; (setf (clouseau:root-object *inspector* :run-hook-p t) gadget)
-    )
+           (dispatch-repaint gadget +everywhere+))))
   (when (update gadget event)
     (dispatch-repaint gadget +everywhere+)))
 
@@ -129,3 +129,19 @@
 
 (defmethod transition :after ((gadget animated-mixin) (form armed) (to not-armed))
   (add-or-change-animation 'arming 'disarming gadget))
+
+(defclass pressing (animation) ())
+
+(defmethod property-value ((property (eql :pressed)) (thing pressing))
+  (progress thing))
+
+(defclass unpressing (animation) ())
+
+(defmethod property-value ((property (eql :pressed)) (thing unpressing))
+  (- 1 (progress thing)))
+
+(defmethod transition :after ((gadget t) (from t) (to pressed+armed))
+  (add-or-change-animation 'unpressing 'pressing gadget))
+
+(defmethod transition :after ((gadget t) (from pressed+armed) (to t))
+  (add-or-change-animation 'pressing 'unpressing gadget))

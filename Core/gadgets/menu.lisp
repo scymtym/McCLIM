@@ -44,21 +44,25 @@
     (unless armed
       (arm-menu client)
       (mapc #'disarm-menu (menu-children client))
-      (arm-gadget button t))
+      ; (arm-gadget button t)
+      )
     (dispatch-repaint button (sheet-region button))))
 
 (defmethod disarm-menu ((button menu-button-pane))
   (with-slots (armed) button
     (when armed
-      (disarm-gadget button)
+      ; (disarm-gadget button)
       (dispatch-repaint button (sheet-region button))
       (stream-force-output button))))
 
-(defmethod handle-event ((pane menu-button-pane) (event pointer-enter-event))
+(defmethod enter :after ((gadget menu-button-pane) (state pressed+armed))
+  (arm-branch gadget))
+
+#+old (defmethod handle-event ((pane menu-button-pane) (event pointer-enter-event))
   (when (slot-value (gadget-client pane) 'armed)
     (arm-branch pane)))
 
-(defmethod handle-event ((pane menu-button-pane) (event pointer-button-press-event))
+#+old (defmethod handle-event ((pane menu-button-pane) (event pointer-button-press-event))
   (arm-branch pane))
 
 ;;; menu-button-leaf-pane
@@ -73,9 +77,10 @@
     (arm-menu button)))
 
 (defmethod destroy-substructure ((button menu-button-leaf-pane))
-  (disarm-gadget button))
+  ; (disarm-gadget button)
+  )
 
-(defmethod handle-event ((pane menu-button-leaf-pane) (event pointer-button-release-event))
+#+old (defmethod handle-event ((pane menu-button-leaf-pane) (event pointer-button-release-event))
   (with-slots (armed label client id) pane
     (unwind-protect
          (when armed
@@ -83,7 +88,7 @@
       (disarm-menu pane)
       (destroy-substructure (menu-root pane)))))
 
-(defmethod handle-event ((pane menu-button-leaf-pane) (event pointer-exit-event))
+#+old (defmethod handle-event ((pane menu-button-leaf-pane) (event pointer-exit-event))
   (disarm-menu pane))
 
 ;;; menu-button-submenu-pane
@@ -147,7 +152,7 @@ account, and create a list of menu buttons."
     (when submenu-frame
       (mapc #'destroy-substructure (menu-children sub-menu))
       (disown-frame frame-manager submenu-frame)
-      (disarm-gadget sub-menu)
+      ; (disarm-gadget sub-menu)
       (dispatch-repaint sub-menu +everywhere+)
       (setf submenu-frame nil))))
 
@@ -162,7 +167,15 @@ account, and create a list of menu buttons."
           (create-substructure sub-menu sub-menu)))
     (arm-menu sub-menu)))
 
-(defmethod handle-event ((pane menu-button-submenu-pane) (event pointer-button-release-event))
+(defmethod leave :after ((gadget menu-button-submenu-pane) (state pressed+armed))
+  (let ((pointer-sheet (port-pointer-sheet (port gadget))))
+    (unless (and (not (eq gadget pointer-sheet))
+                 (typep pointer-sheet 'menu-button-pane)
+                 (gadget-active-p pointer-sheet)
+                 (eq (menu-root pointer-sheet) (menu-root gadget)))
+      (destroy-substructure (menu-root gadget)))))
+
+#+old (defmethod handle-event ((pane menu-button-submenu-pane) (event pointer-button-release-event))
   (let ((pointer-sheet (port-pointer-sheet (port pane))))
     (unless (and (not (eq pane pointer-sheet))
                  (typep pointer-sheet 'menu-button-pane)

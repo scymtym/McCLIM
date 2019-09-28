@@ -908,45 +908,52 @@ and must never be nil.")
       (let ((light  *3d-light-color*)
             (dark   *3d-dark-color*))
       ;;
-      (ecase style
-        (:solid
+      (etypecase style
+        ((eql :solid)
          (multiple-value-call #'draw-pieces (shrink-polygon point-seq border-width)
                               +black+ +black+))
-        (:inset
+        ((eql :inset)
          (multiple-value-call #'draw-pieces (shrink-polygon point-seq border-width)
                               dark light))
-        (:outset
+        ((eql :outset)
          (multiple-value-call #'draw-pieces (shrink-polygon point-seq border-width)
-                              light dark))
+           light dark))
+        ((cons (eql :inset) (cons real null))
+         (let* ((f (second style))
+                (opacity (make-opacity f))
+                (first  (compose-over (compose-in dark opacity) light))
+                (second (compose-over (compose-in light opacity) dark)))
+           (multiple-value-call #'draw-pieces (shrink-polygon point-seq border-width)
+             first second)))
         ;;
         ;; Mickey Mouse is the trademark of the Walt Disney Company.
         ;;
-        (:mickey-mouse-outset
+        ((eql :mickey-mouse-outset)
          (multiple-value-bind (outer-points inner-points) (shrink-polygon point-seq border-width)
            (declare (ignore outer-points))
            (multiple-value-bind (outer-points middle-points) (shrink-polygon point-seq (/ border-width 2))
              (draw-pieces outer-points middle-points +white+ +black+)
              (draw-pieces middle-points inner-points light dark))))
-        (:mickey-mouse-inset
+        ((eql :mickey-mouse-inset)
          (multiple-value-bind (outer-points inner-points) (shrink-polygon point-seq border-width)
            (declare (ignore outer-points))
            (multiple-value-bind (outer-points middle-points) (shrink-polygon point-seq (/ border-width 2))
              (draw-pieces outer-points middle-points dark light)
              (draw-pieces middle-points inner-points +black+ +white+))))
         ;;
-        (:ridge
+        ((eql :ridge)
          (multiple-value-bind (outer-points inner-points) (shrink-polygon point-seq border-width)
            (declare (ignore outer-points))
            (multiple-value-bind (outer-points middle-points) (shrink-polygon point-seq (/ border-width 2))
              (draw-pieces outer-points middle-points light dark)
              (draw-pieces middle-points inner-points dark light))))
-        (:groove
+        ((eql :groove)
          (multiple-value-bind (outer-points inner-points) (shrink-polygon point-seq border-width)
            (declare (ignore outer-points))
            (multiple-value-bind (outer-points middle-points) (shrink-polygon point-seq (/ border-width 2))
              (draw-pieces outer-points middle-points dark light)
              (draw-pieces middle-points inner-points light dark))))
-        (:double
+        ((eql :double)
          (multiple-value-bind (outer-points inner-points) (shrink-polygon point-seq border-width)
            (declare (ignore outer-points))
            (multiple-value-bind (outer-points imiddle-points) (shrink-polygon point-seq (* 2/3 border-width))
@@ -1046,6 +1053,7 @@ and must never be nil.")
                              activate/deactivate-transitions-mixin
                              enter/exit-transitions-mixin
                              press/release-transitions-mixin
+
                              sfm-gadget-mixin
 
                              push-button
@@ -1055,10 +1063,7 @@ and must never be nil.")
                              ; activate/deactivate-repaint-mixin
                              ; enter/exit-arms/disarms-mixin
                              sheet-leaf-mixin)
-  ((show-as-default-p :type boolean
-                      :initform nil
-                      :initarg :show-as-default-p
-                      :accessor push-button-show-as-default-p))
+  ()
   (:default-initargs
     :background *3d-normal-color*
     :align-x :center
@@ -1085,14 +1090,18 @@ and must never be nil.")
 
 (defmethod handle-repaint ((pane push-button-pane) region)
   (declare (ignore region))
-  (let* ((state (state pane))
-         (armed (typep state 'armed))
-         (pressed (typep state 'pressed)))
+  (let ((pushed (cond ((when-let ((animation (find-if (alexandria:of-type '(or pressing unpressing))
+                                                      (animations pane))))
+                         (property-value :pressed animation)))
+                      ((typep (state pane) 'pressed+armed)
+                       1)
+                      (t
+                       0))))
     (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
       (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-background pane))
       (draw-bordered-rectangle* pane x1 y1 x2 y2
                                 :border-width 1
-                                :style (if (and pressed armed) :inset :outset))
+                                :style `(:inset ,pushed))
       (let* ((x-spacing (pane-x-spacing pane))
              (y-spacing (pane-y-spacing pane))
              (border-thickness *3d-border-thickness*)
@@ -1247,8 +1256,16 @@ and must never be nil.")
 ;;; ------------------------------------------------------------------------------------------
 ;;;  30.4.3 The concrete menu-button Gadget
 
-(defclass menu-button-pane (menu-button
-                            activate/deactivate-repaint-mixin
+(defclass menu-button-pane (animated-mixin
+
+                            activate/deactivate-transitions-mixin
+                            enter/exit-transitions-mixin
+                            press/release-transitions-mixin
+
+                            sfm-gadget-mixin
+
+                            menu-button
+                            ; activate/deactivate-repaint-mixin
                             sheet-leaf-mixin)
   ()
   (:default-initargs
@@ -1266,9 +1283,8 @@ and must never be nil.")
         (draw-rectangle* pane x1 y1 x2 y2
                          :ink (effective-gadget-background pane)
                          :filled t)
-        (cond ((slot-value pane 'armed)
-               (draw-bordered-rectangle* pane x1 y1 x2 y2 :style :outset :border-width *3d-border-thickness*))
-              (t))
+        (when (typep (state pane) 'pressed+armed)
+          (draw-bordered-rectangle* pane x1 y1 x2 y2 :style :outset :border-width *3d-border-thickness*))
         (multiple-value-bind (x1 y1 x2 y2)
             (values (+ x1 x-spacing) (+ y1 y-spacing)
                     (- x2 x-spacing) (- y2 y-spacing))

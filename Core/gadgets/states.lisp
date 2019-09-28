@@ -19,8 +19,8 @@
   (leave gadget from)
   (prog1
       (call-next-method)
-    (leave gadget to)
-    ; (setf (clouseau:root-object *inspector* :run-hook-p t) gadget)
+    (enter gadget to)
+    (setf (clouseau:root-object *inspector* :run-hook-p t) gadget)
     ))
 
 (defmethod enter ((gadget stateful-mixin) state)) ; TODO progn combination?
@@ -77,6 +77,8 @@
   ())
 
 (defmethod update-gadget-state ((gadget state-machine-mixin) new-state repaint)
+  #+later (when (eq (class-of new-state) (class-of (state gadget)))
+    (break "Suspicious transition ~A -> ~A" (state gadget) new-state))
   (when new-state
     (setf (state gadget) new-state))
   (cond ((not repaint))
@@ -103,7 +105,7 @@
   (:default-initargs :state (make-instance 'not-armed)))
 
 (defmethod handle-event ((client sfm-gadget-mixin) (event t))
-  (if (typep event 'window-repaint-event) ; TODO hack
+  (if (typep event '(or window-repaint-event window-configuration-event)) ; TODO hack
       (call-next-method)
       (handle-event-using-state client (state client) event)))
 
@@ -129,15 +131,20 @@
 
 (defmethod arm-gadget ((gadget enter/exit-transitions-mixin) &optional value)
   (let* ((old-state (state gadget))
-         (new-state (make-instance (if value
-                                       (armed-state old-state)
-                                       (not-armed-state old-state)))))
-    (update-gadget-state gadget new-state t)))
+         (new-state (if value
+                        (unless (typep old-state 'armed)
+                          (make-instance (armed-state old-state)))
+                        (unless (typep old-state 'not-armed)
+                          (make-instance (not-armed-state old-state))))))
+    (when new-state
+      (update-gadget-state gadget new-state t))))
 
 (defmethod disarm-gadget ((gadget enter/exit-transitions-mixin))
   (let* ((old-state (state gadget))
-         (new-state (make-instance (not-armed-state old-state))))
-    (update-gadget-state gadget new-state t)))
+         (new-state (unless (typep old-state 'not-armed)
+                      (make-instance (not-armed-state old-state)))))
+    (when new-state
+      (update-gadget-state gadget new-state t))))
 
 (defmethod handle-event-using-state ((gadget enter/exit-transitions-mixin)
                                      (state not-armed)
@@ -176,6 +183,8 @@
                                      (event pointer-button-release-event))
 
   (values (make-instance 'armed) t))
+
+;;;
 
 (defmethod handle-event-using-state :around ((pane action-gadget)
                                              (state pressed+armed)
