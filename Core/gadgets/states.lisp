@@ -13,6 +13,8 @@
 
 (defmethod transition ((gadget stateful-mixin) from to))
 
+(defvar *inspector* (nth-value 1 (clouseau:inspect nil :new-process t)))
+
 (defmethod transition :around ((gadget stateful-mixin) from to)
   (leave gadget from)
   (prog1
@@ -24,6 +26,50 @@
 (defmethod enter ((gadget stateful-mixin) state)) ; TODO progn combination?
 
 (defmethod leave ((gadget stateful-mixin) state))
+
+;;; Typical states
+
+(defclass inactive () ())
+
+(defclass active () ())
+
+(defmethod transition ((gadget t) (from active) (to inactive))
+  (note-gadget-deactivated (gadget-client gadget) gadget))
+
+(defmethod transition ((gadget t) (from inactive) (to active))
+  (note-gadget-activated (gadget-client gadget) gadget))
+
+(defclass armed (active)
+  ((%not-armed-state :allocation :class
+                     :reader not-armed-state
+                     :initform 'not-armed)))
+
+(defclass not-armed (active)
+  ((%armed-state :allocation :class
+                 :reader armed-state
+                 :initform 'armed)))
+
+(defmethod transition ((gadget t) (from not-armed) (to armed))
+                                        ; (note-gadget-armed )
+  ;; (armed-callback)
+  )
+
+(defmethod transition ((gadget t) (from armed) (to not-armed))
+  ;; (disarmed-callback)
+  )
+
+(defclass pressed (active) ())
+
+(defclass pressed+not-armed (pressed not-armed)
+  ((%armed-state :allocation :class
+                 :initform 'pressed+armed)))
+
+(defclass pressed+armed (pressed armed)
+  ((%not-armed-state :allocation :class
+                     :initform 'pressed+not-armed)))
+
+(defclass pressing (pressed)
+  ((%progress :initarg :progress :accessor progress :initform 0)))
 
 ;;;
 
@@ -81,6 +127,18 @@
 
 (defclass enter/exit-transitions-mixin () ())
 
+(defmethod arm-gadget ((gadget enter/exit-transitions-mixin) &optional value)
+  (let* ((old-state (state gadget))
+         (new-state (make-instance (if value
+                                       (armed-state old-state)
+                                       (not-armed-state old-state)))))
+    (update-gadget-state gadget new-state t)))
+
+(defmethod disarm-gadget ((gadget enter/exit-transitions-mixin))
+  (let* ((old-state (state gadget))
+         (new-state (make-instance (not-armed-state old-state))))
+    (update-gadget-state gadget new-state t)))
+
 (defmethod handle-event-using-state ((gadget enter/exit-transitions-mixin)
                                      (state not-armed)
                                      (event pointer-enter-event))
@@ -125,47 +183,3 @@
   (multiple-value-prog1
       (call-next-method)
     (activate-callback pane (gadget-client pane) (gadget-id pane))))
-
-;;;
-
-(defclass inactive () ())
-
-(defmethod transition ((gadget t) (from active) (to inactive))
-  (note-gadget-deactivated (gadget-client gadget) gadget))
-
-(defclass active () ())
-
-(defmethod transition ((gadget t) (from inactive) (to active))
-  (note-gadget-activated (gadget-client gadget) gadget))
-
-(defclass armed (active)
-  ((%not-armed-state :allocation :class
-                     :reader not-armed-state
-                     :initform 'not-armed)))
-
-(defmethod transition ((gadget t) (from not-armed) (to armed))
-                                        ; (note-gadget-armed )
-  ;; (armed-callback)
-  )
-
-(defclass not-armed (active)
-  ((%armed-state :allocation :class
-                 :reader armed-state
-                 :initform 'armed)))
-
-(defmethod transition ((gadget t) (from armed) (to not-armed))
-  ;; (disarmed-callback)
-  )
-
-(defclass pressed (active) ())
-
-(defclass pressed+not-armed (pressed not-armed)
-  ((%armed-state :allocation :class
-                 :initform 'pressed+armed)))
-
-(defclass pressed+armed (pressed armed)
-  ((%not-armed-state :allocation :class
-                     :initform 'pressed+not-armed)))
-
-(defclass pressing (pressed)
-  ((%progress :initarg :progress :accessor progress :initform 0)))

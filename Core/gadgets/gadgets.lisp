@@ -1055,8 +1055,7 @@ and must never be nil.")
                              ; activate/deactivate-repaint-mixin
                              ; enter/exit-arms/disarms-mixin
                              sheet-leaf-mixin)
-  (#+no (pressedp          :initform nil)
-   (show-as-default-p :type boolean
+  ((show-as-default-p :type boolean
                       :initform nil
                       :initarg :show-as-default-p
                       :accessor push-button-show-as-default-p))
@@ -1108,10 +1107,13 @@ and must never be nil.")
 ;;; ------------------------------------------------------------------------------------------
 ;;;  30.4.2 The concrete toggle-button Gadget
 
-(defclass toggle-button-pane (sfm-gadget-mixin
+(defclass toggle-button-pane (animated-mixin
+
                               activate/deactivate-transitions-mixin
                               enter/exit-transitions-mixin
                               press/release-transitions-mixin
+
+                              sfm-gadget-mixin
 
                               toggle-button
                               ;; repaint behavior:
@@ -1135,26 +1137,6 @@ and must never be nil.")
    :x-spacing 2
    :y-spacing 2
    :background *3d-normal-color*))
-
-(defclass arm () ())
-
-(defclass disarm () ())
-
-(defmethod arm-gadget :after ((gadget toggle-button-pane) &optional value)
-  (multiple-value-bind (new-state repaintp)
-      (handle-event-using-state gadget (state gadget) (make-instance 'arm))
-    (setf (state gadget) new-state)
-    (when repaintp
-      (dispatch-repaint gadget (or (pane-viewport-region gadget)
-                                   (sheet-region gadget))))))
-
-(defmethod disarm-gadget :after ((gadget toggle-button-pane))
-  (multiple-value-bind (new-state repaintp)
-      (handle-event-using-state gadget (state gadget) (make-instance 'disarm))
-    (setf (state gadget) new-state)
-    (when repaintp
-      (dispatch-repaint gadget (or (pane-viewport-region gadget)
-                                   (sheet-region gadget))))))
 
 (defmethod compose-space ((pane toggle-button-pane) &key width height)
   (declare (ignore width height))
@@ -1181,18 +1163,23 @@ and must never be nil.")
   (multiple-value-bind (cx cy) (values (/ (+ x1 x2) 2) (/ (+ y1 y2) 2))
     (let ((radius (/ (- y2 y1) 2)))
       (draw-circle* gadget cx cy radius
-                     :start-angle (* 1/4 pi)
-                     :end-angle (* 5/4 pi)
-                     :ink *3d-dark-color*)
+                    :start-angle (* 1/4 pi)
+                    :end-angle (* 5/4 pi)
+                    :ink *3d-dark-color*)
       (draw-circle* gadget cx cy radius
-                     :start-angle (* 5/4 pi)
-                     :end-angle (* 9/4 pi)
-                     :ink *3d-light-color*)
+                    :start-angle (* 5/4 pi)
+                    :end-angle (* 9/4 pi)
+                    :ink *3d-light-color*)
       (draw-circle* gadget cx cy (max 1 (- radius 2))
-                     :ink (effective-gadget-input-area-color gadget))
-      (when state
-        (draw-circle* gadget cx cy (max 1 (- radius 4))
-                      :ink (effective-gadget-foreground gadget))))))
+                    :ink (effective-gadget-input-area-color gadget))
+      (when (gadget-value gadget)
+        (let ((r (* (- radius 4)
+                    (or (when-let ((animation (find-if (alexandria:of-type '(or checking unchecking))
+                                                       (animations gadget))))
+                          (property-value :indicator animation))
+                        1))))
+          (draw-circle* gadget cx cy (max 1 r)
+                        :ink (effective-gadget-foreground gadget)))))))
 
 (defmethod draw-toggle-button-indicator ((pane toggle-button-pane)
                                          (type (eql :some-of))
@@ -1200,68 +1187,61 @@ and must never be nil.")
                                          x1 y1 x2 y2)
   (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-input-area-color pane))
   (draw-bordered-rectangle* pane x1 y1 x2 y2 :style :inset)
-  (typecase state
-    (pressing
-     (let ((color (effective-gadget-foreground pane))
-           (progress (progress state)))
-       (multiple-value-bind (x1 y1 x2 y2) (values (+ x1 3) (+ y1 3)
-                                                  (- x2 3) (- y2 3))
-         (draw-line* pane x1 y1 x2 y2 :ink color :line-thickness 2)
-         (when (> progress .5)
-           (let ((f (* 2 (- progress .5))))
-             (draw-line* pane x2 y1 (alexandria:lerp f x2 x1) (alexandria:lerp f y1 y2) :ink color :line-thickness 2))))))
-    (pressed+armed
-     (multiple-value-bind (x1 y1 x2 y2) (values (+ x1 3) (+ y1 3)
-                                                (- x2 3) (- y2 3))
-       (draw-line* pane x1 y1 x2 y2 :ink +blue+ :line-thickness 2)
-       (draw-line* pane x2 y1 x1 y2 :ink +blue+ :line-thickness 2)))
-    (pressed
-     (multiple-value-bind (x1 y1 x2 y2) (values (+ x1 3) (+ y1 3)
-                                                (- x2 3) (- y2 3))
-       (draw-line* pane x1 y1 x2 y2 :ink +light-gray+ :line-thickness 2)
-       (draw-line* pane x2 y1 x1 y2 :ink +light-gray+ :line-thickness 2)))))
+  (let ((ink (typecase state
+               (pressed+armed +blue+)
+               (pressed       (effective-gadget-foreground pane))))
+        (p (cond ((when-let ((animation (find-if (alexandria:of-type '(or checking unchecking))
+                                                 (animations pane))))
+                    (property-value :indicator animation)))
+                 ((gadget-value pane) 1)
+                 (t 0))))
+    (when (plusp p)
+      (multiple-value-bind (x1 y1 x2 y2) (values (+ x1 3) (+ y1 3)
+                                                 (- x2 3) (- y2 3))
+        (with-drawing-options (pane :ink ink :line-thickness 2)
+          (let ((f (alexandria:clamp (* 2 p) 0 1)))
+            (draw-line* pane x1 y1 (alexandria:lerp f x1 x2) (alexandria:lerp f y1 y2)))
+          (when (> p .5)
+            (let ((f (* 2 (- p .5))))
+              (draw-line* pane x2 y1 (alexandria:lerp f x2 x1) (alexandria:lerp f y1 y2)))))))))
 
 (defmethod handle-repaint ((pane toggle-button-pane) region)
   (declare (ignore region))
   (when (sheet-grafted-p pane)
-    (with-slots (armed) pane
-      (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region pane))
-        (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-background pane))
-        (let* ((as (text-style-ascent (pane-text-style pane) pane))
-               (ds (text-style-descent (pane-text-style pane) pane)) )
-          (multiple-value-bind (tx1 ty1 tx2 ty2)
-              (values (+ x1 (pane-x-spacing pane))
-                      (- (/ (+ y1 y2) 2) (/ (+ as ds) 2))
-                      (+ x1 (pane-x-spacing pane) (+ as ds))
-                      (+ (/ (+ y1 y2) 2) (/ (+ as ds) 2)))
-            (draw-toggle-button-indicator pane (toggle-button-indicator-type pane) (state pane)
-                                          tx1 ty1 tx2 ty2)
-            (if (gadget-active-p pane)
-                (draw-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2
-                             :ink (effective-gadget-foreground pane))
-                (draw-engraved-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2))))))))
+    (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region pane))
+      (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-background pane))
+      (let* ((as (text-style-ascent (pane-text-style pane) pane))
+             (ds (text-style-descent (pane-text-style pane) pane)) )
+        (multiple-value-bind (tx1 ty1 tx2 ty2)
+            (values (+ x1 (pane-x-spacing pane))
+                    (- (/ (+ y1 y2) 2) (/ (+ as ds) 2))
+                    (+ x1 (pane-x-spacing pane) (+ as ds))
+                    (+ (/ (+ y1 y2) 2) (/ (+ as ds) 2)))
+          (draw-toggle-button-indicator pane (toggle-button-indicator-type pane) (state pane)
+                                        tx1 ty1 tx2 ty2)
+          (if (gadget-active-p pane) ; TODO draw-label-using-state
+              (draw-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2
+                           :ink (effective-gadget-foreground pane))
+              (draw-engraved-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2)))))))
 
-(defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state not-armed)
-                                     (event arm))
-  (values (make-instance 'armed) t))
+(defclass checking (animation) ())
 
-(defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state armed)
-                                     (event disarm))
-  (values (make-instance 'not-armed) t))
+(defmethod property-value ((property (eql :indicator)) (thing checking))
+  (progress thing))
 
+(defclass unchecking (animation) ())
 
-
-(defmethod handle-event-using-state ((pane  toggle-button-pane)
-                                     (state pressed+not-armed)
-                                     (event arm))
-  (values (make-instance 'pressed+armed) t))
+(defmethod property-value ((property (eql :indicator)) (thing unchecking))
+  (- 1 (progress thing)))
 
 (defmethod handle-event-using-state ((pane  toggle-button-pane)
                                      (state pressed+armed)
                                      (event pointer-button-release-event))
-  (setf (gadget-value pane :invoke-callback t) (not (gadget-value pane)))
+  (let ((new-value (not (gadget-value pane))))
+    (setf (gadget-value pane :invoke-callback t) new-value)
+    (if new-value
+        (add-or-change-animation 'unchecking 'checking pane)
+        (add-or-change-animation 'checking 'unchecking pane)))
   (values (make-instance 'armed) t))
 
 ;;; ------------------------------------------------------------------------------------------
