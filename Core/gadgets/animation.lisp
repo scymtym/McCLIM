@@ -98,8 +98,8 @@
 (defun animate (gadget)
   (bt:make-thread (lambda ()
                     (loop while (or (current-animation gadget) (animations gadget))
-                          do (queue-event gadget (make-instance 'animation-tick :sheet gadget :dt .01))
-                             (sleep .01)))))
+                          do (queue-event gadget (make-instance 'animation-tick :sheet gadget :dt .1))
+                             (sleep .04)))))
 
 (defmethod property-value ((property t) (thing animated-mixin))
   (if-let ((values (loop :for animation :in (animations thing)

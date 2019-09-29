@@ -308,6 +308,13 @@
   (declare (ignore client gadget-id))
   (invoke-callback gadget (gadget-activate-callback gadget)))
 
+(defmethod handle-event-using-state :around ((pane action-gadget)
+                                             (state pressed+armed)
+                                             (event pointer-button-release-event)) ; TODO should not be :around
+  (multiple-value-prog1
+      (call-next-method)
+    (activate-callback pane (gadget-client pane) (gadget-id pane))))
+
 ;;;
 ;;; Oriented-gadget
 ;;;

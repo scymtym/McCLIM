@@ -13,7 +13,7 @@
 
 (defmethod transition ((gadget stateful-mixin) from to))
 
-(defvar *inspector* (nth-value 1 (clouseau:inspect nil :new-process t)))
+; (defvar *inspector* (nth-value 1 (clouseau:inspect nil :new-process t)))
 
 (defmethod transition :around ((gadget stateful-mixin) from to)
   (leave gadget from)
@@ -188,10 +188,3 @@
     (values (make-instance 'armed) t)))
 
 ;;;
-
-(defmethod handle-event-using-state :around ((pane action-gadget)
-                                             (state pressed+armed)
-                                             (event pointer-button-release-event)) ; TODO should not be :around
-  (multiple-value-prog1
-      (call-next-method)
-    (activate-callback pane (gadget-client pane) (gadget-id pane))))
