@@ -13,14 +13,14 @@
 
 (defmethod transition ((gadget stateful-mixin) from to))
 
-(defvar *inspector* (nth-value 1 (clouseau:inspect nil :new-process t)))
+; (defvar *inspector* (nth-value 1 (clouseau:inspect nil :new-process t)))
 
 (defmethod transition :around ((gadget stateful-mixin) from to)
   (leave gadget from)
   (prog1
       (call-next-method)
     (enter gadget to)
-    (setf (clouseau:root-object *inspector* :run-hook-p t) gadget)
+    ; (setf (clouseau:root-object *inspector* :run-hook-p t) gadget)
     ))
 
 (defmethod enter ((gadget stateful-mixin) state)) ; TODO progn combination?

@@ -9,6 +9,7 @@
 ;;;  (c) copyright 2001 by Michael McDonald (mikemac@mikemac.com)
 ;;;  (c) copyright 2001 by Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
 ;;;  (c) copyright 2014 by Robert Strandh (robert.strandh@gmail.com)
+;;;  (c) copyright 2019 by Jan Moringen
 
 ;;; This library is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU Library General Public
@@ -25,7 +26,7 @@
 ;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
-(in-package :clim-internals)
+(in-package #:clim-internals)
 
 ;;;; Notes
 
@@ -1029,15 +1030,16 @@ and must never be nil.")
 
 (defmethod effective-gadget-foreground ((gadget basic-gadget))
   (if (gadget-active-p gadget)
-      +foreground-ink+
+      (property-value :foreground-ink *theme*)
+      ;; +foreground-ink+
       (compose-over (compose-in (pane-foreground gadget)
                                 (make-opacity .5))
                     (pane-background gadget))))
 
 (defmethod effective-gadget-background ((gadget basic-gadget))
   (if (gadget-armed-p gadget)
-      (gadget-highlight-background gadget)
-      (pane-background gadget)))
+      (property-value :highlight-background-ink *theme*)
+      (property-value :background-ink *theme*)))
 
 (defmethod effective-gadget-input-area-color ((gadget basic-gadget))
   (if (gadget-active-p gadget)
@@ -1194,14 +1196,12 @@ and must never be nil.")
                                          (type (eql :some-of))
                                          (state t)
                                          x1 y1 x2 y2)
-  (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-input-area-color pane))
+  (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-background pane))
   (draw-bordered-rectangle* pane x1 y1 x2 y2 :style :inset)
   (let ((ink (typecase state
                (pressed+armed +blue+)
-               (pressed       (effective-gadget-foreground pane))))
-        (p (cond ((when-let ((animation (find-if (alexandria:of-type '(or checking unchecking))
-                                                 (animations pane))))
-                    (property-value :indicator animation)))
+               (t             (effective-gadget-foreground pane))))
+        (p (cond ((property-value :indicator pane))
                  ((gadget-value pane) 1)
                  (t 0))))
     (when (plusp p)
@@ -1236,12 +1236,12 @@ and must never be nil.")
 (defclass checking (animation) ())
 
 (defmethod property-value ((property (eql :indicator)) (thing checking))
-  (progress thing))
+  (values (progress thing) t))
 
 (defclass unchecking (animation) ())
 
 (defmethod property-value ((property (eql :indicator)) (thing unchecking))
-  (- 1 (progress thing)))
+  (values (- 1 (progress thing)) t))
 
 (defmethod handle-event-using-state ((pane  toggle-button-pane)
                                      (state pressed+armed)
@@ -1743,7 +1743,8 @@ and must never be nil.")
   (let ((state (state pane))
         (position (convert-value-to-position pane))
         (slider-button-half-short-dim (floor slider-button-short-dim 2))
-        (background-color (effective-gadget-background pane))
+        (foreground-ink (effective-gadget-foreground pane))
+        (background-ink (effective-gadget-background pane))
         (inner-color (gadget-current-color pane)))
     (flet ((draw-knob (x y)
              (if (gadget-active-p pane)
@@ -1765,14 +1766,14 @@ and must never be nil.")
              (let ((text (format-value (gadget-value pane)
                                        (slider-decimal-places pane))))
                (if (gadget-active-p pane)
-                   (draw-text* pane text x y)
+                   (draw-text* pane text x y :ink foreground-ink)
                    (progn
                      (draw-text* pane text (1+ x) (1+ y)
                                  :ink *3d-light-color*)
                      (draw-text* pane text x y
                                  :ink *3d-dark-color*))))))
       (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region pane))
-        (display-gadget-background pane background-color 0 0 (- x2 x1) (- y2 y1))
+        (display-gadget-background pane background-ink 0 0 (- x2 x1) (- y2 y1))
         (ecase (gadget-orientation pane)
           ((:vertical)
            (let ((middle (round (- x2 x1) 2)))

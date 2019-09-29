@@ -2,6 +2,7 @@
   :depends-on ("clim-basic" "clim-core")
   :serial t
   :components ((:file "protocol")
+               (:file "theme")
                (:file "states")
                (:file "animation")
                (:file "gadgets")

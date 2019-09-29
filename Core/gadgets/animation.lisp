@@ -4,7 +4,7 @@
 
 (defgeneric property-value (property thing)
   (:method ((property t) (thing t))
-    0))
+    (values 0 nil)))
 
 (defgeneric update (thing event))
 
@@ -46,6 +46,9 @@
           (t
            (setf (progress animation) new-progress)
            t))))
+
+(defmethod property-value ((property t) (thing animation))
+  (property-value property *theme*))
 
 ;;;
 
@@ -95,15 +98,51 @@
 (defun animate (gadget)
   (bt:make-thread (lambda ()
                     (loop while (or (current-animation gadget) (animations gadget))
-                          do (queue-event gadget (make-instance 'animation-tick :sheet gadget :dt .1))
-                             (sleep .03)))))
+                          do (queue-event gadget (make-instance 'animation-tick :sheet gadget :dt .01))
+                             (sleep .01)))))
+
+(defmethod property-value ((property t) (thing animated-mixin))
+  (if-let ((values (loop :for animation :in (animations thing)
+                         :for (value valuep) = (multiple-value-list
+                                                (property-value property animation))
+                         :when valuep
+                         :collect value)))
+    (values (first values) t)
+    (property-value property *theme*)   ; (call-next-method)
+    ))
 
 ;;; Background hack
 
-(defmethod effective-gadget-background ((gadget animation))
-  nil)
+(defmethod property-value ((property (eql :effective-foreground-ink)) (thing animated-mixin))
+  (multiple-value-bind (value valuep) (call-next-method)
+    (if valuep
+        (values value t)
+        (property-value :foreground-ink thing))))
 
-(defmethod effective-gadget-background :around ((gadget animated-mixin))
+(defmethod property-value ((property (eql :effective-background-ink)) (thing animated-mixin))
+  (multiple-value-bind (value valuep) (call-next-method)
+    (if valuep
+        (values value t)
+        (property-value :background-ink thing))))
+
+(defmethod effective-gadget-foreground ((gadget animated-mixin))
+  (multiple-value-bind (value valuep)
+      (property-value :effective-foreground-ink gadget)
+    (if valuep
+        value
+        (property-value :foreground-ink *theme*))))
+
+(defmethod effective-gadget-background ((gadget animated-mixin))
+  (multiple-value-bind (value valuep)
+      (property-value :effective-background-ink gadget)
+    (if valuep
+        value
+        (property-value :background-ink *theme*))))
+
+#+no (defmethod effective-gadget-background ((gadget animation))
+       nil)
+
+#+no (defmethod effective-gadget-background :around ((gadget animated-mixin))
   (if-let ((animation (first (animations gadget))))
     (or (effective-gadget-background animation) (call-next-method))
     (call-next-method)))
@@ -113,18 +152,24 @@
 (defclass arming (animation)
   ())
 
-(defmethod effective-gadget-background ((gadget arming))
-  (let ((opacity (make-opacity (alexandria:clamp (progress gadget) 0 1))))
-    (compose-over (compose-in (gadget-highlight-background (gadget gadget)) opacity)
-                  (pane-background (gadget gadget)))))
+(defmethod property-value ((property (eql :effective-background-ink)) (thing arming))
+  (let ((highlight-background-ink (property-value :highlight-background-ink thing))
+        (background-ink (property-value :background-ink thing))
+        (opacity (make-opacity (alexandria:clamp (progress thing) 0 1))))
+    (values (compose-over (compose-in highlight-background-ink opacity)
+                          background-ink)
+            t)))
 
 (defclass disarming (animation)
   ())
 
-(defmethod effective-gadget-background ((gadget disarming))
-  (let ((opacity (make-opacity (alexandria:clamp (progress gadget) 0 1))))
-    (compose-over (compose-in (pane-background (gadget gadget)) opacity)
-                  (gadget-highlight-background (gadget gadget)))))
+(defmethod property-value ((propery (eql :effective-background-ink)) (thing disarming))
+  (let ((highlight-background-ink (property-value :highlight-background-ink thing))
+        (background-ink (property-value :background-ink thing))
+        (opacity (make-opacity (alexandria:clamp (progress thing) 0 1))))
+    (values (compose-over (compose-in background-ink opacity)
+                          highlight-background-ink)
+            t)))
 
 (defmethod transition :after ((gadget animated-mixin) (form not-armed) (to armed))
   (add-or-change-animation 'disarming 'arming gadget))
@@ -135,12 +180,12 @@
 (defclass pressing (animation) ())
 
 (defmethod property-value ((property (eql :pressed)) (thing pressing))
-  (progress thing))
+  (values (progress thing) t))
 
 (defclass unpressing (animation) ())
 
 (defmethod property-value ((property (eql :pressed)) (thing unpressing))
-  (- 1 (progress thing)))
+  (values (- 1 (progress thing)) t))
 
 (defmethod transition :after ((gadget t) (from t) (to pressed+armed))
   (add-or-change-animation 'unpressing 'pressing gadget))
