@@ -204,7 +204,7 @@ want to do the same.")
            (native-sheet-region (effective-repaint-region parent sheet region)))
           (with-sheet-medium (medium parent)
             (with-drawing-options (medium :clipping-region native-sheet-region
-                                          :ink (pane-background sheet)
+                                          :ink (property-value :background-ink *theme*)
                                           :transformation +identity-transformation+)
               (with-bounding-rectangle* (left top right bottom)
                   native-sheet-region

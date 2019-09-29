@@ -36,9 +36,74 @@
             (p (progress thing)))
         (values
          (etypecase old-value
-           (real (alexandria:lerp p old-value theme-value))
-           (color (compose-over (compose-in theme-value (make-opacity p))
-                                old-value)))
+           (real
+            (alexandria:lerp p old-value theme-value))
+           ((or color ink)
+            (compose-over (compose-in theme-value (make-opacity p))
+                          old-value)))
          t)))))
 
-(defvar *theme* (make-instance 'theme))
+;;;
+
+;; gadget-color-mixin
+;;   normal                 -> +gray80+
+;;   highlighted            -> +gray85+
+;;   pushed-and-highlighted -> +gray75+
+
+;; effective-gadget-*
+;;   highlight-background   -> (over (in white .5) pane-background)
+;;   foreground[active]     -> +foreground-ink+
+;;   foreground[not-active  -> (over (in pane-foreground .5) pane-background)
+;;   background[armed]      -> highlight-background
+;;   background[not-armed]  -> pane-background
+;;   input-area[active]     -> +lemonchiffon+
+;;   input-area[not-active] -> (over (in +lemonchiffon+ .5) pane-background)
+
+;; 3d colors
+;;  *3d-dark-color*   -> (make-gray-color .59)
+;;  *3d-normal-color* -> (make-gray-color .84)
+;;  *3d-light-color*  -> (make-gray-color 1.0)
+;;  *3d-inner-color*  -> (make-gray-color .75)
+
+;;; TODO indirect ink for theme-foreground, theme-background, etc.?
+
+(defun default-theme ()
+  (let ((theme (make-instance 'theme)))
+    (setf (property-value :foreground-ink           theme) +foreground-ink+
+          (property-value :background-ink           theme) +gray84+
+          (property-value :highlight-background-ink theme) (compose-over (compose-in +white+ (make-opacity .5))
+                                                                         +gray84+)
+
+          (property-value :3d-light-color           theme) (make-gray-color 1.0)
+          (property-value :3d-dark-color            theme) (make-gray-color .59))
+    theme))
+
+(defvar *theme* (default-theme))
+
+(setf (property-value :background-ink           *theme*) +purple+
+      (property-value :foreground-ink           *theme*) +white+
+      (property-value :highlight-background-ink *theme*) +green+
+
+      (property-value :3d-dark-color            *theme*) +orange+
+      (property-value :3d-normal-color          *theme*) +dark-blue+
+      (property-value :3d-light-color           *theme*) +yellow+
+      (property-value :3d-inner-color           *theme*) +orange3+)
+
+(setf (property-value :background-ink           *theme*) +gray30+
+      (property-value :foreground-ink           *theme*) +gray85+
+      (property-value :highlight-background-ink *theme*) +gray45+
+
+      (property-value :3d-dark-color            *theme*) +gray30+
+      (property-value :3d-normal-color          *theme*) +gray45+
+      (property-value :3d-light-color           *theme*) +gray85+
+      (property-value :3d-inner-color           *theme*) +gray35+)
+
+(setf (property-value :background-ink           *theme*) +gray84+
+      (property-value :foreground-ink           *theme*) +black+
+      (property-value :highlight-background-ink *theme*) (compose-over (compose-in +white+ (make-opacity .5))
+                                                                       +gray84+)
+
+      (property-value :3d-dark-color            *theme*) (make-gray-color .59)
+      (property-value :3d-normal-color          *theme*) (make-gray-color .84)
+      (property-value :3d-light-color           *theme*) (make-gray-color 1.0)
+      (property-value :3d-inner-color           *theme*) (make-gray-color .75))

@@ -4,7 +4,7 @@
 
 (defgeneric property-value (property thing)
   (:method ((property t) (thing t))
-    (values 0 nil)))
+    (values nil nil)))
 
 (defgeneric update (thing event))
 

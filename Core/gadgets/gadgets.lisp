@@ -906,8 +906,8 @@ and must never be nil.")
                                    :ink
                                    (if (<= (* 1/4 pi) a (* 5/4 pi))
                                        dark light)))))))
-      (let ((light  *3d-light-color*)
-            (dark   *3d-dark-color*))
+      (let ((light  (property-value :3d-light-color *theme*))
+            (dark   (property-value :3d-dark-color *theme*)))
       ;;
       (etypecase style
         ((eql :solid)
@@ -970,8 +970,8 @@ and must never be nil.")
          options))
 
 (defun draw-engraved-label* (pane x1 y1 x2 y2)
-  (draw-label* pane (1+ x1) (1+ y1) (1+ x2) (1+ y2) :ink *3d-light-color*)
-  (draw-label* pane x1 y1 x2 y2 :ink *3d-dark-color*))
+  (draw-label* pane (1+ x1) (1+ y1) (1+ x2) (1+ y2) :ink (property-value :3d-light-color *theme*))
+  (draw-label* pane x1 y1 x2 y2 :ink (property-value :3d-dark-color *theme*)))
 
 ;;;;
 ;;;; 3D-BORDER-MIXIN Class
@@ -1309,7 +1309,9 @@ and must never be nil.")
 ;;; ------------------------------------------------------------------------------------------
 ;;;  30.4.4 The concrete scroll-bar Gadget
 
-(defclass scroll-bar-pane (3D-border-mixin
+(defclass scroll-bar-pane (animated-mixin
+
+                           3D-border-mixin
                            scroll-bar)
   ((event-state :initform nil)
    (drag-dy :initform nil)
@@ -1363,10 +1365,10 @@ and must never be nil.")
                           (make-point x2 y2))))
             (case up-state
               (:armed
-               (draw-polygon scroll-bar pg :ink *3d-inner-color*)
+               (draw-polygon scroll-bar pg :ink (property-value :*3d-inner-color *theme*))
                (draw-bordered-polygon scroll-bar pg :style :inset :border-width 2))
               (otherwise
-               (draw-polygon scroll-bar pg :ink *3d-normal-color*)
+               (draw-polygon scroll-bar pg :ink (property-value :*3d-normal-color *theme*))
                (draw-bordered-polygon scroll-bar pg :style :outset :border-width 2) ))))) )
     ;; redraw dn arrow
     (unless (and (not all-new-p) (eql dn-state old-dn-state))
@@ -1378,10 +1380,10 @@ and must never be nil.")
                           (make-point x2 y1))))
             (case dn-state
               (:armed
-               (draw-polygon scroll-bar pg :ink *3d-inner-color*)
+               (draw-polygon scroll-bar pg :ink * (property-value :3d-inner-color *theme*))
                (draw-bordered-polygon scroll-bar pg :style :inset :border-width 2))
               (otherwise
-               (draw-polygon scroll-bar pg :ink *3d-normal-color*)
+               (draw-polygon scroll-bar pg :ink (property-value :*3d-normal-color *theme*))
                (draw-bordered-polygon scroll-bar pg :style :outset :border-width 2)))))))
     ;; thumb
     (unless (and (not all-new-p)
@@ -1406,16 +1408,16 @@ and must never be nil.")
                        (copy-area medium ox1 oy1 (- ox2 ox1) (- oy2 oy1) nx1 ny1)
                        ;; clear left-overs from the old region
                        (if (< oy1 ny1)
-                           (draw-rectangle* medium ox1 oy1 ox2 ny1 :ink *3d-inner-color*)
-                           (draw-rectangle* medium ox1 oy2 ox2 ny2 :ink *3d-inner-color*)))) ))))
+                           (draw-rectangle* medium ox1 oy1 ox2 ny1 :ink (property-value :3d-inner-color *theme*))
+                           (draw-rectangle* medium ox1 oy2 ox2 ny2 :ink (property-value :3d-inner-color *theme*))))) ))))
              (t
               ;; redraw whole thumb bed and thumb all anew
               (with-drawing-options (scroll-bar :transformation (scroll-bar-transformation scroll-bar))
                   (with-bounding-rectangle* (bx1 by1 bx2 by2) (scroll-bar-thumb-bed-region scroll-bar)
                     (with-bounding-rectangle* (x1 y1 x2 y2) (scroll-bar-thumb-region scroll-bar value)
-                      (draw-rectangle* scroll-bar bx1 by1 bx2 y1 :ink *3d-inner-color*)
-                      (draw-rectangle* scroll-bar bx1 y2 bx2 by2 :ink *3d-inner-color*)
-                      (draw-rectangle* scroll-bar x1 y1 x2 y2 :ink *3d-normal-color*)
+                      (draw-rectangle* scroll-bar bx1 by1 bx2 y1 :ink (property-value :3d-inner-color *theme*))
+                      (draw-rectangle* scroll-bar bx1 y2 bx2 by2 :ink (property-value :3d-inner-color *theme*))
+                      (draw-rectangle* scroll-bar x1 y1 x2 y2 :ink (property-value :3d-normal-color *theme*))
                       (draw-bordered-polygon scroll-bar
                                              (polygon-points (make-rectangle* x1 y1 x2 y2))
                                              :style :outset
@@ -2839,8 +2841,11 @@ Returns two values, the item itself, and the index within the item list."
    (%total-size   :initarg :total-size
                   :reader  dragging-state-total-size)))
 
-(defclass clim-extensions:box-adjuster-gadget
-    (basic-gadget 3d-border-mixin orientation-from-parent-mixin)
+(defclass clim-extensions:box-adjuster-gadget (animated-mixin
+
+                                               basic-gadget
+                                               3d-border-mixin
+                                               orientation-from-parent-mixin)
   ((dragging-state :initform nil
                    :accessor dragging-state))
   (:default-initargs :background *3d-inner-color*)

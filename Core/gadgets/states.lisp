@@ -13,7 +13,7 @@
 
 (defmethod transition ((gadget stateful-mixin) from to))
 
-; (defvar *inspector* (nth-value 1 (clouseau:inspect nil :new-process t)))
+(defvar *inspector* (nth-value 1 (clouseau:inspect nil :new-process t)))
 
 (defmethod transition :around ((gadget stateful-mixin) from to)
   (leave gadget from)

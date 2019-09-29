@@ -2297,7 +2297,8 @@ SCROLLER-PANE appear on the ergonomic left hand side, or leave set to
 
 ;;; LABEL PANE
 
-(defclass label-pane (multiple-child-composite-pane)
+(defclass label-pane (animated-mixin
+                      multiple-child-composite-pane)
   ((label :type string
           :initarg :label
           :accessor label-pane-label
@@ -2306,7 +2307,7 @@ SCROLLER-PANE appear on the ergonomic left hand side, or leave set to
               :initform :top
               :initarg :label-alignment
               :reader label-pane-label-alignment)
-   (background :initform *3d-normal-color*))
+   (background :initform (property-value :3d-normal-color *theme*)))
   (:default-initargs
    :align-y    :center
    :text-style (make-text-style :sans-serif nil nil))
@@ -2411,7 +2412,7 @@ SCROLLER-PANE appear on the ergonomic left hand side, or leave set to
                       (:top (+ y1 m0 a))
                       (:bottom (- y2 m0 d))))
           (draw-text* pane (label-pane-label pane)
-                      tx ty)
+                      tx ty :ink (property-value :foreground-ink *theme*))
           ;;;
           (when (sheet-children pane)
             (with-drawing-options (pane
