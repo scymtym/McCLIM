@@ -16,8 +16,8 @@
 ;;; Library General Public License for more details.
 ;;;
 ;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the 
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+;;; License along with this library; if not, write to the
+;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
 (in-package :clim-demo)
@@ -35,9 +35,9 @@
 (defclass logic-cube-pane (clime:never-repaint-background-mixin basic-gadget)
   ((%background :initform (make-rgb-color 0.35 0.35 0.46) :reader background-color)
    (pitch :initform 0.0 :accessor pitch)
-   (yaw   :initform 0.0 :accessor yaw)   
+   (yaw   :initform 0.0 :accessor yaw)
    (density :initform 5 :accessor density)
-   (playfield :reader playfield)   
+   (playfield :reader playfield)
    (drag-color :initform nil :accessor drag-color)
    (dragging :initform nil :accessor dragging)
    (squeeze :initform nil :accessor squeeze) ; For victory animation
@@ -92,7 +92,7 @@
                           (current-head root-indices))
                       (when (null color)
                         (labels
-                            ((find-new-head ()                               
+                            ((find-new-head ()
                                (satisfying  ;; Obviously I should not use 'satisfying' here..
                                 (lambda (head-color &rest head-indices)
                                   (and (null head-color) ;; .. but computers are very fast.
@@ -195,7 +195,7 @@
     (dotimes (d 3)
       (flet ((permute (x y)
                ; SBCL warns (erroneously?) below, but the code works.
-               (flet ((f (i) (elt (vector x y 0) (mod (+ d i) 3)))) 
+               (flet ((f (i) (elt (vector x y 0) (mod (+ d i) 3))))
                  (vector (f 0) (f 1) (f 2)))))
         (dotimes (i n)
           (dotimes (j n)
@@ -263,7 +263,7 @@
                           (or (second a*) (first a)))
                     polygon-args))
            a b))
-  
+
 (defun draw-logic-cube (pane)
   (apply-to-transformed-faces pane
     (lambda (side i j &rest camera-points)
@@ -294,8 +294,8 @@
 
 (defmethod handle-repaint ((pane logic-cube-pane) region)
   (with-bounding-rectangle* (x0 y0 x1 y1) (sheet-region pane)
-    (climi::with-double-buffering ((pane x0 y0 x1 y1) (wtf-wtf-wtf))
-      (declare (ignore wtf-wtf-wtf))
+    (progn ; climi::with-double-buffering ((pane x0 y0 x1 y1) (wtf-wtf-wtf))
+      ; (declare (ignore wtf-wtf-wtf))
       (draw-rectangle* pane x0 y0 x1 y1 :filled t :ink (background-color pane))
       (invoke-in-lc-space pane #'draw-logic-cube)
       (when (decorator pane)
@@ -441,7 +441,7 @@
   (multiple-value-bind (side i j)
       (multiple-value-call #'find-poly-under-point pane
                            (xy-to-viewport-coordinates pane (pointer-event-x event) (pointer-event-y event)))
-    (when side      
+    (when side
       (destructuring-bind (color type) (aref (playfield pane) side i j)
         (touch-square pane side i j)
         (setf (dragging pane) t
