@@ -135,16 +135,21 @@
                  (make-bounding-rectangle 0 0 (width event) (height event)))
            nil)
 
+          (enter
+           (when-let ((sheet (surface->sheet port (surface event))))
+             (translate-event event sheet 'pointer-enter-event :modifier-state 0)))
+          (leave
+           (when-let ((sheet (surface->sheet port (surface event))))
+             (translate-event event sheet 'pointer-exit-event :modifier-state 0)))
+
           (pointer-move
            (setf (%pointer-position (port-pointer port)) (list (root-x event) (root-y event)))
 
            (when-let ((sheet (surface->sheet port (surface event))))
-             (setf (climi::port-pointer-sheet port) sheet)
              (translate-event event sheet 'pointer-motion-event :modifier-state 0)))
 
           ((or button-press button-release)
            (when-let ((sheet (surface->sheet port (surface event))))
-             (setf (climi::port-pointer-sheet port) sheet)
              (translate-event
               event sheet (if (typep event 'button-press)
                               'pointer-button-press-event
@@ -157,7 +162,6 @@
 
           (scroll
            (when-let ((sheet (surface->sheet port (surface event))))
-             (setf (climi::port-pointer-sheet port) sheet)
              (translate-event event sheet 'climi::pointer-scroll-event
                               :delta-x 0
                               :delta-y (case (direction event)
@@ -189,14 +193,7 @@
                        :key-character (when (characterp key-name)
                                         key-name)
                        :modifier-state (modifier-state connection)))))
-             top-level-sheet))
-
-          ((or enter leave)
-           (let ((surface (surface event))
-                                        ; (node    (id event))
-                 )
-             (print event))
-           nil)))))
+             top-level-sheet))))))
 
 (defun request-frame-data (port connection sheet)
   (when-let ((mirror (climi::port-lookup-mirror port sheet))) ; TODO hack
