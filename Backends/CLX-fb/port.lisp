@@ -3,7 +3,8 @@
 (defclass clx-fb-port (render-port-mixin
 		       clim-xcommon:keysym-port-mixin
 		       clim-clx::clx-basic-port)
-  ())
+  ((%last-frame-time :accessor last-frame-time
+                     :initform nil)))
 
 (setf (get :clx-fb :port-type) 'clx-fb-port)
 (setf (get :clx-fb :server-path-parser) 'clim-clx::parse-clx-server-path)
@@ -15,24 +16,33 @@
   (setf (slot-value port 'pointer)
 	(make-instance 'clim-clx::clx-basic-pointer :port port))
   (initialize-clx port)
-  (initialize-clx-framebuffer port)
   (clim-extensions:port-all-font-families port))
 
+(defun swap-sheet-buffers (port)
+  (handler-case
+      (alexandria:maphash-keys
+       (lambda (key)
+         (when (typep key 'clx-fb-mirrored-sheet-mixin)
+           (image-mirror-to-x (sheet-mirror key))))
+       (slot-value port 'climi::sheet->mirror))
+    (condition (condition)
+      (format *debug-io* "~A~%" condition)))
+  (xlib:display-force-output (clx-port-display port))
+  (setf (last-frame-time port) (get-internal-real-time)))
 
-(defun initialize-clx-framebuffer (port)
-  (clim-sys:make-process (lambda ()
-                           (loop
-                             (handler-case
-                                 (alexandria:maphash-keys
-                                  (lambda (key)
-                                    (when (typep key 'clx-fb-mirrored-sheet-mixin)
-                                      (image-mirror-to-x (sheet-mirror key))))
-                                  (slot-value port 'climi::sheet->mirror))
-                               (condition (condition)
-                                 (format *debug-io* "~A~%" condition)))
-                             (xlib:display-force-output (clx-port-display port))
-                             (sleep 0.01)))
-                         :name (format nil "~S's event process." port)))
+(defmethod process-next-event ((port clx-fb-port) &key wait-function (timeout nil))
+
+  (let* ((frame-rate 30)
+         (frame-period-time (/ frame-rate))
+         (last-frame-time (last-frame-time port))
+         (timeout (if timeout
+                      (min frame-period-time timeout)
+                      frame-period-time)))
+    (call-next-method port :wait-function wait-function :timeout timeout)
+    (when (or (null last-frame-time)
+              (>= (- (get-internal-real-time) last-frame-time)
+                  (* frame-period-time internal-time-units-per-second)))
+      (swap-sheet-buffers port))))
 
 (defparameter *event-mask* '(:exposure
 			     :key-press :key-release
