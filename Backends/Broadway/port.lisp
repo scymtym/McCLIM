@@ -98,9 +98,7 @@
                      :initform nil)
    ;; HACK
    (%createdp        :accessor createdp
-                     :initform nil)
-   (%upload-pending-p :accessor upload-pending-p
-                      :initform nil)))
+                     :initform nil)))
 
 #+unused (defmethod make-node ((surface surface) (data t) &key parent)
   (let ((id (next-node-id surface)))
