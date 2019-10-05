@@ -57,6 +57,7 @@
 ;;       window-manager-delete-event
 ;;       window-manager-focus-event
 ;;     timer-event
+;;     swap-buffers-event
 ;;
 
 (defvar *last-timestamp* 0)
@@ -254,6 +255,59 @@
   ((token
     :initarg :token
     :reader  event-token)))
+
+;;; Buffer swapping event
+;;;
+;;; This event is dispatched from the port to a double-buffered sheet
+;;; when the port is preparing to draw a frame. The event has three
+;;; phases:
+;;;
+;;; 0) The initial phase.
+;;;
+;;;    Starts with the creation of the event. Ends with processing of
+;;;    the event in the target top-level sheet.
+;;;
+;;; 1) The copying phase.
+;;;
+;;;    Starts with the processing of the event in the target top-level
+;;;    sheet.
+;;;
+;;;    The event is processed in the target sheet by simply waiting
+;;;    for the event to advance to phase 2 which suspends further
+;;;    event processing in the thread that services the event queue of
+;;;    the target sheet.
+;;;
+;;;    The port thread was waiting for the event to enter phase 1 and
+;;;    can now proceed since the other thread is waiting and will not
+;;;    interfere. The port thread copies the contents of the
+;;;    off-screen buffer into the mirror.
+;;;
+;;; 2) The final phase
+;;;
+;;;    Starts after the port thread finishes copying the off-screen
+;;;    buffer.
+;;;
+;;;    Event processing in the target sheet resumes.
+
+(defclass swap-buffers-event (standard-event)
+  ((%state :type (member 0 1 2) :accessor state :initform 0)
+   (%mutex :reader mutex :initform (bt:make-lock "swap buffers"))
+   (%condition-variable :reader condition-variable
+                        :initform (bt:make-condition-variable :name "swap buffers"))))
+
+(defmethod print-object ((object swap-buffers-event) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (format stream "~D" (state object))))
+
+(defmethod enter-state ((event swap-buffers-event) (state t))
+  (bt:with-lock-held ((mutex event))
+    (setf (state event) state)
+    (bt:condition-notify (condition-variable event))))
+
+(defmethod wait-for-state ((event swap-buffers-event) (state t))
+  (bt:with-lock-held ((mutex event))
+    (loop until (= state (state event))
+          do (bt:condition-wait (condition-variable event) (mutex event)))))
 
 ;;; Constants dealing with events
 

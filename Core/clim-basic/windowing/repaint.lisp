@@ -277,3 +277,17 @@
             (old-region (transform-region old-transformation old-region)))
         (dispatch-repaint (sheet-parent sheet)
                           (region-union new-region old-region))))))
+
+;;; Double buffering
+
+(defclass double-buffering-mixin () ())
+
+(defmethod handle-event ((client double-buffering-mixin)
+                         (event swap-buffers-event))
+  ;; Let the port know that event processing for CLIENT is now
+  ;; suspended by transitioning EVENT into state 1.
+  (enter-state event 1)
+  ;; Wait until the port finishes its frame-related work it
+  ;; transitions EVENT into state 2. Event processing for CLIENT can
+  ;; resume.
+  (wait-for-state event 2))
