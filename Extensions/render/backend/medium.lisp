@@ -241,9 +241,9 @@
                                   min-x min-y))))))))
 
 (defmethod medium-finish-output ((medium render-medium-mixin))
-  (when-let ((mirror (sheet-mirror (medium-sheet medium))))
+  #+no (when-let ((mirror (sheet-mirror (medium-sheet medium))))
     (%mirror-force-output mirror)))
 
 (defmethod medium-force-output ((medium render-medium-mixin))
-  (when-let ((mirror (sheet-mirror (medium-sheet medium))))
+  #+no (when-let ((mirror (sheet-mirror (medium-sheet medium))))
     (%mirror-force-output mirror)))

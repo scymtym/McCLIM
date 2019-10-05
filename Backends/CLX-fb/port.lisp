@@ -20,10 +20,16 @@
 
 (defun swap-sheet-buffers (port)
   (handler-case
-      (alexandria:maphash-keys
-       (lambda (key)
-         (when (typep key 'clx-fb-mirrored-sheet-mixin)
-           (image-mirror-to-x (sheet-mirror key))))
+      (maphash
+       (lambda (sheet mirror)
+         (assert (eq mirror (sheet-mirror sheet))) ; TODO temp
+
+         (when (typep sheet 'clx-fb-mirrored-sheet-mixin)
+           (climi::invoke-with-suspended-sheet-event-processing
+            (lambda ()
+              (mcclim-render-internals::%mirror-force-output mirror)
+              (image-mirror-to-x mirror))
+            sheet)))
        (slot-value port 'climi::sheet->mirror))
     (condition (condition)
       (format *debug-io* "~A~%" condition)))
@@ -115,12 +121,12 @@
 
 
 (defmethod port-force-output ((port clx-fb-port))
-  (alexandria:maphash-keys
+  #+no (alexandria:maphash-keys
    (lambda (key)
      (when (typep key 'clx-fb-mirrored-sheet-mixin)
        (mcclim-render-internals::%mirror-force-output (sheet-mirror key))))
    (slot-value port 'climi::sheet->mirror))
-  (xlib:display-force-output (clx-port-display port)))
+  #+no (xlib:display-force-output (clx-port-display port)))
 
 ;;; Pixmap
 
