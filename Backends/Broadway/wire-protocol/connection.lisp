@@ -76,7 +76,7 @@
 
         :unless (and (typep event '(or key-press key-release))
                      (member (keysym event) '(65507 65513)))
-        :collect (print event)))
+        :collect event))
 
 (defmethod receive-message ((connection connection))
   (when-let ((payload (receive-frame connection)))
