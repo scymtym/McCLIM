@@ -1,3 +1,20 @@
+;;;; (C) Copyright 2019 Jan Moringen
+;;;;
+;;;; This library is free software; you can redistribute it and/or
+;;;; modify it under the terms of the GNU Library General Public
+;;;; License as published by the Free Software Foundation; either
+;;;; version 2 of the License, or (at your option) any later version.
+;;;;
+;;;; This library is distributed in the hope that it will be useful,
+;;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;;;; Library General Public License for more details.
+;;;;
+;;;; You should have received a copy of the GNU Library General Public
+;;;; License along with this library; if not, write to the
+;;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+;;;; Boston, MA  02111-1307  USA.
+
 (cl:in-package #:clim-broadway)
 
 (defmethod nodes-equivalent/shallow ((left node) (right node))
@@ -32,7 +49,7 @@
                (insert-node node :after after :data (make-instance 'reuse)))
              (sync-nodes (new-nodes old-nodes &key parent-removed-p)
                (loop :for sibling  =   nil :then (node new-node old-node
-                                                       :sibling         sibling
+                                                       :sibling          sibling
                                                        :parent-removed-p parent-removed-p)
                      :for new-node :in new-nodes
                      :for old-node =   (pop old-nodes)))
@@ -46,7 +63,7 @@
                       (unless parent-removed-p
                         (remove-node old-node))
                       (insert-node new-node :after sibling)
-                      (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list)
+                      (sync-nodes (coerce (children new-node) 'list) (coerce (children old-node) 'list) ; TODO
                                   :parent-removed-p t))
 
                      ((not (nodes-equivalent/children new-node old-node))
