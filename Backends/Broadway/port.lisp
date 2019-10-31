@@ -134,8 +134,8 @@
               :accessor children
               :initform '())))
 
-(defmethod clim:destroy-mirror ((port           broadway-port)
-                                (mirrored-sheet t))
+(defmethod destroy-mirror ((port           broadway-port)
+                           (mirrored-sheet t))
   (let* ((mirror (climi::port-lookup-mirror port mirrored-sheet))
          (id     (id mirror)))
 
@@ -147,8 +147,8 @@
 
     (climi::port-unregister-mirror port mirrored-sheet mirror)))
 
-(defmethod clim:realize-mirror ((port           broadway-port)
-                                (mirrored-sheet t))
+(defmethod realize-mirror ((port           broadway-port)
+                           (mirrored-sheet t))
                                         ; (setf (sheet-parent pixmap) (graft port))
   (let* ((mirror (make-surface (surface-manager port)
                                :name  (clime:sheet-pretty-name mirrored-sheet) ; TODO sheet may be unnamed
