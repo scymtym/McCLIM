@@ -100,55 +100,7 @@
    (%createdp        :accessor createdp
                      :initform nil)))
 
-#+unused (defmethod make-node ((surface surface) (data t) &key parent)
-  (let ((id (next-node-id surface)))
-    (setf (next-node-id surface) (1+ id))
-    (make-instance 'node :id id :data data :parent parent)))
-
-(defmethod make-node ((surface surface) (data texture) &key parent)
-  (declare (ignore parent))
-  (let ((node (call-next-method)))
-    (setf (gethash data (%texture->node surface)) node)
-    node))
-
-#+unused (defmethod make-texture ((surface surface) x y width height)
-  (let ((id (next-texture-id surface)))
-    (setf (next-texture-id surface) (1+ id))
-    (let ((texture (make-instance 'texture :x      (float x      1.0f0)
-                                           :y      (float y      1.0f0)
-                                           :width  (float width  1.0f0)
-                                           :height (float height 1.0f0)
-                                           :id     id)))
-      (vector-push-extend texture (textures surface))
-      texture)))
-
-#+unused (defclass node ()
-  ((%id       :initarg  :id
-              :reader   id)
-   (%data     :initarg  :data
-              :reader   data)
-   ;;
-   (%parent   :initarg  :parent
-              :reader   parent)
-   (%children :initarg  :children
-              :accessor children
-              :initform '())))
-
-(defmethod destroy-mirror ((port           broadway-port)
-                           (mirrored-sheet t))
-  (let* ((mirror (climi::port-lookup-mirror port mirrored-sheet))
-         (id     (id mirror)))
-
-    (with-port-locked (port)
-      (appendf (queued-operations port)
-               (list (lambda (stream)
-                       (destroy-surface* (surface-manager port) mirror)
-                       (destroy-surface stream id)))))
-
-    (climi::port-unregister-mirror port mirrored-sheet mirror)))
-
-(defmethod realize-mirror ((port           broadway-port)
-                           (mirrored-sheet t))
+(defmethod realize-mirror ((port broadway-port) (mirrored-sheet t))
                                         ; (setf (sheet-parent pixmap) (graft port))
   (let* ((mirror (make-surface (surface-manager port)
                                :name  (clime:sheet-pretty-name mirrored-sheet) ; TODO sheet may be unnamed
@@ -177,6 +129,18 @@
     (sleep .1)
 
     mirror))
+
+(defmethod destroy-mirror ((port broadway-port) (mirrored-sheet t))
+  (let* ((mirror (climi::port-lookup-mirror port mirrored-sheet))
+         (id     (id mirror)))
+
+    (with-port-locked (port)
+      (appendf (queued-operations port)
+               (list (lambda (stream)
+                       (destroy-surface* (surface-manager port) mirror)
+                       (destroy-surface stream id)))))
+
+    (climi::port-unregister-mirror port mirrored-sheet mirror)))
 
 (defmethod climb:port-set-mirror-name ((port broadway-port) (mirror t) (name t))
   (setf (name mirror) name))
