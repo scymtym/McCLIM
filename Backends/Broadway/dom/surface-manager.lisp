@@ -108,19 +108,22 @@
           ((pointer-over-bottom-right-corner-p event surface)
            (let ((sheet (sheet surface)))
              (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region sheet)
-              (setf (operation client)
-                    (make-instance 'resizing-surface
-                                   :sheet                  sheet
-                                   :cursor-initial-x       (root-x event)
-                                   :cursor-initial-y       (root-y event)
-                                   :surface-initial-width  (- x2 x1)
-                                   :surface-initial-height (- y2 y1))))))
+               (setf (operation client)
+                     (make-instance 'resizing-surface
+                                    :sheet                  sheet
+                                    :cursor-initial-x       (root-x event)
+                                    :cursor-initial-y       (root-y event)
+                                    :surface-initial-width  (- x2 x1)
+                                    :surface-initial-height (- y2 y1))))))
           ((<= (win-y event) 20)
-           #+later (with-port-locked (port)
-                     (appendf (queued-operations port)
-                              (list (lambda (connection)
-                                      (raise-surface connection surface)))))
-           (let ((sheet (sheet surface)))
+           (let* ((sheet (sheet surface))
+                  (port  (port sheet)))
+             ;; Raise the surface.
+             (with-port-locked (port)
+               (appendf (queued-operations port)
+                        (list (lambda (connection)
+                                (raise-surface connection (id surface))))))
+             ;; Initiate the dragging operation.
              (setf (operation client)
                    (multiple-value-bind (x y)
                        (transform-position (sheet-transformation sheet) 0 0)
