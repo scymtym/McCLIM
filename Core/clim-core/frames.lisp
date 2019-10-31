@@ -1085,7 +1085,7 @@ frames and will not have focus.
   (sheet-disown-child (graft frame) (frame-top-level-sheet frame))
   (setf (frame-manager frame) nil))
 
-(defmethod enable-frame ((frame menu-frame))
+(defmethod enable-frame ((frame menu-frame)) ; TODO identical to application frame methods
   (setf (sheet-enabled-p (frame-top-level-sheet frame)) t)
   (setf (slot-value frame 'state) :enabled)
   (note-frame-enabled (frame-manager frame) frame))
