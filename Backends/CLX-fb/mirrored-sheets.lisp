@@ -1,6 +1,6 @@
 (in-package :clim-clx-fb)
 
-(defclass clx-fb-mirrored-sheet-mixin (image-sheet-mixin mirrored-sheet-mixin)
+(defclass clx-fb-mirrored-sheet-mixin (image-sheet-mixin mirrored-sheet-mixin climi::double-buffering-mixin)
   ())
 
 (defmethod sheet-direct-xmirror ((sheet clx-fb-mirrored-sheet-mixin))
@@ -23,7 +23,7 @@
   (when (sheet-direct-xmirror sheet)
     (with-slots (space-requirement) sheet
       '(setf (xlib:wm-normal-hints (sheet-direct-xmirror sheet))
-            (xlib:make-wm-size-hints 
+            (xlib:make-wm-size-hints
              :width (round width)
              :height (round height)
              :max-width (min 65535 (round (space-requirement-max-width space-requirement)))
