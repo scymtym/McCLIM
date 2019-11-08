@@ -13,6 +13,9 @@
 
 (defpackage :clim-clx
   (:use :clim :clim-lisp :clim-backend)
+  (:import-from :alexandria
+                #:when-let
+                #:when-let*)
   (:import-from :climi
                 #:+alt-key+
                 ;;
