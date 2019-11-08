@@ -278,7 +278,7 @@
 
 
 (defmethod medium-drawable ((medium clx-medium))
-  (port-lookup-mirror (port medium) (medium-sheet medium)))
+  (sheet-mirror (medium-sheet medium)))
 
 (defgeneric medium-gcontext (medium ink)
   (:documentation "MEDIUM-GCONTEXT is responsible for creating graphics context
@@ -523,14 +523,14 @@ translated, so they begin at different position than [0,0])."))
                                                        :normalize :y-banding)))
           nconcing (multiple-value-list (region->clipping-values region))))))
 
-(defmacro with-clx-graphics ((&optional (mirror 'mirror)
+(defmacro with-clx-graphics ((&optional (mirror 'mirror) ; TODO rename to drawable
                                         (line-style 'line-style)
                                         (ink 'ink)
                                         (gcontext 'gc))
                                 medium &body body)
   (let ((medium-var (gensym)))
     `(let* ((,medium-var ,medium)
-            (,mirror (sheet-xmirror (medium-sheet ,medium-var)))
+            (,mirror (medium-drawable ,medium-var))
             (^cleanup nil))
        (when ,mirror
          (unwind-protect (let* ((,line-style (medium-line-style ,medium-var))
