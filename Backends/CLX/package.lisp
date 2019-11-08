@@ -37,7 +37,6 @@
                 #:map-repeated-sequence
                 #:pixmap-mirror
                 #:do-sequence
-                #:with-double-buffering
                 #:with-transformed-position
                 #:with-transformed-positions
                 #:with-medium-options

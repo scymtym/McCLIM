@@ -205,13 +205,12 @@ squares.
 @item Application with a dynamic display function
 Even more complicated applications might have some internal data
 structure that has a direct mapping to output, and commands simply
-modify this internal data structure.  In this case, the display
-function is run after each time around the command loop, because a
-command can have modified the internal data structure in some
-arbitrary ways.  Some such applications might simply want to delete
-the existing display list and produce a new one each time (to minimize
-flicker, double buffering could be used).  This is a very simple way
-of structuring an application, and entirely acceptable in many cases.
+modify this internal data structure.  In this case, the display function
+is run after each time around the command loop, because a command can
+have modified the internal data structure in some arbitrary ways.  Some
+such applications might simply want to delete the existing display list
+and produce a new one each time.  This is a very simple way of
+structuring an application, and entirely acceptable in many cases.
 Consider, for instance, a board game where pieces can be moved (as
 opposed to just added).  A very simple way of structuring such an
 application is to have an internal representation of the board, and to

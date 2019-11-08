@@ -423,23 +423,6 @@ documentation produced by presentations.")
   (declare (ignore pane force-p))
   nil)
 
-(defgeneric medium-invoke-with-possible-double-buffering (frame pane medium continuation))
-
-(defmethod medium-invoke-with-possible-double-buffering (frame pane medium continuation)
-  (funcall continuation))
-
-(defgeneric invoke-with-possible-double-buffering (frame pane continuation))
-
-(defmethod invoke-with-possible-double-buffering (frame pane continuation)
-  (declare (ignore frame pane))
-  (funcall continuation))
-
-(defmethod invoke-with-possible-double-buffering (frame (pane sheet-with-medium-mixin) continuation)
-  (medium-invoke-with-possible-double-buffering frame pane (sheet-medium pane) continuation))
-
-(defmacro with-possible-double-buffering ((frame pane) &body body)
-  `(invoke-with-possible-double-buffering ,frame ,pane (lambda () ,@body)))
-
 (defmethod redisplay-frame-pane :around ((frame application-frame) pane
                                          &key force-p)
   (let ((pane-object (if (typep pane 'pane)
@@ -457,10 +440,9 @@ documentation produced by presentations.")
                                         (cdr highlited)
                                         :unhighlight)
               (setf (frame-highlited-presentation frame) nil))
-            (with-possible-double-buffering (frame pane-object)
-              (when clearp
-                (window-clear pane-object))
-              (call-next-method))
+            (when clearp
+              (window-clear pane-object))
+            (call-next-method)
             (unless (or (eq redisplayp :command-loop) (eq redisplayp :no-clear))
               (setf (pane-needs-redisplay pane-object) nil))))
       (clear-pane-try-again ()
@@ -1308,13 +1290,7 @@ have a `pointer-documentation-pane' as pointer documentation,
              (draw-rectangle* stream highlite-x1 highlite-y1 highlite-x2 highlite-y2
                               :filled nil :line-dashes #(4 4))))
           (:unhighlight
-           (with-output-recording-options (stream :record nil)
-             (draw-rectangle* stream
-                              highlite-x1 highlite-y1
-                              (1+ highlite-x2) (1+ highlite-y2)
-                              :ink (medium-background (sheet-medium stream))))
-           (stream-replay stream (make-rectangle* highlite-x1 highlite-y1
-                                                  (1+ highlite-x2) (1+ highlite-y2)))))))))
+           (stream-replay stream (make-rectangle* highlite-x1 highlite-y1 highlite-x2 highlite-y2))))))))
 
 (defmethod frame-drag-and-drop-highlighting
     ((frame standard-application-frame) to-presentation stream state)
