@@ -6,7 +6,7 @@
   ())
 
 (defun %medium-stroke-paths (medium paths)
-  (when-let* ((msheet (sheet-mirrored-ancestor (medium-sheet medium)))
+  (when-let* ((msheet (sheet-mirrored-ancestor (medium-sheet medium))) ; TODO just sheet-mirror
               (mirror (sheet-mirror msheet))
               (transformation (sheet-native-transformation (medium-sheet medium))))
     (%stroke-paths medium mirror paths
