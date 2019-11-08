@@ -277,6 +277,9 @@
            (setf (xlib:gcontext-clip-mask gc :yx-banded) mask)))))))
 
 
+(defmethod medium-drawable ((medium clx-medium))
+  (port-lookup-mirror (port medium) (medium-sheet medium)))
+
 (defgeneric medium-gcontext (medium ink)
   (:documentation "MEDIUM-GCONTEXT is responsible for creating graphics context
 for foreground drawing. It sets properties like a line-style, sets ink etc. Inks
@@ -292,12 +295,10 @@ specialized on class too. Keep in mind, that inks may be transformed (i.e
 translated, so they begin at different position than [0,0])."))
 
 (defmethod medium-gcontext :before ((medium clx-medium) ink)
-  (let* ((port (port medium))
-         (mirror (port-lookup-mirror port (medium-sheet medium))))
-    (with-slots (gc) medium
-      (unless gc
-        (setf gc (xlib:create-gcontext :drawable mirror)
-              (xlib:gcontext-fill-style gc) :solid)))))
+  (with-slots (gc) medium
+    (unless gc
+      (setf gc (xlib:create-gcontext :drawable (medium-drawable medium))
+            (xlib:gcontext-fill-style gc) :solid))))
 
 (defmethod medium-gcontext ((medium clx-medium) (ink color))
   (declare (optimize (debug 3)))
@@ -973,15 +974,13 @@ translated, so they begin at different position than [0,0])."))
               (max-x (round-coordinate (max left right)))
               (max-y (round-coordinate (max top bottom))))
           (let ((^cleanup nil))
-            (unwind-protect
-                 (xlib:draw-rectangle (port-lookup-mirror (port medium)
-                                                          (medium-sheet medium))
-                                      (medium-gcontext medium (medium-background medium))
-                                      (clamp min-x           #x-8000 #x7fff)
-                                      (clamp min-y           #x-8000 #x7fff)
-                                      (clamp (- max-x min-x) 0       #xffff)
-                                      (clamp (- max-y min-y) 0       #xffff)
-                                      t)
+            (unwind-protect (xlib:draw-rectangle (medium-drawable medium)
+                                                 (medium-gcontext medium (medium-background medium))
+                                                 (clamp min-x           #x-8000 #x7fff)
+                                                 (clamp min-y           #x-8000 #x7fff)
+                                                 (clamp (- max-x min-x) 0       #xffff)
+                                                 (clamp (- max-y min-y) 0       #xffff)
+                                                 t)
               (mapc #'funcall ^cleanup))))))))
 
 (defmethod medium-beep ((medium clx-medium))
