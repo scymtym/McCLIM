@@ -220,7 +220,8 @@
                                  (if (and fill-pointer (>= i fill-pointer))
                                      (with-style (stream :inactive)
                                        (inspect stream))
-                                     (inspect stream))))))))
+                                     (progn ; let ((*print-pprint-dispatch* algebraic-property-graph::*pprint-dispatch*))
+                                       (inspect stream)))))))))
              (when truncated?
                (note-truncated stream length (- end start))))))))))
 

@@ -285,7 +285,8 @@ the :UNBOUND style."
         (*print-length*          3)
         (*print-level*           3)
         (*print-lines*           3)
-        (*print-pprint-dispatch* *safe-pprint-dispatch*))
+        ; (*print-pprint-dispatch* *safe-pprint-dispatch*)
+        )
     (funcall thunk)))
 
 (defmacro with-safe-and-terse-printing ((stream) &body body)
