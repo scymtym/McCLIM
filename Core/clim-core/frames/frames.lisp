@@ -1216,37 +1216,37 @@ have a `pointer-documentation-pane' as pointer documentation,
   nil)
 
 (defun frame-highlight-at-position (frame stream x y modifier input-context
-                                    &key (highlight t))
+                                    &key (highlight t) (force-p nil))
   "Given stream x,y; key modifiers; input-context, find the applicable
    presentation and maybe highlight it."
-  (flet ((maybe-unhighlight (presentation)
-           (when (and (frame-highlited-presentation frame)
-                      (or (not highlight)
-                          (not (eq presentation
-                                   (car (frame-highlited-presentation frame))))))
-             (highlight-presentation-1 (car (frame-highlited-presentation frame))
-                                       (cdr (frame-highlited-presentation frame))
-                                       :unhighlight)
-             (setf (frame-highlited-presentation frame) nil))))
-    (if (output-recording-stream-p stream)
-        (let ((presentation (find-innermost-applicable-presentation
-                             input-context
-                             stream
-                             x y
-                             :frame frame
-                             :modifier-state modifier)))
-          (maybe-unhighlight presentation)
-          (when (and presentation
-                     highlight
-                     (not (eq presentation
-                              (car (frame-highlited-presentation frame)))))
-            (setf (frame-highlited-presentation frame)
-                  (cons presentation stream))
-            (highlight-presentation-1 presentation stream :highlight))
-          presentation)
-        (progn
-          (maybe-unhighlight nil)
-          nil))))
+  (destructuring-bind (&optional old-presentation . old-stream)
+      (frame-highlited-presentation frame)
+    (flet ((maybe-unhighlight (new-presentation)
+             (when (and old-presentation
+                        (or force-p
+                            (not highlight)
+                            (not (eq new-presentation old-presentation))))
+               (highlight-presentation-1 old-presentation old-stream
+                                         :unhighlight)
+               (setf (frame-highlited-presentation frame) nil))))
+      (if (output-recording-stream-p stream)
+          (let ((presentation (find-innermost-applicable-presentation
+                               input-context
+                               stream
+                               x y
+                               :frame frame
+                               :modifier-state modifier)))
+            (maybe-unhighlight presentation)
+            (when (and presentation
+                       highlight
+                       (or force-p (not (eq presentation old-presentation))))
+              (setf (frame-highlited-presentation frame)
+                    (cons presentation stream))
+              (highlight-presentation-1 presentation stream :highlight))
+            presentation)
+          (progn
+            (maybe-unhighlight nil)
+            nil)))))
 
 (defmethod frame-input-context-track-pointer :before
     ((frame standard-application-frame) input-context

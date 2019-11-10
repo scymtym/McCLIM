@@ -161,10 +161,11 @@
 (define-default-presentation-method highlight-presentation
     (type record stream state)
   (declare (ignore type))
-  (if (or (eq (presentation-single-box record) t)
-          (eq (presentation-single-box record) :highlighting))
-      (highlight-output-record record stream state)
-      (highlight-output-record-tree record stream state)))
+  (case (presentation-single-box record)
+    ((t :highlighting)
+     (highlight-output-record record stream state))
+    (t
+     (highlight-output-record-tree record stream state))))
 
 ;;; Internal function to highlight just one presentation
 

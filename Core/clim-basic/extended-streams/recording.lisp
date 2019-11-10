@@ -370,14 +370,23 @@ recording stream. If it is T, *STANDARD-OUTPUT* is used.")
        ;; We can't "just" draw-rectangle :filled nil because the path lines
        ;; rounding may get outside the bounding rectangle. -- jd 2019-02-01
        (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* record)
+         (format *trace-output* "doing it ~A~%" record)
+         (draw-rectangle* stream 20 230 30 240 :ink +red+)
+         (draw-rectangle* (sheet-medium stream) 20 230 30 240 :ink +red+)
+         (medium-draw-rectangle* (sheet-medium stream) 20 220 30 230 t)
          (draw-design (sheet-medium stream)
                       (if (or (> (1+ x1) (1- x2))
                               (> (1+ y1) (1- y2)))
                           (bounding-rectangle record)
                           (region-difference (bounding-rectangle record)
                                              (make-rectangle* (1+ x1) (1+ y1) (1- x2) (1- y2))))
-                      :ink +foreground-ink+)))
+                      :ink +blue+       ; +foreground-ink+
+                      )
+         (medium-force-output (sheet-medium stream))
+         ; (sleep .1)
+         ))
       (:unhighlight
+       (print "undoing it" *trace-output*)
        (repaint-sheet stream (bounding-rectangle record))
        ;; Using queue-repaint should be faster in apps (such as clouseau) that
        ;; highlight/unhighlight many bounding rectangles at once. The event code

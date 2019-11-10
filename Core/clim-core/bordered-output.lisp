@@ -719,13 +719,7 @@
                    (setf (drawing-options record) new-drawing-options)
                    (clear-output-record record)
                    (%prepare-bordered-output-record record)
-                   ;; Great, this again..
-                   (queue-repaint stream
-                      (make-instance 'window-repaint-event
-                                    :sheet stream
-                                    :region (transform-region
-                                            (sheet-native-transformation stream)
-                                            record)))))
+                   (handle-repaint stream (bounding-rectangle record))))
             (ecase state
               (:highlight
                (with-keywords-removed (drawing-options (:background :outline-ink))

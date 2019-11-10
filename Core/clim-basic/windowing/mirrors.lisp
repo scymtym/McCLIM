@@ -242,9 +242,9 @@ very hard)."
                     (%%set-sheet-native-transformation native-transformation sheet)
                     (when old-native-transformation
                       ;; Full sheet contents are redrawn.
-                      (dispatch-repaint sheet
-                                        (untransform-region native-transformation
-                                                            (%effective-mirror-region sheet))))))
+                      (repaint-sheet sheet (untransform-region
+                                            native-transformation
+                                            (%effective-mirror-region sheet))))))
                 (return-from update-mirror-geometry)))))
         ;; Otherwise just choose the geometry
         ;; Conditions to be met:
