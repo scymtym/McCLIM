@@ -169,12 +169,27 @@
 ;;; Internal function to highlight just one presentation
 
 (defun highlight-presentation-1 (presentation stream state)
-  (with-output-recording-options (stream :record nil)
-    (funcall-presentation-generic-function highlight-presentation
-                                           (presentation-type presentation)
-                                           presentation
-                                           stream
-                                           state)))
+  (draw-rectangle* stream 20 200 40 240 :ink +green+)
+  (flet ((do-it ()
+           (with-output-recording-options (stream :record nil)
+             (funcall-presentation-generic-function highlight-presentation
+                                                    (presentation-type presentation)
+                                                    presentation
+                                                    stream
+                                                    state))))
+    (case state
+      (:highlight
+       (do-it)
+       (setf (gethash presentation (highlights stream)) #'do-it))
+      (:unhighlight
+       (remhash presentation (highlights stream))
+       (do-it))
+      (t
+       (do-it)))))
+
+(defmethod repaint-sheet :after ((stream standard-output-recording-stream) (region t))
+  (format *trace-output* "repaininting highilights ~A~%" (alexandria:hash-table-alist (highlights stream)))
+  (alexandria:maphash-values #'funcall (highlights stream)))
 
 (defmethod highlight-output-record-tree (record stream state)
   (declare (ignore record stream state))

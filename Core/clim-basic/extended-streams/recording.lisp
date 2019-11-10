@@ -1882,7 +1882,9 @@ were added."
                    :reader stream-output-history)
    (current-output-record :accessor stream-current-output-record)
    (current-text-output-record :initform nil
-                               :accessor stream-current-text-output-record))
+                               :accessor stream-current-text-output-record)
+   (%highlights :accessor highlights
+                :initform (make-hash-table :test #'eq)))
   (:documentation "This class is mixed into some other stream class to
 add output recording facilities. It is not instantiable."))
 
