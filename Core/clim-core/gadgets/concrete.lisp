@@ -244,6 +244,9 @@
                      :border-style :inset
                      :background *3d-inner-color*))
 
+(defmethod initialize-instance :after ((instance scroll-bar-pane) &key)
+  (port-register-tick-receiver (port instance) instance))
+
 (defmethod compose-space ((sb scroll-bar-pane) &key width height)
   (declare (ignore width height))
   (if (eq (gadget-orientation sb) :vertical)
@@ -255,6 +258,9 @@
                               :height *scrollbar-thickness*
                               :min-width (* 3 *scrollbar-thickness*)
                               :width (* 4 *scrollbar-thickness*))))
+
+(defmethod handle-event ((sheet scroll-bar-pane) (event tick-event))
+  (setf (gadget-value sheet) (* 50 (abs (sin (event-timestamp event))))))
 
 ;;;; Redisplay
 
@@ -599,6 +605,9 @@
                        slider)
   ())
 
+(defmethod initialize-instance :after ((instance slider-pane) &key)
+  (port-register-tick-receiver (port instance) instance))
+
 (defmethod compose-space ((pane slider-pane) &key width height)
   (declare (ignore width height))
   (let* ((value-size (ecase (gadget-orientation pane)
@@ -610,7 +619,7 @@
                                        (text-size pane #\0))))))
          (minor (if (gadget-show-value-p pane)
                     (* 2 (+ 10.0 value-size)) ; the value
-                    (* 2 (1+ 8.0)))) ; the knob
+                    (* 2 (1+ 8.0))))          ; the knob
          (major 128))
     (if (eq (gadget-orientation pane) :vertical)
         (make-space-requirement :min-width  minor :width  minor
@@ -619,7 +628,7 @@
                                 :min-height minor :height minor))))
 
 (defmethod handle-event ((pane slider-pane) (event tick-event))
-  (setf (gadget-value pane :invoke-callback nil) (* 10 (1+ (sin (* 2 (event-timestamp event)))))))
+  (setf (gadget-value pane :invoke-callback t) (* 50 (+ 2 (expt (sin (* 2 (event-timestamp event))) 2)))))
 
 (defmethod handle-event ((pane slider-pane) (event pointer-enter-event))
   (with-slots (armed) pane

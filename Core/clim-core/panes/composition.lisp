@@ -1223,6 +1223,10 @@ SCROLLER-PANE appear on the ergonomic left hand side, or leave set to
    :x-spacing 0
    :y-spacing 0))
 
+(defmethod handle-event ((sheet scroller-pane) (event tick-event))
+  (when (and (slot-value sheet 'viewport) (sheet-child (slot-value sheet 'viewport)))
+    (scroll-extent (sheet-child (slot-value sheet 'viewport)) 0 (* 200 (abs (sin (event-timestamp event)))))))
+
 (defgeneric scroll-bar-values (scroll-bar)
   (:documentation "Returns the min value, max value, thumb size, and value of a
   scroll bar. When Setf-ed, updates the scroll bar graphics"))
@@ -1511,7 +1515,9 @@ SCROLLER-PANE appear on the ergonomic left hand side, or leave set to
                            (scroller-pane/horizontal-drag-callback pane new-value))
                        :min-value 0
                        :max-value 1))
-      (sheet-adopt-child pane hscrollbar))))
+      (sheet-adopt-child pane hscrollbar)))
+
+  (port-register-tick-receiver (port pane) pane))
 
 ;;; Scrolling itself
 
