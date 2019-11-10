@@ -682,3 +682,26 @@ known gestures."
     (multiple-value-bind (x y)
         (transform-position (sheet-delta-transformation stream graft) x y)
       (setf (pointer-position pointer) (values x y)))))
+
+;; look at highlight-current-presentation
+(flet ((update-highlighting (stream)
+         (let ((frame (pane-frame stream))
+               (input-context *input-context*)
+               (modifier-state (port-modifier-state (port stream)))) ; TODO pointer object has modifier state
+           (multiple-value-bind (x y) (stream-pointer-position stream)
+             (print (list input-context x y modifier-state) *trace-output*)
+             (frame-highlight-at-position
+              frame stream x y modifier-state input-context :force-p t)
+                                        ; (frame-update-pointer-documentation frame input-context stream event)
+             ))))
+
+  (defmethod (setf sheet-transformation) :around (transformation (sheet standard-extended-input-stream))
+    (declare (ignore transformation))
+    (call-next-method)
+    (print "after sheet transformation" *trace-output*)
+    (update-highlighting sheet))
+
+  (defmethod (setf sheet-region) :around (region (sheet standard-extended-input-stream))
+    (declare (ignore region))
+    (call-next-method)
+    (update-highlighting sheet)))
