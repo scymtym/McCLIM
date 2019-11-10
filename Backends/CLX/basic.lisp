@@ -114,7 +114,10 @@
               (height (pixmap-height off-screen-buffer)))
          (xlib:copy-area (pixmap-mirror off-screen-buffer)
                          (medium-gcontext (sheet-medium sheet) +black+)
-                         0 0 width height mirror 0 0)))
+                         0 0 width height mirror 0 0)
+         (let ((gc (medium-gcontext (sheet-medium sheet) +black+)))
+           (setf (xlib:gcontext-foreground gc) (logior (ash (random 256) 16) (ash (random 256) 8) (random 256)))
+           (xlib:draw-rectangle (sheet-xmirror sheet) gc 0 0 10 10 t))))
      sheet :timeout .1)))
 
 (defun run-event-loop (port)
