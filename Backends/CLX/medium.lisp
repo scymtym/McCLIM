@@ -595,7 +595,9 @@ translated, so they begin at different position than [0,0])."))
                           (medium-gcontext from-drawable +background-ink+)
                           (round-coordinate from-x) (round-coordinate from-y)
                           (round width) (round height)
-                          (sheet-xmirror (medium-sheet to-drawable))
+                          (if (typep (medium-sheet from-drawable) 'double-buffering-mixin)
+                              (pixmap-mirror (pixmap (medium-sheet from-drawable)))
+                              (sheet-xmirror (medium-sheet from-drawable)))
                           (round-coordinate to-x) (round-coordinate to-y)))))))
 
 (defmethod medium-copy-area ((from-drawable clx-medium) from-x from-y width height

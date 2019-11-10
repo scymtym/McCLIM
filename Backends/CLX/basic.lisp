@@ -125,7 +125,9 @@
                        (when (and (typep sheet 'double-buffering-mixin)
                                   (sheet-viewable-p sheet))
                          (swap-buffers-in-sheet sheet mirror)))
-                     (slot-value port 'climi::sheet->mirror))))
+                     (slot-value port 'climi::sheet->mirror))
+
+            (xlib:display-force-output (clx-port-display port))))
 
 (defmethod destroy-port :before ((port clx-basic-port))
   (handler-case
