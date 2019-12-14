@@ -302,22 +302,29 @@
 
 (defmethod enter-state ((event swap-buffers-event) (state t))
   (bt:with-lock-held ((mutex event))
-    (setf (state event) state)
+    (unless (> (state event) state)
+      (setf (state event) state))
     (bt:condition-notify (condition-variable event))))
 
-(defmethod wait-for-state ((event swap-buffers-event) (state t))
-  (bt:with-lock-held ((mutex event))
-    (loop until (= state (state event))
-          do (bt:condition-wait (condition-variable event) (mutex event)))))
+(defmethod wait-for-state ((event swap-buffers-event) (state t) &key timeout)
+  (let ((variable (condition-variable event))
+        (mutex (mutex event)))
+    (bt:with-lock-held (mutex)
+      (loop until (= state (state event))
+            do (when (not (bt:condition-wait variable mutex
+                                             :timeout timeout))
+                 (return-from wait-for-state nil))))
+    t))
 
-(defun invoke-with-suspended-sheet-event-processing (continuation sheet)
+(defun invoke-with-suspended-sheet-event-processing (continuation sheet
+                                                     &key timeout)
   (let ((event (make-instance 'swap-buffers-event :sheet sheet)))
     ;; Dispatch a buffer swap event to SHEET, then wait for SHEET to
     ;; process the event and suspend its event processing in response.
     (dispatch-event sheet event)
-    (wait-for-state event 1)
-    ;; Perform the desired action in CONTINUATION.
-    (funcall continuation)
+    (when (wait-for-state event 1 :timeout timeout)
+      ;; Perform the desired action in CONTINUATION.
+      (funcall continuation))
     ;; After performing the desired action in CONTINUATION, transition
     ;; EVENT to state 2 to let SHEET know that it can resume event
     ;; processing.
