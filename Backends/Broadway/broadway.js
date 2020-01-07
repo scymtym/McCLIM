@@ -109,20 +109,19 @@ for (var i = 0, len = base64_code.length; i < len; ++i) {
 }
 
 function tripletToBase64 (num) {
-    return b64_lookup[num >> 18 & 0x3F] +
-        b64_lookup[num >> 12 & 0x3F] +
-        b64_lookup[num >> 6 & 0x3F] +
-        b64_lookup[num & 0x3F];
+    return (  b64_lookup[num >> 18 & 0x3F]
+            + b64_lookup[num >> 12 & 0x3F]
+            + b64_lookup[num >>  6 & 0x3F]
+            + b64_lookup[num       & 0x3F]);
 }
 
 function encodeBase64Chunk (uint8, start, end) {
     var tmp;
     var output = [];
     for (var i = start; i < end; i += 3) {
-        tmp =
-            ((uint8[i] << 16) & 0xFF0000) +
-            ((uint8[i + 1] << 8) & 0xFF00) +
-            (uint8[i + 2] & 0xFF);
+        tmp = (  ((uint8[i]     << 16) & 0xFF0000)
+               + ((uint8[i + 1] << 8)  & 0x00FF00)
+               + ( uint8[i + 2]        & 0x0000FF));
         output.push(tripletToBase64(tmp));
     }
     return output.join('');
@@ -237,7 +236,7 @@ var lastTimeStamp = 0;
 var realSurfaceWithMouse = 0;
 var surfaceWithMouse = 0;
 var surfaces = {};
-var textures = {};
+var textures = {}; // TODO remove texture stuff
 var stackingOrder = [];
 var outstandingCommands = new Array();
 var outstandingDisplayCommands = null;
@@ -1272,8 +1271,7 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
     return res;
 }
 
-function handleOutstandingDisplayCommands()
-{
+function handleOutstandingDisplayCommands() {
     if (outstandingDisplayCommands) {
         window.requestAnimationFrame(
             function () {
@@ -3242,7 +3240,7 @@ function onTouchEnd(ev) {
             firstTouchDownId = null;
         }
 
-        sendInput (BROADWAY_EVENT_TOUCH, [2, id, touch.identifier, isEmulated, pos.rootX, pos.rootY, pos.winX, pos.winY, lastState]);
+        sendInput(BROADWAY_EVENT_TOUCH, [2, id, touch.identifier, isEmulated, pos.rootX, pos.rootY, pos.winX, pos.winY, lastState]);
     }
 }
 
@@ -3273,16 +3271,12 @@ function start()
 {
     setupDocument(document);
 
-    var w, h;
-    w = window.innerWidth;
-    h = window.innerHeight;
+    var w = window.innerWidth, h = window.innerHeight;
     window.onresize = function(ev) {
-        var w, h;
-        w = window.innerWidth;
-        h = window.innerHeight;
-        sendInput (BROADWAY_EVENT_SCREEN_SIZE_CHANGED, [w, h]);
+        var w = window.innerWidth, h = window.innerHeight;
+        sendInput(BROADWAY_EVENT_SCREEN_SIZE_CHANGED, [w, h]);
     };
-    sendInput (BROADWAY_EVENT_SCREEN_SIZE_CHANGED, [w, h]);
+    sendInput(BROADWAY_EVENT_SCREEN_SIZE_CHANGED, [w, h]);
 }
 
 function connect()

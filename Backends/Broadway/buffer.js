@@ -6,8 +6,7 @@ const BLOCK_REFERENCE   = 0x20;
 const COLOR_RUN         = 0x30;
 const DELTA_RUN         = 0x40;
 
-function copyRect(src, srcX, srcY, dest, destX, destY, width, height)
-{
+function copyRect(src, srcX, srcY, dest, destX, destY, width, height) {
     // Clip to src
     if (srcX + width > src.width)
         width = src.width - srcX;
@@ -31,9 +30,7 @@ function copyRect(src, srcX, srcY, dest, destX, destY, width, height)
     }
 }
 
-
-function markRun(dest, start, length, r, g, b)
-{
+function markRun(dest, start, length, r, g, b) {
     for (var i = start; i < start + length * 4; i += 4) {
         dest[i+0] = dest[i+0] / 2 | 0 + r;
         dest[i+1] = dest[i+1] / 2 | 0 + g;
@@ -41,8 +38,7 @@ function markRun(dest, start, length, r, g, b)
     }
 }
 
-function markRect(src, srcX, srcY, dest, destX, destY, width, height, r, g, b)
-{
+function markRect(src, srcX, srcY, dest, destX, destY, width, height, r, g, b) {
     // Clip to src
     if (srcX + width > src.width)
         width = src.width - srcX;
@@ -69,8 +65,7 @@ function markRect(src, srcX, srcY, dest, destX, destY, width, height, r, g, b)
     }
 }
 
-function decodeBuffer(context, oldData, w, h, data, debug)
-{
+function decodeBuffer(context, oldData, w, h, data, debug) {
     var i, j;
     var imageData = context.createImageData(w, h);
 
@@ -194,8 +189,7 @@ function decodeBuffer(context, oldData, w, h, data, debug)
     return imageData;
 }
 
-function cmdPutBuffer(id, w, h, compressed)
-{
+function cmdPutBuffer(id, w, h, compressed) {
     var surface = surfaces[id];
     var context = surface.canvas.getContext("2d");
 
