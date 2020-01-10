@@ -49,6 +49,8 @@
            (title-text-node   (make-node title-text   tree :parent title-bar-node))
            (close-button-node (make-node close-button tree :parent title-bar-node))
            (content-node      (make-node content      tree :parent border-node)))
+      (when-let ((button (climi::find-pane-of-type (sheet surface) 'html-push-button)))
+        (make-node (make-tree button) tree :parent border-node))
       (values tree (list shadow-node border-node title-bar-node title-text-node close-button-node content-node)))))
 
 (defun make-surface-nodes (surface)

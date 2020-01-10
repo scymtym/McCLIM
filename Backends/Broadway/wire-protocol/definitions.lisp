@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -219,7 +219,15 @@
 
    (color  4)
 
-   (text   string)))
+   (text   string))
+
+  ((button 16 :print-spec ("\"~A\"" text))
+   (x      :float32)
+   (y      :float32)
+   (width  :float32)
+   (height :float32)
+
+   (text string)))
 
 ;;; Node operations
 
