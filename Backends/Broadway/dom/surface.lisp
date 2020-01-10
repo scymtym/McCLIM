@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -28,10 +28,7 @@
    (%tree        :reader   tree
                  :writer   (setf %tree))
    (%nodes       :reader   nodes
-                 :writer   (setf %nodes))
-   ;; Tiles
-   (%textures    :accessor textures)
-   (%tiles       :accessor tiles)))
+                 :writer   (setf %nodes))))
 
 (defmethod initialize-instance :after ((instance surface) &key)
   (setf (values (%tree instance) (%nodes instance)) (make-surface-tree instance)))
@@ -195,24 +192,3 @@
                         :left-color   color
                         :bottom-color color)
     (update-node title-bar :color color)))
-
-;;; Old
-
-(defun make-tile-nodes (tree parent tiles)
-  (let ((id 0))
-    (map 'list (lambda (tile)
-                 (with-bounding-rectangle* (x1 y1 x2 y2) (region tile)
-                   (let ((texture (make-instance  'texture
-                                                  :id     (incf id)
-                                                  :x      (float x1        1.0f0)
-                                                  :y      (float y1        1.0f0)
-                                                  :width  (float (- x2 x1) 1.0f0)
-                                                  :height (float (- y2 y1) 1.0f0)
-
-                                        ; :red    (random 255)
-                                        ; :green  (random 255)
-                                        ; :blue   (random 255)
-                                        ; :alpha  200
-                                                  )))
-                     (make-node texture tree :parent parent))))
-         tiles)))

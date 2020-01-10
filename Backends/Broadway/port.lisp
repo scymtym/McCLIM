@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -208,9 +208,8 @@
 
                            (unless (and (= (width surface) (- x2 x1))
                                         (= (height surface) (- y2 y1)))
-                             (setf (values (textures surface) (tiles surface))
-                                   (apply #'resize-surface-nodes (tree surface)
-                                          (append (nodes surface) (list width height)))))))))))))
+                             (apply #'resize-surface-nodes (tree surface)
+                                    (append (nodes surface) (list width height))))))))))))
 
 (defmethod climb:port-enable-sheet ((port  broadway-port)
                                     (sheet mirrored-sheet-mixin))
