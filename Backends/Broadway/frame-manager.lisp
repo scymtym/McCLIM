@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -39,22 +39,7 @@
   (:default-initargs
    :device-transformation +identity-transformation+)) ; TODO HACK
 
-(defmethod make-pane-1 ((realizer            broadway-frame-manager)
-                        (frame               application-frame)
-                        (abstract-class-name (eql 'climi::top-level-sheet-pane))
-                        &rest initargs)
-  (apply #'make-instance 'top-level-sheet-pane
-         :frame   frame
-         :manager realizer
-         :port    (port frame)
-         initargs))
-
-(defmethod make-pane-1 ((realizer            broadway-frame-manager)
-                        (frame               application-frame)
-                        (abstract-class-name t)
-                        &rest initargs)
-  (apply #'make-instance (clim-clx::find-concrete-pane-class abstract-class-name)
-         :frame   frame
-         :manager realizer
-         :port    (port frame)
-         initargs))
+(defmethod find-concrete-pane-class ((realizer broadway-frame-manager)
+                                     (pane-type (eql 'climi::top-level-sheet-pane))
+                                     &optional errorp)
+  (find-class 'top-level-sheet-pane errorp))
