@@ -114,7 +114,7 @@
          (xlib:copy-area (pixmap-mirror off-screen-buffer)
                          (medium-gcontext (sheet-medium sheet) +black+)
                          0 0 width height mirror 0 0)))
-     sheet)))
+     sheet :timeout .1)))
 
 (defun run-event-loop (port)
   (loop :for now = (/ (get-internal-real-time) internal-time-units-per-second)
