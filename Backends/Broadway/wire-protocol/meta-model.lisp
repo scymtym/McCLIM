@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -127,12 +127,13 @@
   (let* ((name    (name description))
          (initarg (make-keyword name))
          (type    (type description))
-         (type    (ecase type
-                    ((boolean string) type)
-                    (:float32         'single-float)
-                    ((1 2 3 4)        `(unsigned-byte ,(* 8 type)))
-                    (symbol           (let ((pairs (symbol-value type)))
-                                        `(member ,@(map 'list #'cdr pairs)))))))
+         (type    (etypecase type
+                    ((member boolean string) type)
+                    ((eql :float32)          'single-float)
+                    ((member 1 2 3 4)        `(unsigned-byte ,(* 8 type)))
+                    (symbol                  (let ((pairs (symbol-value type)))
+                                               `(member ,@(map 'list #'cdr pairs))))
+                    (cons                    (first type)))))
     `(,name :initarg  ,initarg
             :type     ,type
             :reader   ,name)))
@@ -164,14 +165,35 @@
 (defmethod generate ((description (eql 'string)) (target (eql :size)) &key)
   `(+ 4 (* 4 (ceiling (length (babel:string-to-octets value :encoding :utf-8)) 4)))) ; TODO hack
 
+(defmethod generate ((description cons) (target (eql :size)) &key)
+  (assert (eq (first description) 'list))
+  `(flet ((size-of-element (value)
+            ,(generate (second description) target)))
+     (+ ,(generate 4 :size)
+        (reduce #'+ value :key #'size-of-element))))
+
+(defmethod generate ((description symbol) (target (eql :size)) &key)
+  (let ((description (symbol-value description)))
+    (generate description target)))
+
 (defmethod generate ((description field) (target (eql :size)) &key)
-  (if (eq (type description) 'string)
+  (if (typep (type description) '(or (eql string) cons))
       `(let ((value (,(name description) value))) ; TODO hack
          ,(generate (type description) target))
       (generate (type description) target)))
 
 (defmethod generate ((description message) (target (eql :size)) &key)
   `(+ ,@(map 'list (rcurry #'generate target) (fields description))))
+
+(defmethod generate ((description protocol) (target (eql :size)) &key)
+  (let* ((fields        (fields description))
+         (protocol-size (map 'list (rcurry #'generate :size) fields)))
+    `(+ ,@protocol-size
+        (etypecase value
+          ,@(map 'list (lambda (message)
+                         `(,(name message)
+                           ,(generate message :size)))
+             (messages description))))))
 
 ;;;
 
@@ -253,6 +275,18 @@
      (setf (subseq buffer offset) octets)
      (incf offset length)))
 
+(defmethod generate ((description cons) (target (eql :serialize)) &key)
+  (assert (eq (first description) 'list))
+  `(flet ((serialize-element (value)
+            ,(generate (second description) target)))
+     (setf (nibbles:ub32ref/le buffer offset) (length value))
+     (incf offset 4)
+     (map nil #'serialize-element value)))
+
+(defmethod generate ((description symbol) (target (eql :serialize)) &key) ; TODO more general method
+  (let ((description (symbol-value description)))
+    (generate description target :buffer nil :initial-offset nil)))
+
 (defmethod generate ((description field) (target (eql :serialize)) &key)
   (let* ((name   (name description))
          (reader name)
@@ -264,7 +298,8 @@
   `(progn
      ,@(map 'list (rcurry #'generate target) (fields description))))
 
-(defmethod generate ((description protocol) (target (eql :serialize)) &key)
+(defmethod generate ((description protocol) (target (eql :serialize))
+                     &key (buffer t) (initial-offset '0))
   (let* ((fields        (fields description))
          (protocol-size (map 'list (rcurry #'generate :size) fields))
          (ids           (ids description)))
@@ -275,9 +310,11 @@
                                (number (symbol->number ids name))
                                (size   (generate message :size)))
                           `(,name
-                            (let ((buffer (nibbles:make-octet-vector
-                                           (+ ,@protocol-size ,size)))
-                                  (offset 0))
+                            (let (,@(when buffer
+                                      `((buffer (nibbles:make-octet-vector
+                                                 (+ ,@protocol-size ,size)))))
+                                  ,@(when initial-offset
+                                      `((offset ,initial-offset))))
                               ;; (declare (dynamic-extent buffer))
                               (let ((value ,number))
                                 ,(generate (type (first fields)) target))

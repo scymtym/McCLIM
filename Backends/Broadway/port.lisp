@@ -59,11 +59,7 @@
 (setf (get :broadway :server-path-parser) 'identity ; 'parse-path
       (get :broadway :port-type)          'broadway-port)
 
-;;;
-
-(defclass broadway-medium (mcclim-render-internals::render-medium-mixin
-                           basic-medium)
-  ())
+;;; Medium
 
 (defmethod make-medium ((port broadway-port) sheet)
   (make-instance 'broadway-medium
@@ -71,7 +67,7 @@
                  ;; :graft (find-graft :port port)
                  :sheet sheet))
 
-;;; Graph
+;;; Graft
 
 (defmethod graft ((port broadway-port))
   (first (climi::port-grafts port)))

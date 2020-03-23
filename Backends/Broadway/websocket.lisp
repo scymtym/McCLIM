@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -102,7 +102,8 @@
     (write-sequence buffer stream :end (ecase size
                                          (:large  10)
                                          (:medium  4)
-                                         (:small   2)))))
+                                         (:small   2))))
+  nil)
 
 (defun write-frame (opcode payload stream &key mask?) ; TODO stream should be first
   (let ((length (length payload))
@@ -133,7 +134,8 @@
                                               4)
                                              (t
                                               2)))
-    (write-sequence payload stream)))
+    (write-sequence payload stream))
+  nil)
 
 ;;; Receiving
 

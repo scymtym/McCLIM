@@ -17,11 +17,18 @@ const BROADWAY_NODE_REUSE = 13;
 const BROADWAY_NODE_CANVAS = 14;
 const BROADWAY_NODE_TEXT = 15;
 
+const BROADWAY_DRAW_SET_COLOR = 4;
+const BROADWAY_DRAW_CLEAR = 0;
+const BROADWAY_DRAW_LINE = 1;
+const BROADWAY_DRAW_RECTANGLE = 2;
+const BROADWAY_DRAW_ELLIPSIS = 3;
+
 const BROADWAY_NODE_OP_INSERT_NODE = 0;
 const BROADWAY_NODE_OP_REMOVE_NODE = 1;
 const BROADWAY_NODE_OP_MOVE_AFTER_CHILD = 2;
 const BROADWAY_NODE_OP_PATCH_TEXTURE = 3;
 const BROADWAY_NODE_OP_PATCH_TRANSFORM = 4;
+const BROADWAY_NODE_OP_DRAW_PRIMITIVES = 5;
 
 const BROADWAY_OP_GRAB_POINTER = 0;
 const BROADWAY_OP_UNGRAB_POINTER = 1;
@@ -72,6 +79,12 @@ const DISPLAY_OP_RESTACK_SURFACES = 9;
 const DISPLAY_OP_DELETE_SURFACE = 10;
 const DISPLAY_OP_CHANGE_TEXTURE = 11;
 const DISPLAY_OP_CHANGE_TRANSFORM = 12;
+
+const DISPLAY_OP_SET_COLOR = 17;
+const DISPLAY_OP_CLEAR = 13;
+const DISPLAY_OP_DRAW_LINE = 14;
+const DISPLAY_OP_DRAW_RECTANGLE = 15;
+const DISPLAY_OP_DRAW_ELLIPSE = 16;
 
 // GdkCrossingMode
 const GDK_CROSSING_NORMAL = 0;
@@ -377,6 +390,12 @@ function TransformNodes(node_data, div, nodes, display_commands) {
     this.div = div;
     this.outstanding = 1;
     this.nodes = nodes;
+}
+
+TransformNodes.prototype.decode_uint8 = function() {
+    var v = this.node_data.getUint8(this.data_pos, true);
+    this.data_pos += 1;
+    return v;
 }
 
 TransformNodes.prototype.decode_uint32 = function() {
@@ -961,6 +980,43 @@ TransformNodes.prototype.execute = function(display_commands)
             var transformString = this.decode_transform();
             this.display_commands.push([DISPLAY_OP_CHANGE_TRANSFORM, transformNode, transformString]);
             break;
+        case BROADWAY_NODE_OP_DRAW_PRIMITIVES:
+            var nodeId = this.decode_uint32();
+            var node = this.nodes[nodeId];
+            var primitiveCount = this.decode_uint32();
+            for (var i = 0; i < primitiveCount; ++i) {
+                var primitiveId = this.decode_uint32(); // TODO maybe later this.decode_uint8();
+                switch (primitiveId) {
+                case BROADWAY_DRAW_CLEAR:
+                    this.display_commands.push([DISPLAY_OP_DRAW_CLEAR, node]);
+                    break;
+                case BROADWAY_DRAW_SET_COLOR:
+                    var color = this.decode_color();
+                    this.display_commands.push([DISPLAY_OP_SET_COLOR, node, color]);
+                    break
+                case BROADWAY_DRAW_LINE:
+                    var x1 = this.decode_float();
+                    var y1 = this.decode_float();
+                    var x2 = this.decode_float();
+                    var y2 = this.decode_float();
+                    this.display_commands.push([DISPLAY_OP_DRAW_LINE, node, x1, y1, x2, y2]);
+                    break;
+                case BROADWAY_DRAW_RECTANGLE:
+                    var x1 = this.decode_float();
+                    var y1 = this.decode_float();
+                    var x2 = this.decode_float();
+                    var y2 = this.decode_float();
+                    this.display_commands.push([DISPLAY_OP_DRAW_RECTANGLE, node, x1, y1, x2, y2]);
+                    break;
+                case BROADWAY_DRAW_ELLIPSIS:
+                    this.decode_float();
+                    this.decode_float();
+                    this.decode_float();
+                    this.decode_float();
+                    break;
+                }
+            }
+            break;
         }
 
         // console.log("after", this.nodes);
@@ -1059,6 +1115,24 @@ function handleDisplayCommands(display_commands)
             var div = cmd[1];
             var transform_string = cmd[2];
             div.style["transform"] = transform_string;
+            break;
+        case DISPLAY_OP_SET_COLOR:
+            var [_,canvas,color] = cmd;
+            var context = canvas.getContext("2d");
+            context.strokeStyle = color;
+            context.fillStyle = color;
+            break;
+        case DISPLAY_OP_DRAW_LINE:
+            var [_,canvas,x1,y1,x2,y2] = cmd;
+            var context = canvas.getContext("2d");
+            context.moveTo(x1,y1);
+            context.lineTo(x2,y2);
+            context.stroke();
+            break;
+        case DISPLAY_OP_DRAW_RECTANGLE:
+            var [_,canvas,x1,y1,x2,y2] = cmd;
+            var context = canvas.getContext("2d");
+            context.fillRect(x1,y1,x2,y2);
             break;
         default:
             alert("Unknown display op " + command);

@@ -254,7 +254,36 @@
    (node-id    4)
    (texture-id 4))
 
-  ((patch-transform 4)))
+  ((patch-transform 4))
+
+  ((draw-primitives 5 :print-spec ("node ~D" node-id))
+   (node-id 4)
+   (primitives (list draw-primitives))))
+
+;;; Draw primitives
+
+(define-protocol draw-primitives
+    ((opcode 4)) ; TODO should use single-byte opcode but everything has to be 4-byte aligned at the moment
+
+  ((clear 0))
+
+  ((set-color 4 :print-spec ("~D ~D ~D ~D" red green blue alpha))
+   (red   1)
+   (green 1)
+   (blue  1)
+   (alpha 1))
+
+  ((draw-line 1 :print-spec ("from (~A,~A) to (~A,~A)" x1 y1 x2 y2))
+   (x1 :float32) (y1 :float32)
+   (x2 :float32) (y2 :float32))
+
+  ((draw-rectangle 2 :print-spec ("(~A,~A) - (~A,~A)" x1 y1 x2 y2))
+   (x1 :float32) (y1 :float32)
+   (x2 :float32) (y2 :float32))
+
+  ((draw-ellipse 3 :print-spec ("at (~A,~A) radii ~A, ~A" x y r1 r2))
+   (x :float32) (y :float32)
+   (r1 :float32) (r2 :float32)))
 
 ;;; Client -> server events
 
@@ -329,8 +358,8 @@
    (direction  4))
 
   ((key-press 7 :print-spec ("~D" keysym)) ; TODO "~C [~D]" (code-char keysym) keysym
-   (keysym     4)
-   (last-state 4))
+                                           (keysym     4)
+                                           (last-state 4))
 
   ((key-release 8 :print-spec ("~D" keysym))
    (keysym     4)

@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -26,7 +26,9 @@
   (:shadow
    #:type
 
-   #:color)
+   #:color
+
+   #:draw-line)
 
   (:shadowing-import-from #:alexandria
    #:simple-parse-error))

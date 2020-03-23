@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -56,12 +56,17 @@
   (append-message-chunk connection data)
   (send-message connection))
 
-(defun set-nodes2 (connection surface-id operations)
+(defun set-nodes2 (connection surface-id operations surface)
   (loop :for operation = (pop operations)
         :while operation
         :do (append-message-chunk connection (serialize-node-operation (print operation)))
         :when (typep operation 'insert-node)
           :do (append-message-chunk connection (serialize-make-node (pop operations) (print (pop operations)))))
+
+  (when-let* ((ops (queued-operations surface))
+              (op  (make-instance 'draw-primitives :node-id 6
+                                                   :primitives (nreverse ops))))
+    (append-message-chunk connection (serialize-node-operation op)))
 
   (prepend-message-chunk
    connection (print (make-instance 'set-nodes :id   surface-id
@@ -145,6 +150,10 @@
 ;;; Node operations
 ;;;
 ;;; We only sent these to the client, so we only need the serializer.
+
+#.`(progn
+     ,(generate draw-primitives :class)
+     ,(generate draw-primitives 'print-object))
 
 #.`(progn
      ,(generate node-operation :class)

@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -239,7 +239,7 @@
             (setf (%nodes surface) (map 'list (rcurry #'gethash seen) (nodes surface))))
           (setf (nodes-dirty-p surface) nil)
           (when ops
-            (set-nodes2 connection (id surface) ops)))))))
+            (set-nodes2 connection (id surface) ops surface)))))))
 
 (defun synchronize-sheets (port connection)
   (when-let ((dirty-sheets (remove-if-not (lambda (surface)
@@ -248,9 +248,12 @@
                                         ; (print (list "dirty sheets " dirty-sheets))
     (map nil (lambda (surface)
                (when (createdp surface)
-                 (when-let ((sheet (gethash surface (slot-value port 'climi::mirror->sheet))))
-                   (with-simple-restart (continue "Skip requesting the frame data")
-                     (request-frame-data port connection sheet)))))
+                 (when (queued-operations surface)
+                   (set-nodes2 connection (id surface) '() surface)
+                   (setf (queued-operations surface) '()))
+                 #+no (when-let ((sheet (gethash surface (slot-value port 'climi::mirror->sheet))))
+                        (with-simple-restart (continue "Skip requesting the frame data")
+                          (request-frame-data port connection sheet)))))
          dirty-sheets)))
 
 (defun serve-socket (socket port)
