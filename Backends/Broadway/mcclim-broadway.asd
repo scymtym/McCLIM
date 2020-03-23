@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -36,7 +36,11 @@
                  :serial     t
                  :components ((:file "meta-model")
                               (:file "definitions")
+
+                              (:file "generate-lisp")
+
                               (:file "code-generation")
+
                               (:file "connection")
                               (:file "buffer")))
 
