@@ -1,4 +1,4 @@
-;;;; (C) Copyright 2019 Jan Moringen
+;;;; (C) Copyright 2019, 2020 Jan Moringen
 ;;;;
 ;;;; This library is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the GNU Library General Public
@@ -28,9 +28,13 @@
                     :accessor serial
                     :initform 0)
    (%output-length  :accessor output-length
-                    :initform 0)
+                    :initform 0
+                    :documentation
+                    "Total size of accumulated output in bytes.")
    (%output-chunks  :reader   output-chunks
-                    :initform (make-array 0 :adjustable t :fill-pointer 0))
+                    :initform (make-array 0 :adjustable t :fill-pointer 0)
+                    :documentation
+                    "Sequence of chunks ")
    ;; Encoder
    (%encoder        :reader   encoder
                     :initform (make-encoder)))
@@ -83,6 +87,8 @@
     (decode-frame connection payload)))
 
 ;;; Output
+;;;
+;;; Prepending/appending octet-vector chunks.
 
 (defmethod prepend-message-chunk ((connection connection) (chunk vector))
   (let ((chunks (output-chunks connection)))
@@ -96,6 +102,7 @@
   (incf (output-length connection) (length chunk)))
 
 (defmethod send-message ((connection connection))
+  ;; Write accumulated chunks to the underlying stream and reset.
   (let ((stream (stream* connection))
         (chunks (output-chunks connection)))
     (write-frame-header stream 2 (output-length connection))
@@ -105,6 +112,8 @@
           (fill-pointer chunks)      0)))
 
 ;;; Operation output
+;;;
+;;; Serializing and prepending/appending `operation-message' chunks.
 
 (defmethod prepend-message-chunk ((connection connection)
                                   (chunk      operation-message))

@@ -17,54 +17,12 @@ const BROADWAY_NODE_REUSE = 13;
 const BROADWAY_NODE_CANVAS = 14;
 const BROADWAY_NODE_TEXT = 15;
 
-const BROADWAY_DRAW_SET_COLOR = 4;
-const BROADWAY_DRAW_CLEAR = 0;
-const BROADWAY_DRAW_LINE = 1;
-const BROADWAY_DRAW_RECTANGLE = 2;
-const BROADWAY_DRAW_ELLIPSIS = 3;
-
 const BROADWAY_NODE_OP_INSERT_NODE = 0;
 const BROADWAY_NODE_OP_REMOVE_NODE = 1;
 const BROADWAY_NODE_OP_MOVE_AFTER_CHILD = 2;
 const BROADWAY_NODE_OP_PATCH_TEXTURE = 3;
 const BROADWAY_NODE_OP_PATCH_TRANSFORM = 4;
 const BROADWAY_NODE_OP_DRAW_PRIMITIVES = 5;
-
-const BROADWAY_OP_GRAB_POINTER = 0;
-const BROADWAY_OP_UNGRAB_POINTER = 1;
-const BROADWAY_OP_NEW_SURFACE = 2;
-const BROADWAY_OP_SHOW_SURFACE = 3;
-const BROADWAY_OP_HIDE_SURFACE = 4;
-const BROADWAY_OP_RAISE_SURFACE = 5;
-const BROADWAY_OP_LOWER_SURFACE = 6;
-const BROADWAY_OP_DESTROY_SURFACE = 7;
-const BROADWAY_OP_MOVE_RESIZE = 8;
-const BROADWAY_OP_SET_TRANSIENT_FOR = 9;
-const BROADWAY_OP_DISCONNECTED = 10;
-const BROADWAY_OP_SURFACE_UPDATE = 11;
-const BROADWAY_OP_SET_SHOW_KEYBOARD = 12;
-const BROADWAY_OP_UPLOAD_TEXTURE = 13;
-const BROADWAY_OP_RELEASE_TEXTURE = 14;
-const BROADWAY_OP_SET_NODES = 15;
-const BROADWAY_OP_ROUNDTRIP = 16;
-const BROADWAY_OP_PUT_BUFFER = 17;
-const BROADWAY_OP_SET_CURSOR = 18;
-
-const BROADWAY_EVENT_ENTER = 0;
-const BROADWAY_EVENT_LEAVE = 1;
-const BROADWAY_EVENT_POINTER_MOVE = 2;
-const BROADWAY_EVENT_BUTTON_PRESS = 3;
-const BROADWAY_EVENT_BUTTON_RELEASE = 4;
-const BROADWAY_EVENT_TOUCH = 5;
-const BROADWAY_EVENT_SCROLL = 6;
-const BROADWAY_EVENT_KEY_PRESS = 7;
-const BROADWAY_EVENT_KEY_RELEASE = 8;
-const BROADWAY_EVENT_GRAB_NOTIFY = 9;
-const BROADWAY_EVENT_UNGRAB_NOTIFY = 10;
-const BROADWAY_EVENT_CONFIGURE_NOTIFY = 11;
-const BROADWAY_EVENT_SCREEN_SIZE_CHANGED = 12;
-const BROADWAY_EVENT_FOCUS = 13;
-const BROADWAY_EVENT_ROUNDTRIP_NOTIFY = 14;
 
 const DISPLAY_OP_REPLACE_CHILD = 0;
 const DISPLAY_OP_APPEND_CHILD = 1;
@@ -80,11 +38,13 @@ const DISPLAY_OP_DELETE_SURFACE = 10;
 const DISPLAY_OP_CHANGE_TEXTURE = 11;
 const DISPLAY_OP_CHANGE_TRANSFORM = 12;
 
-const DISPLAY_OP_SET_COLOR = 17;
-const DISPLAY_OP_CLEAR = 13;
-const DISPLAY_OP_DRAW_LINE = 14;
-const DISPLAY_OP_DRAW_RECTANGLE = 15;
-const DISPLAY_OP_DRAW_ELLIPSE = 16;
+const DISPLAY_OP_SET_COLOR = 32;
+const DISPLAY_OP_SET_FONT = 33;
+const DISPLAY_OP_CLEAR = 64;
+const DISPLAY_OP_DRAW_LINE = 65;
+const DISPLAY_OP_DRAW_RECTANGLE = 66;
+const DISPLAY_OP_DRAW_ELLIPSE = 67;
+const DISPLAY_OP_DRAW_TEXT = 68;
 
 // GdkCrossingMode
 const GDK_CROSSING_NORMAL = 0;
@@ -987,32 +947,44 @@ TransformNodes.prototype.execute = function(display_commands)
             for (var i = 0; i < primitiveCount; ++i) {
                 var primitiveId = this.decode_uint32(); // TODO maybe later this.decode_uint8();
                 switch (primitiveId) {
-                case BROADWAY_DRAW_CLEAR:
-                    this.display_commands.push([DISPLAY_OP_DRAW_CLEAR, node]);
-                    break;
-                case BROADWAY_DRAW_SET_COLOR:
+                case BROADWAY_DRAW_PRIMITIVES_SET_COLOR:
                     var color = this.decode_color();
                     this.display_commands.push([DISPLAY_OP_SET_COLOR, node, color]);
                     break
-                case BROADWAY_DRAW_LINE:
+                case BROADWAY_DRAW_PRIMITIVES_SET_FONT:
+                    var family = this.decode_string();
+                    var size = this.decode_float();
+                    this.display_commands.push([DISPLAY_OP_SET_FONT, node, family, size]);
+                    break
+
+                case BROADWAY_DRAW_PRIMITIVES_CLEAR:
+                    this.display_commands.push([DISPLAY_OP_CLEAR, node]);
+                    break;
+                case BROADWAY_DRAW_PRIMITIVES_DRAW_LINE:
                     var x1 = this.decode_float();
                     var y1 = this.decode_float();
                     var x2 = this.decode_float();
                     var y2 = this.decode_float();
                     this.display_commands.push([DISPLAY_OP_DRAW_LINE, node, x1, y1, x2, y2]);
                     break;
-                case BROADWAY_DRAW_RECTANGLE:
+                case BROADWAY_DRAW_PRIMITIVES_DRAW_RECTANGLE:
                     var x1 = this.decode_float();
                     var y1 = this.decode_float();
                     var x2 = this.decode_float();
                     var y2 = this.decode_float();
                     this.display_commands.push([DISPLAY_OP_DRAW_RECTANGLE, node, x1, y1, x2, y2]);
                     break;
-                case BROADWAY_DRAW_ELLIPSIS:
+                /*case BROADWAY_DRAW_PRIMITIVES_DRAW_ELLIPSIS:
                     this.decode_float();
                     this.decode_float();
                     this.decode_float();
                     this.decode_float();
+                    break;*/
+                case BROADWAY_DRAW_PRIMITIVES_DRAW_TEXT:
+                    var x = this.decode_float();
+                    var y = this.decode_float();
+                    var text = this.decode_string();
+                    this.display_commands.push([DISPLAY_OP_DRAW_TEXT, node, x, y, text])
                     break;
                 }
             }
@@ -1039,7 +1011,7 @@ function cmdUngrabPointer()
 function handleDisplayCommands(display_commands)
 {
     if (!display_commands) {
-        return
+        return;
     }
 
     var div, parent;
@@ -1122,9 +1094,15 @@ function handleDisplayCommands(display_commands)
             context.strokeStyle = color;
             context.fillStyle = color;
             break;
+        case DISPLAY_OP_SET_FONT:
+            var [_,canvas,family,size] = cmd;
+            var context = canvas.getContext("2d");
+            context.font = size + "px " + family;
+            break;
         case DISPLAY_OP_DRAW_LINE:
             var [_,canvas,x1,y1,x2,y2] = cmd;
             var context = canvas.getContext("2d");
+            context.beginPath();
             context.moveTo(x1,y1);
             context.lineTo(x2,y2);
             context.stroke();
@@ -1133,6 +1111,11 @@ function handleDisplayCommands(display_commands)
             var [_,canvas,x1,y1,x2,y2] = cmd;
             var context = canvas.getContext("2d");
             context.fillRect(x1,y1,x2,y2);
+            break;
+        case DISPLAY_OP_DRAW_TEXT:
+            var [_,canvas,x,y,string] = cmd;
+            var context = canvas.getContext("2d");
+            context.fillText(string,x,y);
             break;
         default:
             alert("Unknown display op " + command);
@@ -1154,12 +1137,12 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
         lastSerial = cmd.get_32();
         console.log("command: ", command, " cmd: ", cmd);
         switch (command) {
-        case BROADWAY_OP_DISCONNECTED:
+        case BROADWAY_OPERATION_DISCONNECTED:
             alert ("disconnected");
             inputSocket = null;
             break;
 
-        case BROADWAY_OP_NEW_SURFACE:
+        case BROADWAY_OPERATION_NEW_SURFACE:
             id = cmd.get_16();
             x = cmd.get_16s();
             y = cmd.get_16s();
@@ -1171,7 +1154,7 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             need_restack = true;
             break;
 
-        case BROADWAY_OP_SHOW_SURFACE:
+        case BROADWAY_OPERATION_SHOW_SURFACE:
             id = cmd.get_16();
             surface = surfaces[id];
             if (!surface.visible) {
@@ -1181,7 +1164,7 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             }
            break;
 
-        case BROADWAY_OP_HIDE_SURFACE:
+        case BROADWAY_OPERATION_HIDE_SURFACE:
             id = cmd.get_16();
             if (grab.surface == id)
                 doUngrab();
@@ -1191,7 +1174,7 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             }
             break;
 
-        case BROADWAY_OP_SET_TRANSIENT_FOR:
+        case BROADWAY_OPERATION_SET_TRANSIENT_FOR:
             id = cmd.get_16();
             var parentId = cmd.get_16();
             surface = surfaces[id];
@@ -1204,7 +1187,7 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             }
             break;
 
-        case BROADWAY_OP_DESTROY_SURFACE:
+        case BROADWAY_OPERATION_DESTROY_SURFACE:
             id = cmd.get_16();
 
             if (grab.surface == id)
@@ -1221,13 +1204,13 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             display_commands.push([DISPLAY_OP_DELETE_SURFACE, id]);
             break;
 
-        case BROADWAY_OP_ROUNDTRIP:
+        case BROADWAY_OPERATION_ROUNDTRIP:
             id = cmd.get_16();
             var tag = cmd.get_32();
             cmdRoundtrip(id, tag);
             break;
 
-        case BROADWAY_OP_MOVE_RESIZE:
+        case BROADWAY_OPERATION_MOVE_RESIZE:
             id = cmd.get_16();
             var ops = cmd.get_flags();
             var has_pos = ops & 1;
@@ -1248,31 +1231,31 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             sendConfigureNotify(surface);
             break;
 
-        case BROADWAY_OP_RAISE_SURFACE:
+        case BROADWAY_OPERATION_RAISE_SURFACE:
             id = cmd.get_16();
             cmdRaiseSurface(id);
             need_restack = true;
             break;
 
-        case BROADWAY_OP_LOWER_SURFACE:
+        case BROADWAY_OPERATION_LOWER_SURFACE:
             id = cmd.get_16();
             cmdLowerSurface(id);
             need_restack = true;
             break;
 
-        case BROADWAY_OP_UPLOAD_TEXTURE:
+        case BROADWAY_OPERATION_UPLOAD_TEXTURE:
             id = cmd.get_32();
             var data = cmd.get_data();
             var texture = new Texture (id, data); // Stores a ref in global textures array
             new_textures.push(texture);
             break;
 
-        case BROADWAY_OP_RELEASE_TEXTURE:
+        case BROADWAY_OPERATION_RELEASE_TEXTURE:
             id = cmd.get_32();
             textures[id].unref();
             break;
 
-        case BROADWAY_OP_SET_NODES:
+        case BROADWAY_OPERATION_SET_NODES:
             id = cmd.get_16();
             if (id in modified_trees) {
                 // Can't modify the same dom tree in the same loop, bail out and do the first one
@@ -1288,23 +1271,23 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             }
             break;
 
-        case BROADWAY_OP_GRAB_POINTER:
+        case BROADWAY_OPERATION_GRAB_POINTER:
             id = cmd.get_16();
             var ownerEvents = cmd.get_bool ();
 
             cmdGrabPointer(id, ownerEvents);
             break;
 
-        case BROADWAY_OP_UNGRAB_POINTER:
+        case BROADWAY_OPERATION_UNGRAB_POINTER:
             cmdUngrabPointer();
             break;
 
-        case BROADWAY_OP_SET_SHOW_KEYBOARD:
+        case BROADWAY_OPERATION_SET_SHOW_KEYBOARD:
             showKeyboard = cmd.get_16() != 0;
             showKeyboardChanged = true;
             break;
 
-        case BROADWAY_OP_PUT_BUFFER:
+        case BROADWAY_OPERATION_PUT_BUFFER:
             id = cmd.get_16();
             var canvas = textures[id];
             var context = canvas.getContext("2d");
@@ -1326,11 +1309,11 @@ function handleCommands(cmd, display_commands, new_textures, modified_trees)
             context.putImageData(newImageData, 0, 0);
             break;
 
-        case BROADWAY_OP_SET_CURSOR:
+        case BROADWAY_OPERATION_SET_CURSOR:
             id = cmd.get_16();
             surface = surfaces[id];
             var style = cmd.get_uint8();
-            var styleNames = [ "default", "move" ]
+            var styleNames = [ "default", "move" ];
             surface.div.style.cursor = styleNames[style]; // TODO should we defer this via display ops?
             break;
 

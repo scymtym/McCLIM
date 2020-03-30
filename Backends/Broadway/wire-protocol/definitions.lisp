@@ -87,11 +87,11 @@
    (id 4))
 
   ;; Set the nodes of a surface. SIZE indicates the size of a payload
-  ;; immediately following the SIZE field encoded and encoded using
-  ;; the node operation and node protocols (see below).
+  ;; immediately following the SIZE field encoded using the node
+  ;; operation and node protocols (see below).
   ((set-nodes 15 :print-spec ("~D [~:D byte~:P]" id size))
    (id   2)
-   (size 4))
+   (size 4)) ; TODO (list node-operation)
 
   ((roundtrip 16 :print-spec ("~D ~A" id tag))
    (id  2)
@@ -103,6 +103,37 @@
   ((set-cursor 18 :print-spec ("~D ~D" id style))
    (id    2)
    (style 1))) ; TODO use enum
+
+;;; Node operations
+
+(define-protocol node-operation
+    ((opcode 4))
+
+  ((insert-node 0 :print-spec ("parent ~D sibling ~D"
+                               parent-id previous-sibling-id))
+   (parent-id           4)
+   (previous-sibling-id 4))
+
+  ((remove-node 1 :print-spec ("id ~D" id))
+   (id 4))
+
+  ((move-after-child 2 :print-spec ("id ~D parent ~D sibling ~D"
+                                    reused-node-id parent-id
+                                    previous-sibling-id))
+   (parent-id           4)
+   (previous-sibling-id 4)
+   (reused-node-id      4))
+
+  ((patch-texture 3 :print-spec ("node ~D texture ~D"
+                                 node-id texture-id))
+   (node-id    4)
+   (texture-id 4))
+
+  ((patch-transform 4))
+
+  ((draw-primitives 5 :print-spec ("node ~D" node-id))
+   (node-id 4)
+   (primitives (list draw-primitives))))
 
 ;;; Node creation operations
 
@@ -229,37 +260,6 @@
 
    (text string)))
 
-;;; Node operations
-
-(define-protocol node-operation
-    ((opcode 4))
-
-  ((insert-node 0 :print-spec ("parent ~D sibling ~D"
-                               parent-id previous-sibling-id))
-   (parent-id           4)
-   (previous-sibling-id 4))
-
-  ((remove-node 1 :print-spec ("id ~D" id))
-   (id 4))
-
-  ((move-after-child 2 :print-spec ("id ~D parent ~D sibling ~D"
-                                    reused-node-id parent-id
-                                    previous-sibling-id))
-   (parent-id           4)
-   (previous-sibling-id 4)
-   (reused-node-id      4))
-
-  ((patch-texture 3 :print-spec ("node ~D texture ~D"
-                                 node-id texture-id))
-   (node-id    4)
-   (texture-id 4))
-
-  ((patch-transform 4))
-
-  ((draw-primitives 5 :print-spec ("node ~D" node-id))
-   (node-id 4)
-   (primitives (list draw-primitives))))
-
 ;;; Draw primitives
 
 (define-protocol draw-primitives
@@ -267,23 +267,32 @@
 
   ((clear 0))
 
-  ((set-color 4 :print-spec ("~D ~D ~D ~D" red green blue alpha))
-   (red   1)
-   (green 1)
+  ((set-color 1 :print-spec ("~D ~D ~D ~D" red green blue alpha))
    (blue  1)
+   (green 1)
+   (red   1)
    (alpha 1))
 
-  ((draw-line 1 :print-spec ("from (~A,~A) to (~A,~A)" x1 y1 x2 y2))
+  ((set-font 2 :print-spec ("~A A ~,2F" family #+later face size))
+   (family string)
+   ;; (face   )
+   (size   :float32))
+
+  ((draw-line 32 :print-spec ("from (~,2F,~,2F) to (~A,~A)" x1 y1 x2 y2))
    (x1 :float32) (y1 :float32)
    (x2 :float32) (y2 :float32))
 
-  ((draw-rectangle 2 :print-spec ("(~A,~A) - (~A,~A)" x1 y1 x2 y2))
+  ((draw-rectangle 33 :print-spec ("(~A,~A) - (~A,~A)" x1 y1 x2 y2))
    (x1 :float32) (y1 :float32)
    (x2 :float32) (y2 :float32))
 
-  ((draw-ellipse 3 :print-spec ("at (~A,~A) radii ~A, ~A" x y r1 r2))
+  ((draw-ellipse 34 :print-spec ("at (~A,~A) radii ~A, ~A" x y r1 r2))
    (x :float32) (y :float32)
-   (r1 :float32) (r2 :float32)))
+   (r1 :float32) (r2 :float32))
+
+  ((draw-text 35 :print-spec ("~S at (~,2F,~,2F)" text x y))
+   (x :float32) (y :float32)
+   (text string)))
 
 ;;; Client -> server events
 

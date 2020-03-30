@@ -66,13 +66,18 @@
   (when-let* ((ops (queued-operations surface))
               (op  (make-instance 'draw-primitives :node-id 6
                                                    :primitives (nreverse ops))))
+    (log:info "Drawing operations~@:_~@
+               ~2@T~@<~{• ~A~^~@:_~}~:>"
+              (primitives op))
     (append-message-chunk connection (serialize-node-operation op)))
 
   (prepend-message-chunk
    connection (print (make-instance 'set-nodes :id   surface-id
-                                               :size (truncate
+                                               :size (truncate ; TODO why the division?
                                                       (+ (output-length connection))
                                                       4))))
+  #+no (let ((climi::*default-server-path* '(:clx-ttf)))
+    (clouseau:inspect (list operations (queued-operations surface))))
   (send-message connection))
 
 (defun patch-texture (connection surface-id node-id texture-id)

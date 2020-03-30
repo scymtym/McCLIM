@@ -61,14 +61,16 @@
   description)
 
 (defmethod generate ((description (eql 'string)) (target (eql :size)) &key)
-  `(+ 4 (* 4 (ceiling (length (babel:string-to-octets value :encoding :utf-8)) 4)))) ; TODO hack
+  `(+ 4 (* 4 (ceiling (length (babel:string-to-octets value :encoding :utf-8)) 4)))  ; TODO hack
+  #+maybe `(+ 4 (length (babel:string-to-octets value :encoding :utf-8))))
 
 (defmethod generate ((description cons) (target (eql :size)) &key)
-  (assert (eq (first description) 'list))
-  `(flet ((size-of-element (value)
-            ,(generate (second description) target)))
-     (+ ,(generate 4 :size)
-        (reduce #'+ value :key #'size-of-element))))
+  (destructuring-bind (constructor type) description
+    (assert (eq constructor 'list))
+    `(flet ((size-of-element (value)
+              ,(generate type target)))
+       (+ ,(generate 4 :size)
+          (reduce #'+ value :key #'size-of-element)))))
 
 (defmethod generate ((description symbol) (target (eql :size)) &key)
   (let ((description (symbol-value description)))
@@ -171,7 +173,8 @@
      (setf (nibbles:ub32ref/le buffer offset) length)
      (incf offset 4)
      (setf (subseq buffer offset) octets)
-     (incf offset length)))
+     (incf offset (* 4 (ceiling length 4)))
+     #+maybe (incf offset length)))
 
 (defmethod generate ((description cons) (target (eql :serialize)) &key)
   (assert (eq (first description) 'list))
@@ -230,15 +233,17 @@
 
 (defmethod generate ((description message) (target (eql 'print-object)) &key)
   (when-let ((print-spec (print-spec description)))
-            (destructuring-bind (format &rest fields) print-spec
-              (list `(defmethod print-object ((object ,(name description)) stream)
-                       (print-unreadable-object (object stream :type t :identity t)
-                         (format stream ,format
-                                 ,@(map 'list (lambda (field)
-                                                (let ((field (find field (fields description)
-                                                                   :key #'name)))
-                                                  `(,(name field) object)))
-                                        fields))))))))
+    (destructuring-bind (format &rest fields) print-spec
+      (list `(defmethod print-object ((object ,(name description)) stream)
+               (print-unreadable-object (object stream :type t :identity t)
+                 (format stream ,format
+                         ,@(map 'list (lambda (field)
+                                        (let ((field (or (find field (fields description)
+                                                               :key #'name)
+                                                         (error "~S does not name a field of ~A"
+                                                                field description))))
+                                          `(,(name field) object)))
+                                fields))))))))
 
 (defmethod generate ((description protocol) (target (eql 'print-object)) &key)
   (let ((methods (mappend (rcurry #'generate 'print-object) (messages description))))

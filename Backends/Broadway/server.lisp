@@ -27,7 +27,7 @@
     (destructuring-bind (verb path version)
         (split-sequence:split-sequence
          #\Space (remove #\Return (read-line stream)))
-      (print (list verb path version))
+      (log:info "Got request ~4A ~A ~A" verb path version)
       (alexandria:switch (path :test #'string=)
         ("/client.html" (unwind-protect
                              (serve-client socket)
@@ -252,7 +252,7 @@
             (set-nodes2 connection (id surface) ops surface)))))))
 
 (defun synchronize-sheets (port connection)
-  (when-let ((dirty-sheets (remove-if-not (lambda (surface)
+  (when-let ((dirty-sheets (remove-if-not #'queued-operations #+no (lambda (surface)
                                             (slot-value surface 'mcclim-render-internals::dirty-region))
                                           (surfaces (surface-manager port)))))
                                         ; (print (list "dirty sheets " dirty-sheets))

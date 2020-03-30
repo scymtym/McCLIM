@@ -19,7 +19,7 @@
   (:use
    #:alexandria
 
-   #:clim
+   #:clim ; TODO maybe do not use this?
    #:clim-lisp
    #:clim-backend)
 
@@ -28,7 +28,9 @@
 
    #:color
 
-   #:draw-line)
+   #:draw-line
+   #:draw-rectangle
+   #:draw-text)
 
   (:shadowing-import-from #:alexandria
    #:simple-parse-error))

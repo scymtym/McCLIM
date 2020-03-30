@@ -53,6 +53,7 @@
                               (:file "surface")
                               (:file "surface-manager")))
 
+                (:file "medium")
                 (:file "frame-manager")
                 (:file "port")
 
