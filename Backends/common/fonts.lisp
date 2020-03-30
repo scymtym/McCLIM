@@ -276,7 +276,7 @@ xmin ymin xmax ymax."))
                                  :align-x align-x :align-y align-y :direction direction)
       (values xmin ymin xmax ymax))))
 
-(defmethod climb:text-size
+(defmethod text-size
     ((medium font-rendering-medium-mixin) string
      &key text-style (start 0) end
      &aux
