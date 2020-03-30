@@ -38,6 +38,7 @@
                               (:file "definitions")
 
                               (:file "generate-lisp")
+                              (:file "generate-javascript")
 
                               (:file "code-generation")
 
