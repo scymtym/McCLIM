@@ -59,11 +59,21 @@
    (merge-pathnames "broadway.js" #.(or *compile-file-truename*
                                         *load-truename*))))
 
+(defun serve-wire-protocol (stream)
+  (let ((*standard-output* stream))
+    (generate event :js)
+    (generate operation :js)
+    (generate node-operation :js)
+    (generate draw-primitives :js)))
+
 (defun serve-js (socket)
   (let ((stream (usocket:socket-stream socket)))
     (write-crlf-line "HTTP/1.1 200 OK" stream)
     (write-crlf-line "Content-type: application/javascript" stream)
     (write-crlf-line "" stream)
+
+    (serve-wire-protocol stream)
+
     (write-string (read-file-into-string
                    (merge-pathnames "broadway.js" #.(or *compile-file-truename*
                                                         *load-truename*)))
