@@ -1,3 +1,5 @@
+// TODO license
+
 // Protocol stuff
 
 const BROADWAY_NODE_TEXTURE = 0;

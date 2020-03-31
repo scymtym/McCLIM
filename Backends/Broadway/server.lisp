@@ -20,7 +20,8 @@
 (defun run-server (&key (port 8080) the-port)
   (usocket:with-socket-listener (server-socket "0.0.0.0" port)
     (loop :for client-socket = (usocket:socket-accept server-socket :element-type :default)
-          :do (serve client-socket the-port))))
+          :do (with-simple-restart (continue "Stop processing the request")
+                (serve client-socket the-port)))))
 
 (defun serve (socket port)
   (let ((stream (usocket:socket-stream socket)))
@@ -29,9 +30,6 @@
          #\Space (remove #\Return (read-line stream)))
       (log:info "Got request ~4A ~A ~A" verb path version)
       (alexandria:switch (path :test #'string=)
-        ("/client.html" (unwind-protect
-                             (serve-client socket)
-                          (usocket:socket-close socket)))
         ("/broadway.js" (unwind-protect
                              (serve-js socket)
                           (usocket:socket-close socket)))
@@ -40,24 +38,23 @@
                                                (serve-socket socket port)
                                             (usocket:socket-close socket)))
                                         :name "websocket worker"))
-        (otherwise      (usocket:socket-close socket))))))
+        (otherwise      (unwind-protect
+                             (serve-resource socket (subseq path 1))
+                          (usocket:socket-close socket)))))))
 
-(defvar *client*
-  (read-file-into-string
-   (merge-pathnames "client.html" #.(or *compile-file-truename*
-                                        *load-truename*))))
+(defun write-http-header (stream content-type)
+  (write-crlf-line "HTTP/1.1 200 OK" stream)
+  (write-string "Content-type: " stream)
+  (write-crlf-line content-type stream)
+  (write-crlf-line "" stream))
 
-(defun serve-client (socket)
-  (let ((stream (usocket:socket-stream socket)))
-    (write-crlf-line "HTTP/1.1 200 OK" stream)
-    (write-crlf-line "Content-type: text/html" stream)
-    (write-crlf-line "" stream)\*
-    (write-string *client* stream)))
-
-(defvar *js*
-  (read-file-into-string
-   (merge-pathnames "broadway.js" #.(or *compile-file-truename*
-                                        *load-truename*))))
+(defun serve-resource (socket resource-name)
+  (let* ((resource (find-resource resource-name))
+         (stream   (usocket:socket-stream socket)))
+    (when resource ; TODO 404
+      (maybe-reload resource)
+      (write-http-header stream "text/html")
+      (write-string (content resource) stream))))
 
 (defun serve-wire-protocol (stream)
   (let ((*standard-output* stream))
@@ -68,19 +65,19 @@
 
 (defun serve-js (socket)
   (let ((stream (usocket:socket-stream socket)))
-    (write-crlf-line "HTTP/1.1 200 OK" stream)
-    (write-crlf-line "Content-type: application/javascript" stream)
-    (write-crlf-line "" stream)
+    (write-http-header stream "application/javascript")
 
     (serve-wire-protocol stream)
 
     (write-string (read-file-into-string
-                   (merge-pathnames "broadway.js" #.(or *compile-file-truename*
-                                                        *load-truename*)))
+                   (merge-pathnames "static/broadway.js"
+                                    #.(or *compile-file-truename*
+                                          *load-truename*)))
                   stream)
     (write-string (read-file-into-string
-                   (merge-pathnames "buffer.js" #.(or *compile-file-truename*
-                                                      *load-truename*)))
+                   (merge-pathnames "static/buffer.js"
+                                    #.(or *compile-file-truename*
+                                          *load-truename*)))
                   stream)))
 
 #+unused (defun upload-image (connection id image)

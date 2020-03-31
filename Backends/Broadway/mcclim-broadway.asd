@@ -59,4 +59,5 @@
 
                 (:file "websocket") ; TODO make server stuff one module
 
+                (:file "resources")
                 (:file "server")))
