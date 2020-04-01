@@ -69,15 +69,10 @@
 
     (serve-wire-protocol stream)
 
-    (write-string (read-file-into-string
-                   (merge-pathnames "static/broadway.js"
-                                    #.(or *compile-file-truename*
-                                          *load-truename*)))
-                  stream)
-    (write-string (read-file-into-string
-                   (merge-pathnames "static/buffer.js"
-                                    #.(or *compile-file-truename*
-                                          *load-truename*)))
+    (let ((resource (find-resource "broadway.js")))
+      (maybe-reload resource)
+      (write-string (content resource) stream))
+    #+no (write-string (content (find-resource "buffer.js"))
                   stream)))
 
 #+unused (defun upload-image (connection id image)

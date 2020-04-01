@@ -45,8 +45,9 @@ const DISPLAY_OP_SET_FONT = 33;
 const DISPLAY_OP_CLEAR = 64;
 const DISPLAY_OP_DRAW_LINE = 65;
 const DISPLAY_OP_DRAW_RECTANGLE = 66;
-const DISPLAY_OP_DRAW_ELLIPSE = 67;
-const DISPLAY_OP_DRAW_TEXT = 68;
+const DISPLAY_OP_DRAW_PATH = 67;
+const DISPLAY_OP_DRAW_ELLIPSE = 68;
+const DISPLAY_OP_DRAW_TEXT = 69;
 
 // GdkCrossingMode
 const GDK_CROSSING_NORMAL = 0;
@@ -352,6 +353,12 @@ function TransformNodes(node_data, div, nodes, display_commands) {
     this.div = div;
     this.outstanding = 1;
     this.nodes = nodes;
+}
+
+TransformNodes.prototype.decode_bool = function() {
+    var v = (this.node_data.getUint8(this.data_pos, true) != 0);
+    this.data_pos += 1;
+    return v;
 }
 
 TransformNodes.prototype.decode_uint8 = function() {
@@ -952,12 +959,12 @@ TransformNodes.prototype.execute = function(display_commands)
                 case BROADWAY_DRAW_PRIMITIVES_SET_COLOR:
                     var color = this.decode_color();
                     this.display_commands.push([DISPLAY_OP_SET_COLOR, node, color]);
-                    break
+                    break;
                 case BROADWAY_DRAW_PRIMITIVES_SET_FONT:
                     var family = this.decode_string();
                     var size = this.decode_float();
                     this.display_commands.push([DISPLAY_OP_SET_FONT, node, family, size]);
-                    break
+                    break;
 
                 case BROADWAY_DRAW_PRIMITIVES_CLEAR:
                     this.display_commands.push([DISPLAY_OP_CLEAR, node]);
@@ -974,14 +981,39 @@ TransformNodes.prototype.execute = function(display_commands)
                     var y1 = this.decode_float();
                     var x2 = this.decode_float();
                     var y2 = this.decode_float();
-                    this.display_commands.push([DISPLAY_OP_DRAW_RECTANGLE, node, x1, y1, x2, y2]);
+                    var filled = this.decode_bool();
+                    this.decode_uint8(); // HACK padding
+                    this.decode_uint8();
+                    this.decode_uint8();
+                    this.display_commands.push([DISPLAY_OP_DRAW_RECTANGLE, node, x1, y1, x2, y2, filled]);
                     break;
-                /*case BROADWAY_DRAW_PRIMITIVES_DRAW_ELLIPSIS:
-                    this.decode_float();
-                    this.decode_float();
-                    this.decode_float();
-                    this.decode_float();
-                    break;*/
+                case BROADWAY_DRAW_PRIMITIVES_DRAW_PATH:
+                    var length = this.decode_uint32();
+                    var points = new Array();
+                    for (var j = 0; j < length; ++j) {
+                        points.push(this.decode_float());
+                    }
+                    var closed = this.decode_bool();
+                    var filled = this.decode_bool();
+                    this.decode_uint8(); // HACK padding
+                    this.decode_uint8();
+                    this.display_commands.push([DISPLAY_OP_DRAW_PATH, node, points, closed, filled]);
+                    break;
+                case BROADWAY_DRAW_PRIMITIVES_DRAW_ELLIPSE:
+                    var x = this.decode_float();
+                    var y = this.decode_float();
+                    var r1x = this.decode_float();
+                    var r1y = this.decode_float();
+                    var r2x = this.decode_float();
+                    var r2y = this.decode_float();
+                    var start = this.decode_float();
+                    var end = this.decode_float();
+                    var filled = this.decode_bool();
+                    this.decode_uint8(); // HACK padding
+                    this.decode_uint8();
+                    this.decode_uint8();
+                    this.display_commands.push([DISPLAY_OP_DRAW_ELLIPSE, node, x, y, r1x, r1y, r2x, r2y, start, end, filled]);
+                    break;
                 case BROADWAY_DRAW_PRIMITIVES_DRAW_TEXT:
                     var x = this.decode_float();
                     var y = this.decode_float();
@@ -1110,9 +1142,39 @@ function handleDisplayCommands(display_commands)
             context.stroke();
             break;
         case DISPLAY_OP_DRAW_RECTANGLE:
-            var [_,canvas,x1,y1,x2,y2] = cmd;
+            var [_,canvas,x1,y1,x2,y2,filled] = cmd;
             var context = canvas.getContext("2d");
-            context.fillRect(x1,y1,x2,y2);
+            if (filled)
+                context.fillRect(x1,y1,x2,y2);
+            else
+                context.strokeRect(x1,y1,x2,y2);
+            break;
+        case DISPLAY_OP_DRAW_PATH:
+            var [_,canvas,points,closed,filled] = cmd;
+            var context = canvas.getContext("2d");
+            context.beginPath();
+            context.moveTo(points[0], points[1]);
+            for (var j = 2; j < points.length; j+=2) {
+                context.lineTo(points[j], points[j+1]);
+            }
+            if (closed)
+                context.closePath();
+            if (filled)
+                context.fill();
+            else
+                context.stroke();
+            break;
+        case DISPLAY_OP_DRAW_ELLIPSE:
+            var [_,canvas,x,y,r1x,r1y,r2x,r2y,start,end,filled] = cmd;
+            var context = canvas.getContext("2d");
+            context.beginPath();
+            var r1 = Math.sqrt(r1x*r1x+r1y*r1y);
+            //var r2 = Math.sqrt(r2x*r2x+r1y*r2y);
+            context.arc(x, y, r1, 2*Math.PI-end, 2*Math.PI-start);
+            if (filled)
+                context.fill();
+            else
+                context.stroke();
             break;
         case DISPLAY_OP_DRAW_TEXT:
             var [_,canvas,x,y,string] = cmd;

@@ -41,7 +41,13 @@
            (surface (climi::port-lookup-mirror port sheet))
            (ink     (medium-ink medium)))
       (multiple-value-bind (red green blue alpha)
-          (clime:color-rgba (climi::design-ink ink 0 0))
+          (typecase ink
+            (climi::color
+             (clime:color-rgba ink))
+            (climi::standard-flipping-ink
+             (values 0.0f0 0.0f0 0.0f0 1.0f0))
+            (t
+             (clime:color-rgba (climi::design-ink ink 0 0))))
         (push (make-instance 'set-color :red   (floor red   1/255)
                                         :green (floor green 1/255)
                                         :blue  (floor blue  1/255)
@@ -58,10 +64,14 @@
           (text-style-components text-style)
         (push (make-instance 'set-font :family "Arial"
                                        :size   (case size
-                                                 (:small   8.0f0)
-                                                 (:normal 10.0f0)
-                                                 (:huge   12.0f0)
-                                                 (t       (float size 1.0f0))))
+                                                 (:tiny        6.0f0)
+                                                 (:very-small  8.0f0)
+                                                 (:small      10.0f0)
+                                                 (:normal     12.0f0)
+                                                 (:large      14.0f0)
+                                                 (:very-large 16.0f0)
+                                                 (:huge       18.0f0)
+                                                 (t           (float size 1.0f0))))
               (queued-operations surface))))
     (setf (text-style-dirty-p medium) nil)))
 
@@ -84,7 +94,8 @@
     (push (make-instance 'draw-rectangle :x1 (float left 1.0f0)
                                          :y1 (float top 1.0f0)
                                          :x2 (float (- right left) 1.0f0) ; TODO
-                                         :y2 (float (- bottom top) 1.0f0))
+                                         :y2 (float (- bottom top) 1.0f0)
+                                         :filled t :pad1 0 :pad2 0 :pad3 0)
           (queued-operations surface))))
 
 (defmethod medium-draw-point* ((medium broadway-medium) x y)
@@ -123,6 +134,7 @@
 (defmethod medium-draw-rectangle* ((medium broadway-medium) x1 y1 x2 y2 filled)
   (when-let* ((sheet   (medium-sheet medium))
               (port    (port sheet))
+              (a       (sheet-mirrored-ancestor sheet))
               (surface (climi::port-lookup-mirror port sheet)))
 
     (synchronize-graphics-state medium)
@@ -132,9 +144,9 @@
       (push (make-instance 'draw-rectangle :x1 (float x1 1.0f0)
                                            :y1 (float y1 1.0f0)
                                            :x2 (float (- x2 x1) 1.0f0) ; TODO
-                                           :y2 (float (- y2 y1) 1.0f0))
-            (queued-operations surface)))
-    (log:info "~D queued operation~:P" (length (queued-operations surface)))))
+                                           :y2 (float (- y2 y1) 1.0f0)
+                                           :filled filled :pad1 0 :pad2 0 :pad3 0)
+            (queued-operations surface)))))
 
 (defmethod medium-draw-polygon* ((medium broadway-medium) coord-seq closed filled)
   (let* ((sheet   (medium-sheet medium))
@@ -143,38 +155,55 @@
 
     (synchronize-graphics-state medium)
 
-    #+no (multiple-value-bind (x1 y1 x2 y2)
-        (transform- (sheet-native-transformation sheet) x1 y1 x2 y2)
-      (push (make-instance 'draw-rectangle :x1 (float x1 1.0f0)
-                                           :y1 (float y1 1.0f0)
-                                           :x2 (float (- x2 x1) 1.0f0) ; TODO
-                                           :y2 (float (- y2 y1) 1.0f0))
+    (let ((transform (sheet-native-transformation sheet))
+          (points    '()))
+      (loop for (x y) on coord-seq by #'cddr
+            do (multiple-value-bind (x y)
+                   (transform-position transform x y)
+                 (push (float x 1.0f0) points)
+                 (push (float y 1.0f0) points)))
+      (push (make-instance 'draw-path :points (nreverse points)
+                                      :closed closed
+                                      :filled filled
+                                      :pad1 0 :pad2 0)
             (queued-operations surface)))))
 
-(defmethod medium-draw-ellipse* ((medium broadway-medium) x y radius-1-dx radius-1-dy radius-2-dx radius-2-dy start-angle end-angle filled)
+(defmethod medium-draw-ellipse* ((medium broadway-medium)
+                                 x y radius-1-dx radius-1-dy radius-2-dx radius-2-dy
+                                 start-angle end-angle filled)
   (let* ((sheet   (medium-sheet medium))
          (port    (port sheet))
          (surface (climi::port-lookup-mirror port sheet)))
 
     (synchronize-graphics-state medium)
 
-    #+no (multiple-value-bind (x1 y1 x2 y2)
-        (transform-rectangle* (sheet-native-transformation sheet) x1 y1 x2 y2)
-      (push (make-instance 'draw-rectangle :x1 (float x1 1.0f0)
-                                           :y1 (float y1 1.0f0)
-                                           :x2 (float (- x2 x1) 1.0f0) ; TODO
-                                           :y2 (float (- y2 y1) 1.0f0))
-            (queued-operations surface)))))
+    (let ((transform (sheet-native-transformation sheet)))
+      (multiple-value-bind (x y) (transform-position transform x y)
+        (multiple-value-bind (radius-1-dx radius-1-dy)
+            (transform-distance transform radius-1-dx radius-1-dy)
+          (multiple-value-bind (radius-2-dx radius-2-dy)
+              (transform-distance transform radius-2-dx radius-2-dy)
+            (push (make-instance 'draw-ellipse :x (float x 1.0f0)
+                                               :y (float y 1.0f0)
+                                               :r1x (float radius-1-dx 1.0f0)
+                                               :r1y (float radius-1-dy 1.0f0)
+                                               :r2x (float radius-2-dx 1.0f0)
+                                               :r2y (float radius-2-dy 1.0f0)
+                                               :start-angle (float start-angle 1.0f0)
+                                               :end-angle (float end-angle 1.0f0)
+                                               :filled filled :pad1 0 :pad2 0 :pad3 0)
+                  (queued-operations surface))))))))
 
 (defmethod climb:font-text-extents ((medium broadway-medium) text
-                                    &key start end)
+                                    &key start end align-x align-y direction)
   )
 
 (defmethod medium-draw-text* ((medium broadway-medium) string x y start end
                               align-x align-y toward-x toward-y transform-glyphs)
-  (let* ((sheet   (medium-sheet medium))
-         (port    (port sheet))
-         (surface (climi::port-lookup-mirror port sheet)))
+  (when-let* ((sheet   (medium-sheet medium))
+              (port    (port sheet))
+              (a       (sheet-mirrored-ancestor sheet)) ; HACK
+              (surface (climi::port-lookup-mirror port sheet)))
 
     ; (setf (text-align medium) align-x) => context.textAlign = "center"
     ; (setf (text-align medium) align-y)
@@ -186,3 +215,7 @@
                                       :y    (float y 1.0f0)
                                       :text (subseq string start end))
             (queued-operations surface)))))
+
+(defmethod medium-copy-area ((from-drawable broadway-medium) from-x from-y width height
+                             (to-drawable broadway-medium) to-x to-y)
+  )

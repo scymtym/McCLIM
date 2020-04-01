@@ -282,15 +282,34 @@
    (x1 :float32) (y1 :float32)
    (x2 :float32) (y2 :float32))
 
-  ((draw-rectangle 33 :print-spec ("(~A,~A) - (~A,~A)" x1 y1 x2 y2))
-   (x1 :float32) (y1 :float32)
-   (x2 :float32) (y2 :float32))
+  ((draw-rectangle 33 :print-spec ("(~A,~A) - (~A,~A) ~:[not ~;~]filled"
+                                   x1 y1 x2 y2 filled))
+   (x1     :float32) (y1 :float32)
+   (x2     :float32) (y2 :float32)
+   (filled boolean)
+   (pad1   1)
+   (pad2   1)
+   (pad3   1))
 
-  ((draw-ellipse 34 :print-spec ("at (~A,~A) radii ~A, ~A" x y r1 r2))
-   (x :float32) (y :float32)
-   (r1 :float32) (r2 :float32))
+  ((draw-ellipse 34 :print-spec ("at (~,2F,~,2F) radii (~,2F,~,2F) (~,2F,~,2F) ~:[not ~;~]filled"
+                                 x y r1x r1y r2x r2y filled))
+   (x           :float32) (y         :float32)
+   (r1x         :float32) (r1y       :float32)
+   (r2x         :float32) (r2y       :float32)
+   (start-angle :float32) (end-angle :float32)
+   (filled      boolean)
+   (pad1 1)
+   (pad2 1)
+   (pad3 1))
 
-  ((draw-text 35 :print-spec ("~S at (~,2F,~,2F)" text x y))
+  ((draw-path 35)
+   (points (list :float32))
+   (closed boolean)
+   (filled boolean)
+   (pad1 1)
+   (pad2 1))
+
+  ((draw-text 36 :print-spec ("~S at (~,2F,~,2F)" text x y))
    (x :float32) (y :float32)
    (text string)))
 
