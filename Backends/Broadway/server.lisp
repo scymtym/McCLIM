@@ -28,7 +28,7 @@
     (destructuring-bind (verb path version)
         (split-sequence:split-sequence
          #\Space (remove #\Return (read-line stream)))
-      (log:info "Got request ~4A ~A ~A" verb path version)
+      (format *trace-output* "Got request ~4A ~A ~A~%" verb path version)
       (alexandria:switch (path :test #'string=)
         ("/broadway.js" (unwind-protect
                              (serve-js socket)

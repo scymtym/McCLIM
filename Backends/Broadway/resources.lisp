@@ -60,7 +60,7 @@
   (let* ((filename   (filename resource))
          (write-date (file-write-date filename)))
     (when (> write-date (timestamp resource))
-      (log:info "Reloading ~A" resource)
+      (format *trace-output* "Reloading ~A~%" resource)
       (setf (%content resource)   (read-file-into-string filename)
             (%timestamp resource) write-date))))
 
