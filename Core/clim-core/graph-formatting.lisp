@@ -272,7 +272,8 @@
                             (let ((child-node (find-or-make-node
                                                child-object depth)))
                               (when parent-node
-                                (alexandria:removef roots child-node) ; TODO avoid complexity
+                                (unless (alexandria:length= 1 roots) ; HACK don't remove all roots
+                                  (alexandria:removef roots child-node)) ; TODO avoid complexity
                                 (push child-node (graph-node-children parent-node))
                                 (push parent-node (graph-node-parents child-node)))
                               child-node))
