@@ -223,7 +223,7 @@ jobs:
             :ignore-inherited-configuration)))" \
             --eval '(flet ((compile-system (system)
                    (asdf:load-system system :force t)))
-            (map nil (function compile-system) (list "clx" "clx/demo" )))' \
+            (map nil (function compile-system) (list "clx" )))' \
            \
             --quit
 
@@ -426,7 +426,7 @@ jobs:
         run: |
           export WORKSPACE=$(pwd)
           mkdir -p artifacts
-          mv -v cl-mcclim-master-with-doc.tar.gz artifacts/
+          mv -v cl-mcclim-master-with-doc.tar.gz Documentation/Manual/Texinfo/mcclim.info Documentation/Manual/Texinfo/mcclim.pdf Documentation/Manual/Texinfo/mcclim.html Documentation/Manual/Texinfo/figures/*.png Documentation/Guided-Tour/guided-tour.pdf Documentation/Specification/clim.pdf artifacts/
 
       - name: upload-artifact-cl-mcclim@master-with-doc
         uses: actions/upload-artifact@v1
@@ -771,5 +771,3 @@ jobs:
         with:
           name: cl-test.report@future
           path: artifacts
-
-  
