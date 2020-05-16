@@ -1,0 +1,775 @@
+name: Ubuntu Xenial
+
+on: [push]
+
+jobs:
+  cl-opticl_master:
+    runs-on: ubuntu-16.04
+    needs: [cl-test_report_future,cl-launch_master,quicklisp_current,sbcl_sbcl-2_0_0-with-doc]
+    steps:
+      - name: install-platform-dependencies
+        run: |
+          export WORKSPACE=$(pwd)
+          DEBIAN_FRONTEND=noninteractive sudo apt-get -qq update \
+              && DEBIAN_FRONTEND=noninteractive sudo apt-get -qq --assume-yes install \
+                git gzip bzip2 unzip unp wget sloccount tar
+
+
+
+      - name: git.repository
+        run: |
+          export WORKSPACE=$(pwd)
+          git clone -b master https://github.com/slyrus/opticl.git .
+
+
+      - name: download-artifact-sbcl@sbcl-2.0.0-with-doc
+        uses: actions/download-artifact@v1
+        with:
+          name: sbcl@sbcl-2.0.0-with-doc
+          path: upstream
+      - name: download-artifact-quicklisp@current
+        uses: actions/download-artifact@v1
+        with:
+          name: quicklisp@current
+          path: upstream
+      - name: download-artifact-cl-launch@master
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-launch@master
+          path: upstream
+      - name: download-artifact-cl-test.report@future
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-test.report@future
+          path: upstream
+      - name: extract-upstream-artiacts
+        run: |
+          export WORKSPACE=$(pwd)
+          cd upstream
+          find . -name '*.tar.gz' -exec tar -xzf '{}' \;
+
+      - name: common-lisp.shell
+        run: |
+          export WORKSPACE=$(pwd)
+          # Set up environment
+          export "ASDF_OUTPUT_TRANSLATIONS=/:${WORKSPACE}/fasl-cache/"
+
+
+          # Flush FASL cache if its contents is no longer compatible with
+          # the implementation
+          if ! upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+                 '(let ((file (first (directory "'''"${WORKSPACE}/fasl-cache"'''/**/*.fasl"))))
+            (when file
+              (handler-case
+                  (sb-fasl::check-fasl-header (open file :element-type (quote (unsigned-byte 8))))
+                (sb-fasl::invalid-fasl-version ()
+                  (uiop:quit 1)))))' ; then
+            echo "FASL cache in ${WORKSPACE}/fasl-cache is not usable, deleting."
+            rm -rf "${WORKSPACE}/fasl-cache"
+          fi
+
+          # Ensure dependencies
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s alexandria -s retrospectiff -s zpng -s pngload -s cl-jpeg -s skippy -s opticl-core -s cl-tga -s fiveam
+
+          # Compile
+          SBCL_HOME=$(pwd)/upstream/install/lib/sbcl upstream/install/bin/sbcl \
+            --noinform --lose-on-corruption             \
+            --no-userinit --disable-debugger --non-interactive                  \
+              --eval '(require :asdf)' \
+            --eval "(asdf:initialize-source-registry (quote (:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)))" \
+            --eval '(require :sb-cover)' \
+            --eval '(declaim (optimize sb-cover:store-coverage-data))' \
+            --eval '(flet ((compile-system (system)
+                   (asdf:load-system system :force t)))
+            (map nil (function compile-system) (list "opticl" )))' \
+           \
+            --quit
+
+          # Execute tests
+          rm -f test-results-*.xml
+
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s opticl -s sb-cover -s test.report.adapter-fiveam -s test.report.report-junit                                   \
+            '(progn (test.report.adapter.fiveam:hook-into-run)
+          (mapc (function asdf:test-system) (list "opticl/test" ))
+          (sb-cover:report "coverage-report/")
+          )'
+
+
+
+      - name: common-lisp-shared.archive-source-code
+        run: |
+          export WORKSPACE=$(pwd)
+          # Package source code (remove archive from previous build first
+          rm -f "cl-opticl-master.tar.gz"
+          temp=$(mktemp -u).tar.gz
+          tar --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude sloccount.sc --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude test-results-*.xml --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude install --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude fasl-cache                              \
+            --transform 's#^\.\(.*\)#cl-opticl-master\1#' \
+            -czf "${temp}"                                               \
+            .
+          mv "${temp}" "cl-opticl-master.tar.gz"
+
+
+      - name: gather-artifacts
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p artifacts
+          mv -v cl-opticl-master.tar.gz artifacts/
+
+      - name: upload-artifact-cl-opticl@master
+        uses: actions/upload-artifact@v1
+        with:
+          name: cl-opticl@master
+          path: artifacts
+
+  cl-clx_master:
+    runs-on: ubuntu-16.04
+    needs: [cl-launch_master,quicklisp_current,sbcl_sbcl-2_0_0-with-doc]
+    steps:
+      - name: install-platform-dependencies
+        run: |
+          export WORKSPACE=$(pwd)
+          DEBIAN_FRONTEND=noninteractive sudo apt-get -qq update \
+              && DEBIAN_FRONTEND=noninteractive sudo apt-get -qq --assume-yes install \
+                git gzip bzip2 unzip unp wget sloccount tar
+
+
+
+      - name: git.repository
+        run: |
+          export WORKSPACE=$(pwd)
+          git clone -b master https://github.com/sharplispers/clx.git .
+
+
+      - name: download-artifact-sbcl@sbcl-2.0.0-with-doc
+        uses: actions/download-artifact@v1
+        with:
+          name: sbcl@sbcl-2.0.0-with-doc
+          path: upstream
+      - name: download-artifact-quicklisp@current
+        uses: actions/download-artifact@v1
+        with:
+          name: quicklisp@current
+          path: upstream
+      - name: download-artifact-cl-launch@master
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-launch@master
+          path: upstream
+      - name: extract-upstream-artiacts
+        run: |
+          export WORKSPACE=$(pwd)
+          cd upstream
+          find . -name '*.tar.gz' -exec tar -xzf '{}' \;
+
+      - name: common-lisp.shell
+        run: |
+          export WORKSPACE=$(pwd)
+          # Set up environment
+          export "ASDF_OUTPUT_TRANSLATIONS=/:${WORKSPACE}/fasl-cache/"
+
+
+          # Flush FASL cache if its contents is no longer compatible with
+          # the implementation
+          if ! upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+                 '(let ((file (first (directory "'''"${WORKSPACE}/fasl-cache"'''/**/*.fasl"))))
+            (when file
+              (handler-case
+                  (sb-fasl::check-fasl-header (open file :element-type (quote (unsigned-byte 8))))
+                (sb-fasl::invalid-fasl-version ()
+                  (uiop:quit 1)))))' ; then
+            echo "FASL cache in ${WORKSPACE}/fasl-cache is not usable, deleting."
+            rm -rf "${WORKSPACE}/fasl-cache"
+          fi
+
+          # Ensure dependencies
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s sb-bsd-sockets -s fiasco
+
+          # Compile
+          SBCL_HOME=$(pwd)/upstream/install/lib/sbcl upstream/install/bin/sbcl \
+            --noinform --lose-on-corruption             \
+            --no-userinit --disable-debugger --non-interactive                  \
+              --eval '(require :asdf)' \
+            --eval "(asdf:initialize-source-registry (quote (:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)))" \
+            --eval '(flet ((compile-system (system)
+                   (asdf:load-system system :force t)))
+            (map nil (function compile-system) (list "clx" "clx/demo" )))' \
+           \
+            --quit
+
+          # Execute tests
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s clx/test                                   \
+            '(progn (mapc (function asdf:test-system) (list "clx/test" ))
+          )'
+
+
+      - name: common-lisp-shared.archive-source-code
+        run: |
+          export WORKSPACE=$(pwd)
+          # Package source code (remove archive from previous build first
+          rm -f "cl-clx-master.tar.gz"
+          temp=$(mktemp -u).tar.gz
+          tar --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude sloccount.sc --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude install --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude fasl-cache                              \
+            --transform 's#^\.\(.*\)#cl-clx-master\1#' \
+            -czf "${temp}"                                               \
+            .
+          mv "${temp}" "cl-clx-master.tar.gz"
+
+
+      - name: gather-artifacts
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p artifacts
+          mv -v cl-clx-master.tar.gz artifacts/
+
+      - name: upload-artifact-cl-clx@master
+        uses: actions/upload-artifact@v1
+        with:
+          name: cl-clx@master
+          path: artifacts
+
+  cl-mcclim_master-with-doc:
+    runs-on: ubuntu-16.04
+    needs: [cl-test_report_future,cl-launch_master,quicklisp_current,sbcl_sbcl-2_0_0-with-doc,cl-opticl_master,cl-clx_master]
+    steps:
+      - name: install-platform-dependencies
+        run: |
+          export WORKSPACE=$(pwd)
+          DEBIAN_FRONTEND=noninteractive sudo apt-get -qq update \
+              && DEBIAN_FRONTEND=noninteractive sudo apt-get -qq --assume-yes install \
+                fig2dev texlive-font-utils texlive texlive-latex-extra texinfo  \
+                make fonts-dejavu git gzip bzip2 unzip unp wget sloccount tar
+
+
+
+      - name: git.repository
+        run: |
+          export WORKSPACE=$(pwd)
+          git clone -b master https://github.com/mcclim/mcclim.git .
+
+
+      - name: download-artifact-cl-clx@master
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-clx@master
+          path: upstream
+      - name: download-artifact-cl-opticl@master
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-opticl@master
+          path: upstream
+      - name: download-artifact-sbcl@sbcl-2.0.0-with-doc
+        uses: actions/download-artifact@v1
+        with:
+          name: sbcl@sbcl-2.0.0-with-doc
+          path: upstream
+      - name: download-artifact-quicklisp@current
+        uses: actions/download-artifact@v1
+        with:
+          name: quicklisp@current
+          path: upstream
+      - name: download-artifact-cl-launch@master
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-launch@master
+          path: upstream
+      - name: download-artifact-cl-test.report@future
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-test.report@future
+          path: upstream
+      - name: extract-upstream-artiacts
+        run: |
+          export WORKSPACE=$(pwd)
+          cd upstream
+          find . -name '*.tar.gz' -exec tar -xzf '{}' \;
+
+      - name: common-lisp.shell
+        run: |
+          export WORKSPACE=$(pwd)
+          # Set up environment
+          export "ASDF_OUTPUT_TRANSLATIONS=/:${WORKSPACE}/fasl-cache/"
+
+
+          # Flush FASL cache if its contents is no longer compatible with
+          # the implementation
+          if ! upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="--dynamic-space-size 4GB ${SBCL_OPTIONS}"' \
+                 '(let ((file (first (directory "'''"${WORKSPACE}/fasl-cache"'''/**/*.fasl"))))
+            (when file
+              (handler-case
+                  (sb-fasl::check-fasl-header (open file :element-type (quote (unsigned-byte 8))))
+                (sb-fasl::invalid-fasl-version ()
+                  (uiop:quit 1)))))' ; then
+            echo "FASL cache in ${WORKSPACE}/fasl-cache is not usable, deleting."
+            rm -rf "${WORKSPACE}/fasl-cache"
+          fi
+
+          # Ensure dependencies
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="--dynamic-space-size 4GB ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s alexandria -s trivial-gray-streams -s closer-mop -s spatial-trees -s flexichain -s bordeaux-threads -s trivial-garbage -s trivial-features -s babel -s sb-introspect -s opticl -s swank -s fiveam -s zpb-ttf -s cl-vectors -s cl-paths-ttf -s cl-aa -s cl-pdf -s flexi-streams -s clx -s cl-unicode -s cl-freetype2 -s mcclim-fontconfig -s mcclim-harfbuzz -s uiop -s cl-fad -s sb-posix
+
+          # Compile
+          SBCL_HOME=$(pwd)/upstream/install/lib/sbcl upstream/install/bin/sbcl \
+            --noinform --lose-on-corruption --dynamic-space-size 4GB           \
+            --no-userinit --disable-debugger --non-interactive                  \
+              --eval '(require :asdf)' \
+            --eval "(asdf:initialize-source-registry (quote (:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)))" \
+            --eval '(require :sb-cover)' \
+            --eval '(declaim (optimize sb-cover:store-coverage-data))' \
+            --eval '(handler-bind
+              ((style-warning
+                (lambda (condition)
+                  (when (search "does not have a presentation metaclass"
+                                (princ-to-string condition))
+                    (muffle-warning)))))
+            (flet ((compile-system (system)
+                   (asdf:load-system system :force t)))
+            (map nil (function compile-system) (list "clim-lisp" "automaton" "persistent" "mcclim-layouts" "clim-basic" "clim-core" "esa-mcclim" "mcclim-bitmaps" "conditional-commands" "mcclim-fonts" "drei-mcclim" "clim" "mcclim-franz" "mcclim-layouts/tab" "mcclim-fonts/truetype" "mcclim-render" "mcclim-backend-common" "mcclim-raster-image" "clim-postscript-font" "clim-postscript" "clim-pdf" "mcclim-null" "mcclim-bezier/core" "mcclim-clx" "mcclim-bezier/clx" "mcclim-bezier" "mcclim/extensions" "mcclim-fonts/clx-truetype" "mcclim-clx/truetype" "mcclim-fonts/clx-freetype" "mcclim-clx/freetype" "mcclim-clx-fb" "mcclim/looks" "mcclim" "clim-examples" "clim-examples/superapp" "mcclim-tree-with-cross-edges" "slim" "mcclim/test-util" "scigraph/dwim" "scigraph" "clouseau" "clim-debugger" "clim-listener" "functional-geometry" ))))' \
+           \
+            --quit
+
+          # Execute tests
+          rm -f test-results-*.xml
+
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="--dynamic-space-size 4GB ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s clim-lisp -s automaton -s persistent -s mcclim-layouts -s clim-basic -s clim-core -s esa-mcclim -s mcclim-bitmaps -s conditional-commands -s mcclim-fonts -s drei-mcclim -s clim -s mcclim-franz -s mcclim-layouts/tab -s mcclim-fonts/truetype -s mcclim-render -s mcclim-backend-common -s mcclim-raster-image -s clim-postscript-font -s clim-postscript -s clim-pdf -s mcclim-null -s mcclim-bezier/core -s mcclim-clx -s mcclim-bezier/clx -s mcclim-bezier -s mcclim/extensions -s mcclim-fonts/clx-truetype -s mcclim-clx/truetype -s mcclim-fonts/clx-freetype -s mcclim-clx/freetype -s mcclim-clx-fb -s mcclim/looks -s mcclim -s clim-examples -s clim-examples/superapp -s mcclim-tree-with-cross-edges -s slim -s mcclim/test-util -s scigraph/dwim -s scigraph -s clouseau -s clim-debugger -s clim-listener -s functional-geometry -s sb-cover -s test.report.adapter-fiveam -s test.report.report-junit                                   \
+            '(progn (test.report.adapter.fiveam:hook-into-run)
+          (mapc (function asdf:test-system) (list "drei-mcclim/test" "mcclim-backend-common/test" "mcclim/test" "clim-pdf/test" "clim-postscript/test" "mcclim-raster-image/test" "clouseau/test" ))
+          (sb-cover:report "coverage-report/")
+          )'
+
+
+
+          (
+            cd "Documentation/Manual/Texinfo"
+            make distclean all # TODO proper make invocation
+          )
+          (
+            cd "Documentation/Guided-Tour"
+            make clean "guided-tour.pdf"
+          )
+          (
+            cd "Documentation/Specification"
+            make
+          )
+
+
+
+      - name: common-lisp-shared.archive-source-code
+        run: |
+          export WORKSPACE=$(pwd)
+          # Package source code (remove archive from previous build first
+          rm -f "cl-mcclim-master-with-doc.tar.gz"
+          temp=$(mktemp -u).tar.gz
+          tar --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude sloccount.sc --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude test-results-*.xml --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude install --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude fasl-cache                              \
+            --transform 's#^\.\(.*\)#cl-mcclim-master-with-doc\1#' \
+            -czf "${temp}"                                               \
+            .
+          mv "${temp}" "cl-mcclim-master-with-doc.tar.gz"
+
+
+      - name: gather-artifacts
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p artifacts
+          mv -v cl-mcclim-master-with-doc.tar.gz artifacts/
+
+      - name: upload-artifact-cl-mcclim@master-with-doc
+        uses: actions/upload-artifact@v1
+        with:
+          name: cl-mcclim@master-with-doc
+          path: artifacts
+
+  sbcl_sbcl-2_0_0-with-doc:
+    runs-on: ubuntu-16.04
+    steps:
+      - name: install-platform-dependencies
+        run: |
+          export WORKSPACE=$(pwd)
+          DEBIAN_FRONTEND=noninteractive sudo apt-get -qq update \
+              && DEBIAN_FRONTEND=noninteractive sudo apt-get -qq --assume-yes install \
+                gzip bzip2 tar unzip unp wget sloccount zlib1g-dev time make sbcl  \
+                gcc git texlive texlive-latex-extra texinfo
+
+
+
+      - name: git.repository
+        run: |
+          export WORKSPACE=$(pwd)
+          git clone -b sbcl-2.0.0 https://git.code.sf.net/p/sbcl/sbcl .
+
+
+      - name: freestyle.shell
+        run: |
+          export WORKSPACE=$(pwd)
+          export GNUMAKE="make"
+
+
+          sh make.sh \
+            --xc-host="sbcl --no-sysinit --no-userinit" \
+            --fancy \
+
+
+          ( cd doc/manual && make )
+
+
+          # later ( cd tests && sh run-tests.sh )
+
+          INSTALL_ROOT="$(pwd)/install" sh install.sh
+          tar -czf sbcl-sbcl-2.0.0-with-doc.tar.gz install/
+
+
+      - name: gather-artifacts
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p artifacts
+          mv -v sbcl-sbcl-2.0.0-with-doc.tar.gz doc/manual/sbcl.pdf doc/manual/sbcl.html doc/manual/asdf.pdf doc/manual/asdf.html artifacts/
+
+      - name: upload-artifact-sbcl@sbcl-2.0.0-with-doc
+        uses: actions/upload-artifact@v1
+        with:
+          name: sbcl@sbcl-2.0.0-with-doc
+          path: artifacts
+
+  cl-launch_master:
+    runs-on: ubuntu-16.04
+    needs: [quicklisp_current,sbcl_sbcl-2_0_0-with-doc]
+    steps:
+      - name: install-platform-dependencies
+        run: |
+          export WORKSPACE=$(pwd)
+          DEBIAN_FRONTEND=noninteractive sudo apt-get -qq update \
+              && DEBIAN_FRONTEND=noninteractive sudo apt-get -qq --assume-yes install \
+                git gzip bzip2 unzip unp wget sloccount tar make
+
+
+
+      - name: git.repository
+        run: |
+          export WORKSPACE=$(pwd)
+          git clone -b master https://gitlab.common-lisp.net/xcvb/cl-launch.git .
+
+
+      - name: download-artifact-sbcl@sbcl-2.0.0-with-doc
+        uses: actions/download-artifact@v1
+        with:
+          name: sbcl@sbcl-2.0.0-with-doc
+          path: upstream
+      - name: download-artifact-quicklisp@current
+        uses: actions/download-artifact@v1
+        with:
+          name: quicklisp@current
+          path: upstream
+      - name: extract-upstream-artiacts
+        run: |
+          export WORKSPACE=$(pwd)
+          cd upstream
+          find . -name '*.tar.gz' -exec tar -xzf '{}' \;
+
+      - name: freestyle.shell
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p "install"/etc
+          mkdir -p "install"/bin
+
+          ./cl-launch.sh                      \
+            --include "install/share/common-lisp/source/cl-launch/" \
+            --rc                              \
+            --quicklisp                       \
+            --output "install/bin/cl-launch" \
+            -B install                        \
+            > /dev/null
+
+          sed -i -e 's#try_resource_file /etc/cl-launchrc#try_resource_file "$(pwd)/upstream/install"/etc/cl-launchrc#;s#try_resource_file "\$HOME/\.cl-launchrc"##;s#(try (subpathname (user-homedir-pathname) "quicklisp/setup.lisp"))#(try (merge-pathnames "../share/common-lisp/quicklisp/setup.lisp" (load-time-value *load-pathname*)))\
+          (try (subpathname (user-homedir-pathname) "quicklisp/setup.lisp"))#;' "install/bin/cl-launch"
+
+          cp dispatch.lisp "install/share/common-lisp/source/cl-launch//"
+          chmod 644 "install/share/common-lisp/source/cl-launch//dispatch.lisp"
+
+          cat  > "install/etc/cl-launchrc" <<"EOF"
+          export SBCL_HOME=$(pwd)/upstream/install/lib/sbcl/
+
+          SBCL=${SBCL:-"$(pwd)/upstream/install/bin/sbcl"}
+          SBCL_OPTIONS=${SBCL_OPTIONS:-"--noinform --no-userinit"}
+
+          CCL=${CCL:-"$(pwd)/upstream/install/ccl/lx86cl64"}
+          CCL_OPTIONS=${CCL_OPTIONS:-"--no-init --quiet --batch"}
+
+          LISPS=sbcl
+
+          SOURCE_REGISTRY=${SOURCE_REGISTRY:-"$(pwd)/upstream/install/share/common-lisp/source//"}
+
+
+          EOF
+
+
+          tar -czf cl-launch-master.tar.gz install
+
+
+      - name: gather-artifacts
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p artifacts
+          mv -v cl-launch-master.tar.gz artifacts/
+
+      - name: upload-artifact-cl-launch@master
+        uses: actions/upload-artifact@v1
+        with:
+          name: cl-launch@master
+          path: artifacts
+
+  quicklisp_current:
+    runs-on: ubuntu-16.04
+    needs: [sbcl_sbcl-2_0_0-with-doc]
+    steps:
+      - name: install-platform-dependencies
+        run: |
+          export WORKSPACE=$(pwd)
+          DEBIAN_FRONTEND=noninteractive sudo apt-get -qq update \
+              && DEBIAN_FRONTEND=noninteractive sudo apt-get -qq --assume-yes install \
+                gzip bzip2 tar unzip unp sloccount wget
+
+
+
+      - name: download-artifact-sbcl@sbcl-2.0.0-with-doc
+        uses: actions/download-artifact@v1
+        with:
+          name: sbcl@sbcl-2.0.0-with-doc
+          path: upstream
+      - name: extract-upstream-artiacts
+        run: |
+          export WORKSPACE=$(pwd)
+          cd upstream
+          find . -name '*.tar.gz' -exec tar -xzf '{}' \;
+
+      - name: freestyle.shell
+        run: |
+          export WORKSPACE=$(pwd)
+          if ! [ -f "install/share/common-lisp/quicklisp/setup.lisp" ] ; then
+            # Download Quicklisp installer
+            wget -q -O quicklisp.lisp https://beta.quicklisp.org/quicklisp.lisp
+
+            # Execute installation
+            SBCL_HOME=upstream/install/bin/../lib/sbcl upstream/install/bin/sbcl \
+            --core upstream/install/bin/../lib/sbcl/sbcl.core                 \
+            --noinform --no-userinit --disable-debugger                                    \
+              --load quicklisp.lisp                            \
+              --eval '(quicklisp-quickstart:install
+
+                       :path "'"install/share/common-lisp/quicklisp"'/")' \
+              --quit
+
+          else
+            (
+              flock 9
+              SBCL_HOME=upstream/install/bin/../lib/sbcl upstream/install/bin/sbcl \
+            --core upstream/install/bin/../lib/sbcl/sbcl.core                 \
+            --noinform --no-userinit --disable-debugger                              \
+            --load "install/share/common-lisp/quicklisp/setup.lisp"                     \
+            --eval '(ql:update-client :prompt nil)'    \
+            --eval '(ql:update-all-dists :prompt nil)' \
+            --quit
+
+            ) 9> "install/share/common-lisp/quicklisp/lock"
+
+          fi
+
+          # Fixup permissions
+          chmod -R g+rwX "install/share/common-lisp/quicklisp"
+
+
+          tar -czf quicklisp-current.tar.gz install
+
+
+      - name: gather-artifacts
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p artifacts
+          mv -v quicklisp-current.tar.gz artifacts/
+
+      - name: upload-artifact-quicklisp@current
+        uses: actions/upload-artifact@v1
+        with:
+          name: quicklisp@current
+          path: artifacts
+
+  cl-test_report_future:
+    runs-on: ubuntu-16.04
+    needs: [cl-launch_master,quicklisp_current,sbcl_sbcl-2_0_0-with-doc]
+    steps:
+      - name: install-platform-dependencies
+        run: |
+          export WORKSPACE=$(pwd)
+          DEBIAN_FRONTEND=noninteractive sudo apt-get -qq update \
+              && DEBIAN_FRONTEND=noninteractive sudo apt-get -qq --assume-yes install \
+                git gzip bzip2 unzip unp wget sloccount tar
+
+
+
+      - name: git.repository
+        run: |
+          export WORKSPACE=$(pwd)
+          git clone -b future https://github.com/scymtym/test.report.git .
+
+
+      - name: download-artifact-sbcl@sbcl-2.0.0-with-doc
+        uses: actions/download-artifact@v1
+        with:
+          name: sbcl@sbcl-2.0.0-with-doc
+          path: upstream
+      - name: download-artifact-quicklisp@current
+        uses: actions/download-artifact@v1
+        with:
+          name: quicklisp@current
+          path: upstream
+      - name: download-artifact-cl-launch@master
+        uses: actions/download-artifact@v1
+        with:
+          name: cl-launch@master
+          path: upstream
+      - name: extract-upstream-artiacts
+        run: |
+          export WORKSPACE=$(pwd)
+          cd upstream
+          find . -name '*.tar.gz' -exec tar -xzf '{}' \;
+
+      - name: common-lisp.shell
+        run: |
+          export WORKSPACE=$(pwd)
+          # Set up environment
+          export "ASDF_OUTPUT_TRANSLATIONS=/:${WORKSPACE}/fasl-cache/"
+
+
+          # Flush FASL cache if its contents is no longer compatible with
+          # the implementation
+          if ! upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+                 '(let ((file (first (directory "'''"${WORKSPACE}/fasl-cache"'''/**/*.fasl"))))
+            (when file
+              (handler-case
+                  (sb-fasl::check-fasl-header (open file :element-type (quote (unsigned-byte 8))))
+                (sb-fasl::invalid-fasl-version ()
+                  (uiop:quit 1)))))' ; then
+            echo "FASL cache in ${WORKSPACE}/fasl-cache is not usable, deleting."
+            rm -rf "${WORKSPACE}/fasl-cache"
+          fi
+
+          # Ensure dependencies
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s alexandria -s let-plus -s more-conditions -s utilities.print-items -s architecture.service-provider -s fiveam -s cxml -s lift
+
+          # Compile
+          SBCL_HOME=$(pwd)/upstream/install/lib/sbcl upstream/install/bin/sbcl \
+            --noinform --lose-on-corruption             \
+            --no-userinit --disable-debugger --non-interactive                  \
+              --eval '(require :asdf)' \
+            --eval "(asdf:initialize-source-registry (quote (:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)))" \
+            --eval '(flet ((compile-system (system)
+                   (asdf:load-system system :force t)))
+            (map nil (function compile-system) (list "test.report" "test.report.report-junit" "test.report.adapter-lift" "test.report.adapter-fiveam" )))' \
+           \
+            --quit
+
+          # Execute tests
+          upstream/install/bin/cl-launch                                                                                    \
+            --lisp sbcl                                                                        \
+            --wrap 'SBCL_OPTIONS="  ${SBCL_OPTIONS}"' \
+            -S "(:source-registry                                                 \
+            (:tree \"$(pwd)\")                                             \
+            (:tree \"$(pwd)/upstream/share/common-lisp/source\") \
+            :ignore-inherited-configuration)" \
+            -s test.report/test -s test.report.report-junit/test -s test.report.adapter-lift/test -s test.report.adapter-fiveam/test                                   \
+            '(progn (mapc (function asdf:test-system) (list "test.report/test" "test.report.report-junit/test" "test.report.adapter-lift/test" "test.report.adapter-fiveam/test" ))
+          )'
+
+
+      - name: common-lisp-shared.archive-source-code
+        run: |
+          export WORKSPACE=$(pwd)
+          # Package source code (remove archive from previous build first
+          rm -f "cl-test.report-future.tar.gz"
+          temp=$(mktemp -u).tar.gz
+          tar --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude sloccount.sc --exclude .dir-locals.el --exclude .editorconfig --exclude .dir-locals.el --exclude .editorconfig --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude install --exclude upstream --exclude build --exclude .git --exclude .gitignore --exclude .gitattributes --exclude .svn --exclude .bzr --exclude .project --exclude .idea --exclude fasl-cache                              \
+            --transform 's#^\.\(.*\)#cl-test.report-future\1#' \
+            -czf "${temp}"                                               \
+            .
+          mv "${temp}" "cl-test.report-future.tar.gz"
+
+
+      - name: gather-artifacts
+        run: |
+          export WORKSPACE=$(pwd)
+          mkdir -p artifacts
+          mv -v cl-test.report-future.tar.gz artifacts/
+
+      - name: upload-artifact-cl-test.report@future
+        uses: actions/upload-artifact@v1
+        with:
+          name: cl-test.report@future
+          path: artifacts
+
+  
