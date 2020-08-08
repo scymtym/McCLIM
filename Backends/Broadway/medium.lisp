@@ -42,16 +42,22 @@
            (ink     (medium-ink medium)))
       (multiple-value-bind (red green blue alpha)
           (typecase ink
-            (climi::color
-             (clime:color-rgba ink))
+            (color
+             (multiple-value-bind (red green blue alpha)
+                 (clime:color-rgba ink)
+               (values (floor red   1/255)
+                       (floor green 1/255)
+                       (floor blue  1/255)
+                       (floor alpha 1/255))))
             (climi::standard-flipping-ink
-             (values 0.0f0 0.0f0 0.0f0 1.0f0))
+             (values 0 0 0 255))
             (t
-             (clime:color-rgba (climi::design-ink ink 0 0))))
-        (push (make-instance 'set-color :red   (floor red   1/255)
-                                        :green (floor green 1/255)
-                                        :blue  (floor blue  1/255)
-                                        :alpha (floor alpha 1/255))
+             (mcclim-render-internals::%rgba->vals
+              (climi::%pattern-rgba-value ink 0 0))))
+        (push (make-instance 'set-color :red   red
+                                        :green green
+                                        :blue  blue
+                                        :alpha alpha)
               (queued-operations surface))))
     (setf (ink-dirty-p medium) nil))
 
