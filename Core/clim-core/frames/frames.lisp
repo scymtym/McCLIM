@@ -7,6 +7,7 @@
 ;;;  (c) copyright 2000 by Julien Boninfante (boninfan@emi.u-bordeaux.fr)
 ;;;  (c) copyright 2000, 2014 by Robert Strandh (robert.strandh@gmail.com)
 ;;;  (c) copyright 2004 by Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
+;;;  (c) copyright 2019,2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -86,6 +87,9 @@
          :reader frame-name)
    (pretty-name :initarg :pretty-name
                 :accessor frame-pretty-name)
+   (%icon :initarg :icon
+          :accessor frame-icon
+          :initform nil)
    (command-table :initarg :command-table
                   :initform nil
                   :accessor frame-command-table)
@@ -251,6 +255,15 @@ documentation produced by presentations.")
     (setf (sheet-pretty-name top-level-sheet) new-value))
   ;; Let client code know.
   (clime:note-frame-pretty-name-changed (frame-manager frame) frame new-value))
+
+(defmethod (setf clime:frame-icon) :after (new-value frame)
+  ;; If there is a top-level sheet, set its icon. The port can reflect
+  ;; this change by telling the window manager which might display the
+  ;; new icon somewhere.
+  (when-let ((top-level-sheet (frame-top-level-sheet frame)))
+    (setf (sheet-icon top-level-sheet) new-value))
+  ;; Let client code know.
+  (clime:note-frame-icon-changed (frame-manager frame) frame new-value))
 
 (defmethod frame-all-layouts ((frame application-frame))
   (mapcar #'car (frame-layouts frame)))
@@ -684,6 +697,7 @@ documentation produced by presentations.")
   (make-pane-1 fm frame 'top-level-sheet-pane
                :name (frame-name frame)
                :pretty-name (frame-pretty-name frame)
+               :icon (frame-icon frame)
                ;; sheet is enabled from enable-frame
                :enabled-p nil))
 
