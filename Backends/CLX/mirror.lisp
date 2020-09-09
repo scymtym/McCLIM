@@ -25,23 +25,70 @@
   (%set-window-icon-name mirror name)
   (xlib:display-force-output (xlib:drawable-display mirror)))
 
-(defmethod port-set-mirror-icon ((port clx-basic-port) mirror icon)
-  ;; The format of the _NET_WM_ICON property is described in
-  ;; "Application Window Properties" section of the "Extended Window
-  ;; Manager Hints" specification:
-  ;; https://specifications.freedesktop.org/wm-spec/1.5/ar01s05.html#idm45766085139216
-  (let* ((width (pattern-width icon))
-         (height (pattern-height icon))
-         (pixel-count (* width height))
-         (pixels (clime:pattern-array icon))
-         (data (make-array (+ 2 pixel-count) :element-type '(unsigned-byte 32))))
-    ;; The first two elements contain the width and the height
-    ;; respectively. The remaining elements contain the icon pixels.
-    (setf (aref data 0) width
-          (aref data 1) height)
-    (loop for i below pixel-count
-          do (setf (aref data (+ i 2)) (row-major-aref pixels i)))
-    (xlib:change-property mirror :_NET_WM_ICON data :cardinal 32)))
+(labels ((icon-property-bytes (icons)
+           ;; The format of the _NET_WM_ICON property is described in
+           ;; "Application Window Properties" section of the "Extended
+           ;; Window Manager Hints" specification:
+           ;; https://specifications.freedesktop.org/wm-spec/1.5/ar01s05.html#idm45766085139216
+           (let ((bytes (make-array (+ 2 (* 16 16)) :element-type '(unsigned-byte 32)
+                                                    :adjustable t :fill-pointer 0)))
+             (flet ((pack-icon (icon)
+                      (let* ((width (pattern-width icon))
+                             (height (pattern-height icon))
+                             (pixel-count (* width height))
+                             (pixels (clime:pattern-array icon)))
+                        ;; For one icon, the first two elements
+                        ;; contain the width and the height
+                        ;; respectively. The remaining elements
+                        ;; contain the icon pixels.
+                        (vector-push-extend width bytes)
+                        (vector-push-extend height bytes)
+                        (loop for i below pixel-count
+                              do (vector-push-extend
+                                  (row-major-aref pixels i) bytes)))))
+               ;; Pack
+               (mapc #'pack-icon icons)
+               bytes)))
+         #+no (icon-property-bytes (icons)
+                ;; The format of the _NET_WM_ICON property is described in
+                ;; "Application Window Properties" section of the "Extended
+                ;; Window Manager Hints" specification:
+                ;; https://specifications.freedesktop.org/wm-spec/1.5/ar01s05.html#idm45766085139216
+                (let* (#+no (total-size (reduce #'+ icons
+                                                :key (lambda (icon)
+                                                       (+ 2 (* (pattern-width icon)
+                                                               (pattern-height icon))))))
+                       (bytes (make-array (+ 2 (* 16 16)) :element-type '(unsigned-byte 32)
+                                                          :adjustable t :fill-pointer 0)))
+                  (flet ((pack-icon (offset icon)
+                           (let* ((width (pattern-width icon))
+                                  (height (pattern-height icon))
+                                  (pixel-count (* width height))
+                                  (pixels (clime:pattern-array icon)))
+                             ;; For one icon, the first two elements
+                             ;; contain the width and the height
+                             ;; respectively. The remaining elements
+                             ;; contain the icon pixels.
+                             (setf (aref bytes (+ offset 0)) width
+                                   (aref bytes (+ offset 1)) height)
+                             (loop for i below pixel-count
+                                   do (setf (aref bytes (+ offset i 2))
+                                            (row-major-aref pixels i)))
+                             (+ 2 pixel-count))))
+                    ;; Pack
+                    (reduce #'pack-icon icons :initial-value 0)
+                    bytes)))
+         (install-icons (window icons)
+           (let ((bytes (icon-property-bytes icons)))
+             (xlib:change-property window :_NET_WM_ICON bytes :cardinal 32))))
+
+  (defmethod port-set-mirror-icon ((port clx-basic-port) mirror icon)
+    (install-icons mirror (list icon)))
+
+  (defmethod port-set-mirror-icon ((port clx-basic-port) mirror (icon sequence))
+    (if (alexandria:emptyp icon)
+        (xlib:delete-property mirror :_NET_WM_ICON)
+        (install-icons mirror icon))))
 
 (defmethod port-set-mirror-region ((port clx-basic-port) mirror mirror-region)
   (with-bounding-rectangle* (x1 y1 x2 y2) mirror-region
