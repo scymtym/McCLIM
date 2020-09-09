@@ -1,7 +1,9 @@
 (in-package #:asdf-user)
 
 (defsystem "clim-core"
-  :depends-on ("clim-basic" #+sbcl (:require "sb-introspect"))
+  :depends-on (#+sbcl (:require "sb-introspect")
+               "clim-basic"
+               "mcclim-bitmaps") ; for loading default icons
   :components
   ((:file "defresource")
    (:file "theming")

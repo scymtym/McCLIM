@@ -75,6 +75,19 @@
   (declare (ignore frame-manager frame command-name))
   nil)
 
+(declaim (special *default-icon-large* *default-icon-small*))
+(flet ((load-icon (name)
+         (let* ((file-pathname #.(or *compile-file-pathname*
+                                     *load-pathname*))
+                (icon-pathname (merge-pathnames
+                                (make-pathname :directory '(:relative :up :up :up "data")
+                                               :name name
+                                               :type "png")
+                                file-pathname)))
+           (make-pattern-from-bitmap-file icon-pathname :format :png))))
+  (defvar *default-icon-large* (load-icon "mcclim-logo-round"))
+  (defvar *default-icon-small* (load-icon "mcclim-logo-round-small")))
+
 (defclass standard-application-frame (application-frame
                                       presentation-history-mixin)
   ((port :initform nil
@@ -89,7 +102,7 @@
                 :accessor frame-pretty-name)
    (%icon :initarg :icon
           :accessor frame-icon
-          :initform nil)
+          :initform (list *default-icon-large* *default-icon-small*))
    (command-table :initarg :command-table
                   :initform nil
                   :accessor frame-command-table)
