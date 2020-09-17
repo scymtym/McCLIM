@@ -25,6 +25,24 @@
   (%set-window-icon-name mirror name)
   (xlib:display-force-output (xlib:drawable-display mirror)))
 
+(defmethod port-set-mirror-icon ((port clx-basic-port) mirror icon)
+  ;; The format of the _NET_WM_ICON property is described in
+  ;; "Application Window Properties" section of the "Extended Window
+  ;; Manager Hints" specification:
+  ;; https://specifications.freedesktop.org/wm-spec/1.5/ar01s05.html#idm45766085139216
+  (let* ((width (pattern-width icon))
+         (height (pattern-height icon))
+         (pixel-count (* width height))
+         (pixels (clime:pattern-array icon))
+         (data (make-array (+ 2 pixel-count) :element-type '(unsigned-byte 32))))
+    ;; The first two elements contain the width and the height
+    ;; respectively. The remaining elements contain the icon pixels.
+    (setf (aref data 0) width
+          (aref data 1) height)
+    (loop for i below pixel-count
+          do (setf (aref data (+ i 2)) (row-major-aref pixels i)))
+    (xlib:change-property mirror :_NET_WM_ICON data :cardinal 32)))
+
 (defmethod port-set-mirror-region ((port clx-basic-port) mirror mirror-region)
   (with-bounding-rectangle* (x1 y1 x2 y2) mirror-region
     (declare (ignore x1 y1))
