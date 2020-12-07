@@ -947,18 +947,15 @@ frames and will not have focus.
 (defmethod frame-input-context-button-press-handler
     ((frame standard-application-frame)
      (stream output-recording-stream)
-     button-press-event)
-  (let ((presentation (find-innermost-applicable-presentation
-                       *input-context*
-                       stream
-                       (pointer-event-x button-press-event)
-                       (pointer-event-y button-press-event)
-                       :frame frame
-                       :event button-press-event)))
-    (when presentation
-      (throw-highlighted-presentation presentation
-                                      *input-context*
-                                      button-press-event))))
+     event)
+  (when-let ((presentation (find-innermost-applicable-presentation
+                            *input-context*
+                            stream
+                            (pointer-event-x event)
+                            (pointer-event-y event)
+                            :frame frame
+                            :event event)))
+    (throw-highlighted-presentation presentation *input-context* event)))
 
 (defmethod frame-input-context-button-press-handler
     ((frame standard-application-frame) stream button-press-event)
@@ -1257,7 +1254,7 @@ have a `pointer-documentation-pane' as pointer documentation,
   (declare (ignore input-context stream event))
   nil)
 
-(defun frame-highlight-at-position (frame stream x y modifier input-context
+(defun frame-highlight-at-position (frame stream event input-context
                                     &key (highlight t))
   "Given stream x,y; key modifiers; input-context, find the applicable
    presentation and maybe highlight it."
@@ -1271,12 +1268,12 @@ have a `pointer-documentation-pane' as pointer documentation,
                                        :unhighlight)
              (setf (frame-highlited-presentation frame) nil))))
     (if (output-recording-stream-p stream)
-        (let ((presentation (find-innermost-applicable-presentation
-                             input-context
-                             stream
-                             x y
-                             :frame frame
-                             :modifier-state modifier)))
+        (let* ((top-record (stream-output-history stream))
+               (presentation (find-innermost-presentation-match
+                              input-context top-record frame stream
+                              (device-event-x event)
+                              (device-event-y event)
+                              event)))
           (maybe-unhighlight presentation)
           (when (and presentation
                      highlight
@@ -1293,11 +1290,7 @@ have a `pointer-documentation-pane' as pointer documentation,
 (defmethod frame-input-context-track-pointer :before
     ((frame standard-application-frame) input-context
      (stream output-recording-stream) event)
-  (frame-highlight-at-position frame stream
-                               (device-event-x event)
-                               (device-event-y event)
-                               (event-modifier-state event)
-                               input-context)
+  (frame-highlight-at-position frame stream event input-context)
   (frame-update-pointer-documentation frame input-context stream event))
 
 (defun simple-event-loop (&optional (frame *application-frame*))
