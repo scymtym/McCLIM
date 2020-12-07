@@ -346,6 +346,10 @@ keys read."))
   (stream-append-gesture client event))
 
 (defmethod handle-event :after
+    ((client standard-extended-input-stream) (event key-release-event))
+  (stream-append-gesture client event))
+
+(defmethod handle-event :after
     ((client standard-extended-input-stream) (event pointer-event))
   (stream-append-gesture client event))
 
