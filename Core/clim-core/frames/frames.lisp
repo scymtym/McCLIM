@@ -1031,17 +1031,16 @@ frames and will not have focus.
   (let* ((current-modifier (event-modifier-state event))
          (x (device-event-x event))
          (y (device-event-y event))
+         (presentation (stream-output-history stream))
          (new-translators
-          (loop for (button) in +button-documentation+
-              for context-list = (multiple-value-list
-                                  (find-innermost-presentation-context
-                                   input-context
-                                   stream
-                                   x y
-                                   :modifier-state current-modifier
-                                   :button button))
-              when (car context-list)
-              collect (cons button context-list))))
+           (loop for (button) in +button-documentation+
+                 for context-list = (multiple-value-list
+                                     (find-innermost-presentation-match
+                                      input-context presentation frame
+                                      stream x y event
+                                      :override (list :button button)))
+                 when (first context-list)
+                 collect (list* button context-list))))
     (list current-modifier new-translators)))
 
 (defgeneric frame-compare-pointer-documentation-state
@@ -1112,9 +1111,9 @@ alive.")
                                                        :pointer))
                 finally (when new-translators
                           (write-char #\. pstream))))
-      ;; Wasteful to do this after doing
-      ;; find-innermost-presentation-context above... look at doing this
-      ;; first and then doing the innermost test.
+      ;; Wasteful to do this after doing ... something (used to be
+      ;; find-innermost-presentation-context) above... look at doing
+      ;; this first and then doing the innermost test.
       (let ((all-translators (find-applicable-translators
                               (stream-output-history stream)
                               input-context

@@ -113,9 +113,8 @@
                            (when (typep trans 'drag-n-drop-translator)
                              (collect-translator trans)))
                          from-presentation (list context-type) frame
-                         window x y
-                         :modifier-state (window-modifier-state window)
-                         :event event)
+                         window x y event
+                         :override (list :modifier-state (window-modifier-state window)))
                         (collect-translator)))
          ;; Default feedback and highlight functions are those of the
          ;; translator that got us here. Initial highlight value nil

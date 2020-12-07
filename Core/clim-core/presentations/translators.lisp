@@ -347,59 +347,76 @@ and used to ensure that presentation-translators-caches are up to date.")
             (setf (gethash cache-key cache-table)
                   (remove-duplicates translators))))))))
 
-;;; :button is a pointer button state, for performing matches where we want to
-;;; restrict the match to certain gestures but don't have a real event.
+(defun %test-presentation-translator
+    (translator presentation context-type frame window x y event &key override)
+  (destructuring-bind (&key (button         nil buttonp)
+                            (modifier-state nil modifier-state-p))
+      override
+    (when (event-data-matches-gesture-p
+           nil ; ignore type
+           (cond (buttonp
+                  button)
+                 ((typep event 'pointer-button-event)
+                  (pointer-event-button event)))
+           (cond (modifier-state-p
+                  modifier-state)
+                 (event
+                  (event-modifier-state event)))
+           (gesture translator))
+      (let ((from-type (from-type translator))
+            (to-type (to-type translator))
+            (ptype (presentation-type presentation))
+            (object (presentation-object presentation)))
+        (and ;; We call PRESENTATION-SUBTYPEP because applicable translators are
+             ;; matched only by the presentation type's name.
+             ;;
+             ;; - we are liberal with FROM-TYPE to allow translators from types
+             ;; like COMPLETION - it is correct because when the type has
+             ;; parameters we always call PRESENTATION-TYPEP
+             ;;
+             ;; - we are conservative with TO-TYPE, because the tester may be
+             ;; definitive and then we could succeed with a wrong translator
+             ;;
+             ;; -- jd 2020-09-01
+             (multiple-value-bind (yesp surep)
+                 (presentation-subtypep ptype from-type)
+               (or yesp (not surep)))
+             (multiple-value-bind (yesp surep)
+                 (presentation-subtypep to-type context-type)
+               (and yesp surep))
+             (or (null (decode-parameters from-type))
+                 (presentation-typep object from-type))
+             (or (null (tester translator))
+                 (funcall (tester translator) object
+                          :presentation presentation :context-type context-type
+                          :frame frame :window window :x x :y y :event event))
+             (or (tester-definitive translator)
+                 (null (decode-parameters context-type))
+                 (presentation-typep
+                  (call-presentation-translator translator presentation context-type
+                                                frame event window x y)
+                  context-type))
+             t)))))
 
+;;; As an extension to the specified behavior, FOR-MENU can be a list
+;;; of the form (:modifier-state NULL-OR-INTEGER :button
+;;; NULL-OR-INTEGER) to ignore or override the respective component.
 (defun test-presentation-translator
     (translator presentation context-type frame window x y
-     &key event (modifier-state 0) for-menu button)
-  (when (event-data-matches-gesture-p
-         nil ; ignore type
-         (cond (for-menu     nil)
-               (button       button)
-               ((null event) nil)
-               (t            (pointer-event-button event)))
-         (cond (for-menu     nil)
-               (event        (event-modifier-state event))
-               (t            modifier-state))
-         (gesture translator))
-    (let ((from-type (from-type translator))
-          (to-type (to-type translator))
-          (ptype (presentation-type presentation))
-          (object (presentation-object presentation)))
-      (and ;; We call PRESENTATION-SUBTYPEP because applicable translators are
-           ;; matched only by the presentation type's name.
-           ;;
-           ;; - we are liberal with FROM-TYPE to allow translators from types
-           ;; like COMPLETION - it is correct because when the type has
-           ;; parameters we always call PRESENTATION-TYPEP
-           ;;
-           ;; - we are conservative with TO-TYPE, because the tester may be
-           ;; definitive and then we could succeed with a wrong translator
-           ;;
-           ;; -- jd 2020-09-01
-           (multiple-value-bind (yesp surep)
-               (presentation-subtypep ptype from-type)
-             (or yesp (not surep)))
-           (multiple-value-bind (yesp surep)
-               (presentation-subtypep to-type context-type)
-             (and yesp surep))
-           (or (null (decode-parameters from-type))
-               (presentation-typep object from-type))
-           (or (null (tester translator))
-               (funcall (tester translator) object
-                        :presentation presentation :context-type context-type
-                        :frame frame :window window :x x :y y :event event))
-           (or (tester-definitive translator)
-               (null (decode-parameters context-type))
-               (presentation-typep
-                (call-presentation-translator translator presentation context-type
-                                              frame event window x y)
-                context-type))
-           t))))
+     &key (event nil eventp) (modifier-state 0 modifier-state-p)
+          for-menu)
+  (assert (not (and eventp modifier-state-p)))
+  (let ((override (cond ((and for-menu (not (consp for-menu))) ; :for-menu t
+                         '(:modifier-state nil :button nil))
+                        (modifier-state-p
+                         (append for-menu (list :modifier-state modifier-state)))
+                        (t
+                         for-menu))))
+    (%test-presentation-translator
+     translator presentation context-type frame window x y event :override override)))
 
-(defun map-applicable-translators (func presentation input-context frame window x y
-                                   &key event (modifier-state 0) for-menu button)
+(defun map-applicable-translators (func presentation input-context frame window x y event
+                                   &key menu override)
   (labels ((process-presentation (context presentation)
              (let* ((context-ptype (first context))
                     (maybe-translators
@@ -407,13 +424,11 @@ and used to ensure that presentation-translators-caches are up to date.")
                                                      context-ptype
                                                      (frame-command-table frame))))
                (loop for translator in maybe-translators
-                     when (and (or (not for-menu) (eql for-menu (menu translator)))
-                               (test-presentation-translator
+                     when (and (or (not menu) (eql menu (menu translator)))
+                               (%test-presentation-translator
                                 translator presentation context-ptype
-                                frame window x y
-                                :event event :modifier-state modifier-state
-                                :for-menu for-menu :button button))
-                       do (funcall func translator presentation context))))
+                                frame window x y event :override override))
+                     do (funcall func translator presentation context))))
            (mopscp (context record)
              "maps recursively over all presentations in record, including record."
              (if (and x y)
@@ -427,12 +442,10 @@ and used to ensure that presentation-translators-caches are up to date.")
                (process-presentation context record))))
     (if (and (presentationp presentation)
              (presentation-subtypep (presentation-type presentation) 'blank-area))
-        (loop
-          for context in input-context
-          do (process-presentation context presentation))
-        (loop
-          for context in input-context
-          do (mopscp context presentation)))))
+        (loop for context in input-context
+              do (process-presentation context presentation))
+        (loop for context in input-context
+              do (mopscp context presentation)))))
 
 (defun window-modifier-state (window)
   "Provides default modifier state for presentation translator functions."
@@ -442,7 +455,8 @@ and used to ensure that presentation-translators-caches are up to date.")
 
 (defun find-applicable-translators
     (presentation input-context frame window x y
-     &key event (modifier-state (window-modifier-state window)) for-menu fastp)
+     &key (event nil eventp) (modifier-state nil modifier-state-p) for-menu fastp)
+  (assert (not (and eventp modifier-state-p)))
   (let ((results nil))
     (flet ((fast-func (translator presentation context)
              (declare (ignore translator presentation context))
@@ -450,23 +464,30 @@ and used to ensure that presentation-translators-caches are up to date.")
            (slow-func (translator presentation context)
              (push (list translator presentation (input-context-type context))
                    results)))
-      (map-applicable-translators (if fastp #'fast-func #'slow-func)
-                                  presentation input-context frame window x y
-                                  :event event
-                                  :modifier-state modifier-state
-                                  :for-menu for-menu)
+      (map-applicable-translators
+       (if fastp #'fast-func #'slow-func)
+       presentation input-context frame window x y event
+       :menu for-menu
+       :override (cond (for-menu
+                        '(:modifier-state nil :button nil))
+                       (modifier-state-p
+                        `(:modifier-state ,modifier-state))))
       (nreverse results))))
 
 (defun presentation-matches-context-type
-    (presentation context-type frame window x y &key event (modifier-state 0))
+    (presentation context-type frame window x y
+     &key (event nil eventp) (modifier-state nil modifier-state-p))
+  (assert (not (and eventp modifier-state-p)))
   (let* ((ptype (expand-presentation-type-abbreviation (presentation-type presentation)))
          (ctype (expand-presentation-type-abbreviation context-type))
          (table (frame-command-table frame)))
     (and (some (lambda (translator)
-                 (test-presentation-translator translator presentation ctype
-                                               frame window x y
-                                               :event event
-                                               :modifier-state modifier-state))
+                 (%test-presentation-translator
+                  translator presentation ctype
+                  frame window x y event
+                  :override (if modifier-state-p
+                                (list :modifier-state modifier-state)
+                                '())))
                (find-presentation-translators ptype ctype table))
          t)))
 
@@ -497,7 +518,7 @@ and used to ensure that presentation-translators-caches are up to date.")
                                          window
                                          x y
                                          &key (stream *standard-output*)
-                                           (documentation-type :normal))
+                                              (documentation-type :normal))
   (funcall (if (eq documentation-type :normal)
                (translator-documentation translator)
                (pointer-documentation translator))
@@ -536,7 +557,11 @@ and used to ensure that presentation-translators-caches are up to date.")
                                frame nil window x y
                                :stream stream)))
           items)))
-   presentation input-context frame window x y :for-menu for-menu)
+   presentation input-context frame window x y nil
+   :menu for-menu ; possibly restrict to translators with :menu t
+   :override (if for-menu ; ignore button and modifiers for gesture matching
+                 '(:modifier-state nil :button nil)
+                 nil))
   (unless items
     (return-from call-presentation-menu))
   (setq items (nreverse items))
@@ -571,7 +596,7 @@ and used to ensure that presentation-translators-caches are up to date.")
 ;;; 23.7.3 Finding Applicable Presentations
 
 (defun find-innermost-presentation-match
-    (input-context top-record frame window x y event modifier-state button)
+    (input-context top-record frame window x y event &key override)
   "Helper function that implements the \"innermost-smallest\" input-context
   presentation matching algorithm.  Returns presentation, translator, and
   matching input context."
@@ -594,13 +619,7 @@ and used to ensure that presentation-translators-caches are up to date.")
                    (setq result-context context)
                    (setq result-size size))))))
      top-record
-     input-context
-     frame
-     window
-     x y
-     :event event
-     :modifier-state modifier-state
-     :button button)
+     input-context frame window x y event :override override)
     (when result
       (return-from find-innermost-presentation-match
         (values result result-translator result-context)))
@@ -609,44 +628,27 @@ and used to ensure that presentation-translators-caches are up to date.")
          (return-from find-innermost-presentation-match
            (values presentation translator context)))
      *null-presentation*
-     input-context
-     frame
-     window
-     x y
-     :event event
-     :modifier-state modifier-state
-     :button button))
+     input-context frame window x y event :override override))
   nil)
 
 (defun find-innermost-applicable-presentation
-    (input-context window x y
-     &key (frame *application-frame*)
-       (modifier-state (window-modifier-state window))
-       event)
-  (values (find-innermost-presentation-match input-context
-                                             (stream-output-history window)
-                                             frame
-                                             window
-                                             x y
-                                             event
-                                             modifier-state
-                                             nil)))
-
-(defun find-innermost-presentation-context
-    (input-context window x y
-     &key (top-record (stream-output-history window))
-       (frame *application-frame*)
-       event
-       (modifier-state (window-modifier-state window))
-       button)
-  (find-innermost-presentation-match input-context
-                                     top-record
-                                     frame
-                                     window
-                                     x y
-                                     event
-                                     modifier-state
-                                     button))
+    (input-context window x y &key (frame *application-frame*)
+                                   (event nil eventp)
+                                   (modifier-state nil modifier-state-p))
+  (assert (not (and eventp modifier-state-p)))
+  (values (find-innermost-presentation-match
+           input-context
+           (stream-output-history window)
+           frame
+           window
+           x y
+           event
+           :override (cond (eventp
+                            '())
+                           (modifier-state-p
+                            (list :modifier-state modifier-state))
+                           (t
+                            (list :modifier-state (window-modifier-state window)))))))
 
 (defun throw-highlighted-presentation (presentation input-context event)
   (let ((x (pointer-event-x event))
@@ -658,9 +660,7 @@ and used to ensure that presentation-translators-caches are up to date.")
                                            *application-frame*
                                            (event-sheet event)
                                            x y
-                                           event
-                                           0
-                                           nil)
+                                           event)
       (when p
         (multiple-value-bind (object ptype options)
             (call-presentation-translator translator
