@@ -335,6 +335,7 @@ account, and create a list of menu buttons."
 (defun %make-menu-contents (command-table client)
   (with-slots (menu) (find-command-table command-table)
     (append (loop for item in menu
+                  when (command-menu-item-name item)
                   collect (make-menu-button-from-menu-item
                            item client
                            :bottomp t
