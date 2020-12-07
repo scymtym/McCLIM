@@ -353,27 +353,21 @@ and used to ensure that presentation-translators-caches are up to date.")
 (defun test-presentation-translator
     (translator presentation context-type frame window x y
      &key event (modifier-state 0) for-menu button)
-  (flet ((match-gesture (gesture event modifier-state)
-           (or (eq gesture t)
-               for-menu
-               (loop
-                 with modifiers = (if event
-                                      (event-modifier-state event)
-                                      modifier-state)
-                 for g in gesture
-                   thereis (and (eql modifiers (caddr g))
-                                (or (and button (eql button (cadr g)))
-                                    (and (null button)
-                                         (or (null event)
-                                             (eql (pointer-event-button
-                                                   event)
-                                                  (cadr g))))))))))
+  (when (event-data-matches-gesture-p
+         nil ; ignore type
+         (cond (for-menu     nil)
+               (button       button)
+               ((null event) nil)
+               (t            (pointer-event-button event)))
+         (cond (for-menu     nil)
+               (event        (event-modifier-state event))
+               (t            modifier-state))
+         (gesture translator))
     (let ((from-type (from-type translator))
           (to-type (to-type translator))
           (ptype (presentation-type presentation))
           (object (presentation-object presentation)))
-      (and (match-gesture (gesture translator) event modifier-state)
-           ;; We call PRESENTATION-SUBTYPEP because applicable translators are
+      (and ;; We call PRESENTATION-SUBTYPEP because applicable translators are
            ;; matched only by the presentation type's name.
            ;;
            ;; - we are liberal with FROM-TYPE to allow translators from types
