@@ -41,6 +41,9 @@
 
 (defun generate-ensure-pane-form (name form realizer-var frame-var
                                   &optional panes-for-layout-var)
+  (unless (symbolp name)
+    (error "~@<~S is not a valid pane name. It must be a symbol.~@:>"
+           name))
   (destructuring-bind (pane &rest options) form
     (flet ((generate (constructor type)
              (if panes-for-layout-var
@@ -49,6 +52,10 @@
                  `(funcall ,constructor :name ',name ,@options))))
       (cond ((and (null options) (listp pane)) ; Single form which is a function call
              `(coerce-pane-name ,pane ',name))
+            ((not (symbolp pane))
+             (error "~@<~S is not a valid pane type designator. It ~
+                     must be a symbol.~@:>"
+                    pane))
             ((eq pane :application) ; Standard pane (i.e `:application')
              (generate ''make-clim-application-pane ''application-pane))
             ((eq pane :interactor)
@@ -82,9 +89,11 @@
        ;; Make (or reinitialize) pane instances and establish
        ;; lexical variables so layout forms can use them.
        (let* ,(flet ((pane-bindings (&optional old-panes-var)
-                       (loop for (name . form) in panes
-                             collect `(,name ,(generate-ensure-pane-form
-                                               name form 'fm 'frame old-panes-var)))))
+                       (loop for spec in panes
+                             for (name . form) = spec
+                             collect `(,name ,(with-current-source-form (spec)
+                                                (generate-ensure-pane-form
+                                                 name form 'fm 'frame old-panes-var))))))
                 (if (and (not (null panes)) reinitializep)
                     (alexandria:with-gensyms (old-panes-var)
                       `((,old-panes-var (frame-panes-for-layout frame))
