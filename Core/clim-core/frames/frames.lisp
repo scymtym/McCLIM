@@ -518,7 +518,7 @@ documentation produced by presentations.")
         (*input-wait-handler* nil)
         (*pointer-button-press-handler* nil)
         (original-state (frame-state frame)))
-    (declare (special *input-context* *input-wait-test* *input-wait-handler*
+    (declare (special *input-wait-test* *input-wait-handler*
                       *pointer-button-press-handler*))
     (when (eq (frame-state frame) :disowned) ; Adopt frame into frame manager
       (adopt-frame (or (frame-manager frame) (find-frame-manager))
