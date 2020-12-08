@@ -81,9 +81,12 @@ returned or error is signaled depending on the argument ERRORP.")
 
 (defmethod make-pane-1
     ((fm frame-manager) (frame application-frame) type &rest args)
-  (apply #'make-instance (find-concrete-pane-class fm type)
-         :frame frame :manager fm :port (port frame)
-         args))
+  (apply #'make-pane-1 fm frame (find-concrete-pane-class fm type) args))
+
+;;; Non-standard extension: allow TYPE to be a class.
+(defmethod make-pane-1
+    ((fm frame-manager) (frame application-frame) (type class) &rest args)
+  (apply #'make-instance type :frame frame :manager fm :port (port frame) args))
 
 (defun make-pane (type &rest args)
   (apply #'make-pane-1 (or *pane-realizer*

@@ -31,6 +31,7 @@
     :depends-on ("commands" "presentations" "standard-presentations" "incremental-redisplay")
     :serial t
     :components ((:file "frames" )
+                 (:file "redefinition")
                  (:file "define-application-frame")))
    (:file "dialog-views" :depends-on ("presentations" "incremental-redisplay" "bordered-output" "standard-presentations" "gadgets" "dialog"))
    (:module "panes"
