@@ -1114,8 +1114,15 @@ were added."
 (defmethod match-output-records-1 and ((record coord-seq-mixin)
                                        &key (coord-seq nil coord-seq-p))
   (or (null coord-seq-p)
-      (let* ((my-coord-seq (slot-value record 'coord-seq)))
+      (let ((my-coord-seq (slot-value record 'coord-seq)))
         (sequence= my-coord-seq coord-seq #'coordinate=))))
+
+(defun fix-line-style-unit (line-style medium)
+  (let ((thickness (line-style-effective-thickness line-style medium)))
+    (unless (eq (line-style-unit line-style) :normal)
+      (setf (slot-value line-style 'unit) :normal
+            (slot-value line-style 'thickness) thickness))
+    thickness))
 
 (defmacro generate-medium-recording-body (class-name args)
   (let ((arg-list (alexandria:mappend
@@ -1246,8 +1253,10 @@ were added."
 
 (def-grecording draw-line (gs-line-style-mixin)
     (point-x1 point-y1 point-x2 point-y2)
-  (let ((transform (medium-transformation medium))
-        (border (graphics-state-line-style-border graphic medium)))
+  (let* ((transform (medium-transformation medium))
+         (line-style (graphics-state-line-style graphic))
+         (thickness (fix-line-style-unit line-style medium))
+         (border (/ thickness 2)))
     (with-transformed-position (transform point-x1 point-y1)
       (with-transformed-position (transform point-x2 point-y2)
         (setf (slot-value graphic 'point-x1) point-x1
@@ -1289,7 +1298,9 @@ were added."
     ((coord-seq (copy-sequence-into-vector coord-seq)))
   (let* ((transformation (medium-transformation medium))
          (transformed-coord-seq (transform-positions transformation coord-seq))
-         (border (graphics-state-line-style-border graphic medium)))
+         (line-style (graphics-state-line-style graphic))
+         (thickness (fix-line-style-unit line-style medium))
+         (border (/ thickness 2)))
     (setf coord-seq transformed-coord-seq)
     (coord-seq-bounds transformed-coord-seq border)))
 
@@ -1412,8 +1423,12 @@ were added."
 (def-grecording draw-polygon (coord-seq-mixin gs-line-style-mixin)
     ((coord-seq (copy-sequence-into-vector coord-seq))
      closed filled)
-  (let ((transformed-coord-seq (transform-positions (medium-transformation medium) coord-seq))
-        (border (graphics-state-line-style-border graphic medium)))
+  (let* ((transform (medium-transformation medium))
+         (transformed-coord-seq (transform-positions transform coord-seq))
+         (border (unless filled
+                   (let* ((line-style (graphics-state-line-style graphic))
+                          (thickness (fix-line-style-unit line-style medium)))
+                     (/ thickness 2)))))
     (setf coord-seq transformed-coord-seq)
     (polygon-record-bounding-rectangle transformed-coord-seq
                                        closed filled line-style border
@@ -1428,9 +1443,12 @@ were added."
 (def-grecording (draw-rectangle :medium-fn nil) (gs-line-style-mixin)
     (left top right bottom filled)
   (let* ((transform (medium-transformation medium))
-         (border     (graphics-state-line-style-border graphic medium))
          (pre-coords (expand-rectangle-coords left top right bottom))
-         (coords     (transform-positions transform pre-coords)))
+         (coords (transform-positions transform pre-coords))
+         (border (unless filled
+                   (let* ((line-style (graphics-state-line-style graphic))
+                          (thickness (fix-line-style-unit line-style medium)))
+                     (/ thickness 2)))))
     (setf (values left top) (transform-position transform left top))
     (setf (values right bottom) (transform-position transform right bottom))
     (polygon-record-bounding-rectangle coords t filled line-style border
@@ -1450,7 +1468,10 @@ were added."
 (def-grecording (draw-rectangles :medium-fn nil) (coord-seq-mixin gs-line-style-mixin)
     (coord-seq filled)
   (let* ((transform (medium-transformation medium))
-         (border (graphics-state-line-style-border graphic medium)))
+         (border (unless filled
+                   (let* ((line-style (graphics-state-line-style graphic))
+                          (thickness (fix-line-style-unit line-style medium)))
+                     (/ thickness 2)))))
     (let ((transformed-coord-seq
             (map-repeated-sequence 'vector 2
                                    (lambda (x y)
@@ -1528,7 +1549,9 @@ were added."
                                             :end-angle end-angle))
       (if filled
           (values min-x min-y max-x max-y)
-          (let ((border (graphics-state-line-style-border graphic medium)))
+          (let* ((line-style (graphics-state-line-style graphic))
+                 (thickness (fix-line-style-unit line-style medium))
+                 (border (/ thickness 2)))
             (values (floor (- min-x border))
                     (floor (- min-y border))
                     (ceiling (+ max-x border))
@@ -1560,19 +1583,18 @@ were added."
 (defun enclosing-transform-polygon (transformation positions)
   (when (null positions)
     (error "Need at least one coordinate"))
-  (loop
-    with min-x = most-positive-fixnum
-    with min-y = most-positive-fixnum
-    with max-x = most-negative-fixnum
-    with max-y = most-negative-fixnum
-    for (xp yp) on positions by #'cddr
-    do (multiple-value-bind (x y)
-           (transform-position transformation xp yp)
-         (setf min-x (min min-x x))
-         (setf min-y (min min-y y))
-         (setf max-x (max max-x x))
-         (setf max-y (max max-y y)))
-    finally (return (values min-x min-y max-x max-y))))
+  (loop with min-x = most-positive-fixnum
+        with min-y = most-positive-fixnum
+        with max-x = most-negative-fixnum
+        with max-y = most-negative-fixnum
+        for (xp yp) on positions by #'cddr
+        do (multiple-value-bind (x y)
+               (transform-position transformation xp yp)
+             (setf min-x (min min-x x))
+             (setf min-y (min min-y y))
+             (setf max-x (max max-x x))
+             (setf max-y (max max-y y)))
+        finally (return (values min-x min-y max-x max-y))))
 
 (def-grecording (draw-text :replay-fn nil) (gs-text-style-mixin gs-transformation-mixin)
     ((string (subseq string (or start 0) end))
