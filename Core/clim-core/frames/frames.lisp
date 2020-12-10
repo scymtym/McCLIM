@@ -1112,37 +1112,33 @@ alive.")
       ;; Wasteful to do this after doing ... something (used to be
       ;; find-innermost-presentation-context) above... look at doing
       ;; this first and then doing the innermost test.
-      (let ((all-translators (find-applicable-translators
-                              (stream-output-history stream)
-                              input-context
-                              *application-frame*
-                              stream
-                              x y
-                              :for-menu t))
-            (other-modifiers nil))
-        (loop for (translator) in all-translators
-              for gesture = (gesture translator)
-              unless (eq gesture t)
-              do (loop for (name type modifier) in gesture
-                       unless (eql modifier current-modifier)
-                       do (pushnew modifier other-modifiers)))
+      (let ((other-modifiers '()))
+        (map-applicable-translators
+         (lambda (translator presentation context)
+           (declare (ignore presentation context))
+           (let ((gesture (gesture translator)))
+             (unless (eq gesture t)
+               (loop for (name type modifier) in gesture
+                     unless (or (eq modifier t)
+                                (eql modifier current-modifier))
+                     do (pushnew modifier other-modifiers)))))
+         (stream-output-history stream) input-context *application-frame* stream
+         x y nil :menu t :override '(:button nil :modifier-state nil))
         (when other-modifiers
-          (setf other-modifiers (sort other-modifiers #'cmp-modifiers))
           (terpri pstream)
-          (write-string "To see other commands, press "	pstream)
-          (loop for modifier-tail on other-modifiers
-                for (modifier) = modifier-tail
+          (write-string "To see other commands, press " pstream)
+          (loop for (first-modifier . rest-modifiers)
+                on (sort other-modifiers #'cmp-modifiers)
                 for count from 0
-                do (progn
-                     (if (null (cdr modifier-tail))
-                         (progn
-                           (when (> count 1)
-                             (write-char #\, pstream))
-                           (when (> count 0)
-                             (write-string " or " pstream)))
+                do (if (null rest-modifiers)
+                       (progn
+                         (when (> count 1)
+                           (write-char #\, pstream))
                          (when (> count 0)
-                           (write-string ", " pstream)))
-                     (print-modifiers pstream modifier :long)))
+                           (write-string " or " pstream)))
+                       (when (> count 0)
+                         (write-string ", " pstream)))
+                   (print-modifiers pstream first-modifier :long))
           (write-char #\. pstream))))))
 
 (defmethod frame-update-pointer-documentation
