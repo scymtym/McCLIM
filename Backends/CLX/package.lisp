@@ -38,6 +38,8 @@
                 #:with-transformed-position
                 #:with-transformed-positions
                 #:with-medium-options
+                #:line-style-effective-thickness
+                #:line-style-effective-dashes
                 ;;
                 #:pixmap
                 #:top-level-sheet-mixin

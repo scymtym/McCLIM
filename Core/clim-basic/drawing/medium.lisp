@@ -281,10 +281,34 @@
                          (slot-value self slot))))
                     '(unit thickness joint-shape cap-shape dashes)))))
 
+(defun line-style-scale (line-style medium)
+  (let ((unit (line-style-unit line-style)))
+    (ecase unit
+      (:normal 1)
+      (:point (let ((graft (graft medium)))
+                (/ (graft-width graft)
+                   (graft-width graft :units :inches)
+                   72)))
+      (:coordinate (let ((transformation (medium-transformation medium)))
+                     (if (identity-transformation-p transformation)
+                         1
+                         (multiple-value-bind (x y)
+                             (transform-distance transformation 0.71 0.71)
+                           (sqrt (+ (expt x 2) (expt y 2))))))))))
+
 (defmethod line-style-effective-thickness (line-style medium)
-  ;; FIXME
-  (declare (ignore medium))
-  (line-style-thickness line-style))
+  (* (line-style-thickness line-style)
+     (line-style-scale line-style medium)))
+
+(defmethod line-style-effective-dashes (line-style medium)
+  (when-let ((dashes (line-style-dashes line-style)))
+    (let ((scale (line-style-scale line-style medium)))
+      (flet ((scale (length)
+               (* scale length)))
+        (declare (dynamic-extent #'scale))
+        (if (eq dashes t)
+            (scale 3) ; arbitrary default length
+            (map 'list #'scale dashes))))))
 
 (defmethod medium-miter-limit ((medium medium))
   #.(* 2 single-float-epsilon))
