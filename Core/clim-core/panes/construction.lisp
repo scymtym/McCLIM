@@ -88,6 +88,8 @@ returned or error is signaled depending on the argument ERRORP.")
     ((fm frame-manager) (frame application-frame) (type class) &rest args)
   (apply #'make-instance type :frame frame :manager fm :port (port frame) args))
 
+(defvar *pane-realizer* nil)
+
 (defun make-pane (type &rest args)
   (apply #'make-pane-1 (or *pane-realizer*
                            (frame-manager *application-frame*))

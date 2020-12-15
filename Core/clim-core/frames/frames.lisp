@@ -40,9 +40,7 @@
      (declare (special *frame-manager*))
      (locally ,@body)))
 
-(defvar *pane-realizer* nil)
-
-(defmacro with-look-and-feel-realization ((frame-manager frame) &body body)
+(defmacro with-Look-and-feel-realization ((frame-manager frame) &body body)
   `(let ((*pane-realizer* ,frame-manager)
          (*application-frame* ,frame))
      (locally
