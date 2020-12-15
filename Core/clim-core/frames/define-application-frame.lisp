@@ -20,6 +20,28 @@
   (setf (slot-value pane 'name) name)
   pane)
 
+(defun %reinitialize-stream-pane (pane pane-or-parent initargs)
+  ;; For stream panes, the entry in the :PANES option potentially
+  ;; corresponds to a hierarchy of panes in which the stream pane is
+  ;; the leaf. When updating such a construct,
+  ;; 1. pull out the stream pane (PANE here)
+  ;; 2. reinitialize the stream pane with the appropriate initargs
+  ;; 3. recreate the wrapper panes (if any) with the remaining
+  ;;    initargs
+  ;; 4. re-adopt the updated panes
+  (multiple-value-bind (pane-initargs wrapper-initargs)
+      (loop for (key value) on initargs by #'cddr
+            if (member key +stream-pane-wrapper-initargs+)
+              appending (list key value) into wrapper-initargs
+            else
+              appending (list key value) into pane-initargs
+            finally (return (values pane-initargs wrapper-initargs)))
+    (unless (eq pane pane-or-parent)
+      (when-let ((parent (sheet-parent pane)))
+        (sheet-disown-child parent pane)))
+    (let ((pane (apply #'reinitialize-instance pane pane-initargs)))
+      (apply #'wrap-stream-pane pane nil wrapper-initargs))))
+
 (defun %generic-make-or-reinitialize-pane
     (panes-for-layout constructor type name &rest initargs)
   ;; If PANES-FOR-LAYOUT contains a pane for NAME, try to reinitialize
@@ -35,8 +57,11 @@
       (progn
         (when-let ((parent (sheet-parent pane-or-parent)))
           (sheet-disown-child parent pane-or-parent))
-        (apply #'reinitialize-instance pane initargs)
-        pane-or-parent)
+        (if (typep pane 'clim-stream-pane)
+            (%reinitialize-stream-pane pane pane-or-parent initargs)
+            (progn
+              (apply #'reinitialize-instance pane initargs)
+              pane-or-parent)))
       (apply constructor :name name initargs))))
 
 (defun generate-ensure-pane-form (name form realizer-var frame-var

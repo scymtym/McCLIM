@@ -34,6 +34,7 @@
                • Change pane definitions~@
                ~2@T• Change initargs (labels, background colors, etc.)~@
                ~2@T• Change pane types (for example :push-button to :toggle-button)~@
+               ~2@T• Change the :scroll-bars and :borders initargs of the interactor pane~@
                • Add new pane definitions (and add them to one or more layouts)~@
                • Change layouts~@
                • Reorder layouts to change the primary (i.e. first) ~
@@ -59,7 +60,8 @@
                                  :show-value-p t
                                  :orientation  :horizontal)
    (toggle-button :toggle-button :label        "Toggle this")
-   (interactor    :interactor))
+   (interactor    :interactor    :scroll-bars t
+                                 :borders     3))
   (:layouts
    (:default
     (spacing (:thickness 8 :background +dark-gray+)
