@@ -131,6 +131,23 @@
 	(mirror (sheet-direct-xmirror sheet)))
     (when (and cursor (typep mirror 'xlib:window))
       (setf (xlib:window-cursor mirror) cursor))))
+
+;;; Graft
+
+(defmethod make-graft ((port clx-basic-port) &key (orientation :default) (units :device))
+  (let* ((graft (make-instance 'clx-graft
+                               :port port :mirror (clx-port-window port)
+                               :orientation orientation :units units))
+         (screen (clx-port-screen port))
+         (width (xlib:screen-width screen))
+         (height (xlib:screen-height screen)))
+    (let ((region (make-bounding-rectangle 0 0 width height)))
+      (climi::%%set-sheet-region region graft))
+    graft))
+
+(defmethod graft ((port clx-basic-port))
+  (first (port-grafts port)))
+
 ;;;
 ;;;
 ;;;
