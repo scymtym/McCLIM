@@ -1,33 +1,24 @@
-(in-package :clim-demo)
-
-;;;; Method-Browser Example
-
-;;; (C) Copyright 2005 by Andy Hefner (ahefner@gmail.com)
-
-;;; This library is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU Library General Public
-;;; License as published by the Free Software Foundation; either
-;;; version 2 of the License, or (at your option) any later version.
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
 ;;;
-;;; This library is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; Library General Public License for more details.
+;;;  (c) copyright 2005 Andy Hefner <ahefner@gmail.com>
+;;;  (c) copyright 2006 Christophe Rhodes <crhodes@common-lisp.net>
+;;;  (c) copyright 2008 Troels Henriksen <thenriksen@common-lisp.net>
+;;;  (c) copyright 2016,2017 Daniel Kochmanski <daniel@turtleware.eu>
+;;;  (c) copyright 2018 Henry Harrington <henry.harrington@gmail.com>
 ;;;
-;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-;;; Boston, MA  02111-1307  USA.
-
-;;; --------------------------------------------------------------------
-
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Method-Browser Example
+;;;
 ;;; This is an example of how to write a CLIM application with a
 ;;; "normal" GUI, where "normal" is a completely event driven app
 ;;; built using gadgets and not using the command-oriented framework.
-
+;;;
 ;;; Running the method-browser:
 ;;;   (clim-demo::run-test 'clim-demo::method-browser)
-
+;;;
 ;;; How to use this app: Position the mouse over the text field labelled
 ;;; "Enter Name of Generic Function." Type the name of a generic
 ;;; function (the text field currently behaves in a focus-follows-mouse
@@ -37,14 +28,14 @@
 ;;; function is specialized on. As you adjust the argument types,
 ;;; the bottom pane of the application will display which methods
 ;;; would be applicable for the given arguments.
-
+;;;
 ;;; This example demonstrates:
 ;;;   * Conventional gadget-oriented interface
 ;;;   * Dynamic creation of interface objects
 ;;;   * Use of CLIM extended-output-streams (fonts, text-styles, etc)
 ;;;   * CLIM table formatting
 ;;;   * Portable MOP provided by CLIM-MOP package
-
+;;;
 ;;; TODO:
 ;;;   * Nicer, more clever display of methods than simply listing them
 ;;;     in a row.  To do this right really involes some nonportable
@@ -55,7 +46,9 @@
 ;;;   * Implement focus-aware cursor shapes in McCLIM
 ;;;   * Make sure the MOP usage works outside CMUCL/SBCL
 
-;;;; CLOS / MOP Utilities
+(in-package #:clim-demo)
+
+;;; CLOS / MOP Utilities
 
 (defun compute-gf-specializers (gf)
   "Computes a list of lists of the types for which required argument is
@@ -74,8 +67,8 @@ specialized on, removing duplicates"
       #+CMU (typep x 'pcl::class)
       #+scl (typep x 'clos::std-class)))
 
-;; FIXME: returns nil if there is both an EQL specializer and a
-;; class specializer for which no prototype instance is available.
+;;; FIXME: returns nil if there is both an EQL specializer and a
+;;; class specializer for which no prototype instance is available.
 (defun compute-applicable-methods-from-specializers (gf specializers)
   (multiple-value-bind (applicable-methods validp)
       (c2mop:compute-applicable-methods-using-classes gf specializers)
@@ -98,9 +91,9 @@ specialized on, removing duplicates"
           (unless (member 'no-prototype instances)
             (compute-applicable-methods gf instances))))))
 
-;; FIXME: Support EQL specializers.
-;; This is hard to do ideally, and I'm not really trying.
-;; So we just make sure that T ends up at the head of the list.
+;;; FIXME: Support EQL specializers.
+;;; This is hard to do ideally, and I'm not really trying.
+;;; So we just make sure that T ends up at the head of the list.
 (defun sorted-gf-specializers (gf)
   "Sort a list of specializers for aesthetic purposes"
   (mapcar (lambda (types)
@@ -160,9 +153,9 @@ specialized on, removing duplicates"
 (defun methodp (object)
   (typep object 'method))
 
-;; Walk the form returned by compute-effective-method, noting any methods in
-;; the order we find them. This is good enough for the sort of output we are
-;; producing. I hope.
+;;; Walk the form returned by compute-effective-method, noting any methods in
+;;; the order we find them. This is good enough for the sort of output we are
+;;; producing. I hope.
 (defun walk-em-form (form)
   "Walks an effective methods form, attempting to determine what order methods will be called"
   (cond
@@ -172,42 +165,41 @@ specialized on, removing duplicates"
     ((methodp form) (list form))
     (t nil)))
 
-
-;;;; CLIM GUI
-
-;; Every CLIM app starts with an application frame, an object which
-;; encapsulates the state of an application. Windowing and abstractions
-;; such as commands and menus are designed around application frames.
-;; DEFINE-APPLICATION-FRAME is an extension of DEFCLASS adding options
-;; to define the layout(s) and content of your application window,
-;; commands within your application, a menu bar, etc.
-
-;; The :panes option is typically used to define and name the important
-;; elements of your interface. CLIM provides some syntactic sugar, for
-;; example (arg-pane :vrack-pane) below is equivalent to
-;; (arg-pane (make-pane 'vrack-pane)).
-
-;; The :layouts option defines the hierarchy of windows to instantiate.
-;; Multiple layouts can be defined, but a single default layout is sufficient.
-;; When defining a layout, the things defined by :pane can be referred to by
-;; name. The forms within the default layout below are actual lisp code -
-;; vertically, labelling, scrolling, etc. are macros which can be called at
-;; any time, provided some context is established first. Similarly, you could
-;; call make-pane here to construct a pane anonymously.
+;;; CLIM GUI
+;;;
+;;; Every CLIM app starts with an application frame, an object which
+;;; encapsulates the state of an application. Windowing and abstractions
+;;; such as commands and menus are designed around application frames.
+;;; DEFINE-APPLICATION-FRAME is an extension of DEFCLASS adding options
+;;; to define the layout(s) and content of your application window,
+;;; commands within your application, a menu bar, etc.
+;;;
+;;; The :panes option is typically used to define and name the important
+;;; elements of your interface. CLIM provides some syntactic sugar, for
+;;; example (arg-pane :vrack-pane) below is equivalent to
+;;; (arg-pane (make-pane 'vrack-pane)).
+;;;
+;;; The :layouts option defines the hierarchy of windows to instantiate.
+;;; Multiple layouts can be defined, but a single default layout is sufficient.
+;;; When defining a layout, the things defined by :pane can be referred to by
+;;; name. The forms within the default layout below are actual lisp code -
+;;; vertically, labelling, scrolling, etc. are macros which can be called at
+;;; any time, provided some context is established first. Similarly, you could
+;;; call make-pane here to construct a pane anonymously.
 
 (define-application-frame method-browser ()
   ((gf :accessor gf :initarg :gf :initform nil)
    (arg-types :accessor arg-types :initarg :arg-types :initform nil))
   (:menu-bar nil)
   (:panes
-   ;; Text box for the user to enter a function name
+    ;; Text box for the user to enter a function name
     (gf-name-input :text-field
                    :activate-callback 'gf-name-input-callback
                    :background +white+
                    :text-style (make-text-style :sans-serif :roman :large))
-   ;; Empty vertical layout pane where option-panes for arguments are added
+    ;; Empty vertical layout pane where option-panes for arguments are added
     (arg-pane :vrack-pane)
-   ;; Blank pane where the program can render output
+    ;; Blank pane where the program can render output
     (output-pane :application-pane
                  :text-style (make-text-style :sans-serif :roman :normal)
                  :display-time t
@@ -246,10 +238,10 @@ specialized on, removing duplicates"
   "Returns a list containing the initial specializers to use for each required argument of a function"
   (mapcar #'first (sorted-gf-specializers gf)))
 
-;; Within the macro WITH-LOOK-AND-FEEL-REALIZATION, panes may be created
-;; at runtime. This macro sets the environment up such that an abstract pane
-;; class such as 'push-button can be translated to a concrete pane class
-;; appropriate for your window system.
+;;; Within the macro WITH-LOOK-AND-FEEL-REALIZATION, panes may be created
+;;; at runtime. This macro sets the environment up such that an abstract pane
+;;; class such as 'push-button can be translated to a concrete pane class
+;;; appropriate for your window system.
 
 (defun gen-arg-pane (frame arg-types)
   "Generates contents of argument pane. For each required argument an
@@ -306,8 +298,8 @@ available for that argument."
                 (princ " " stream))
             (present symbol (presentation-type-of symbol) :stream stream))))))
     ;; Method specializers
-    ; This is very silly, but put the surrounding parens in their own column
-    ; because I'm anal about the formatting.
+    ;; This is very silly, but put the surrounding parens in their own
+    ;; column because I'm anal about the formatting.
     (formatting-cell (stream :align-x :right)
       (princ "      (" stream))
     (dolist (spec (c2mop:method-specializers method))
