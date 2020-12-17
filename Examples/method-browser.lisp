@@ -34,38 +34,57 @@
 ;;;   * Dynamic creation of interface objects
 ;;;   * Use of CLIM extended-output-streams (fonts, text-styles, etc)
 ;;;   * CLIM table formatting
-;;;   * Portable MOP provided by CLIM-MOP package
 ;;;
 ;;; TODO:
 ;;;   * Nicer, more clever display of methods than simply listing them
-;;;     in a row.  To do this right really involes some nonportable
+;;;     in a row.  To do this right really involves some non-portable
 ;;;     fun and a codewalker.  You could probably write something that
 ;;;     just understood the standard method combination and qualifiers
 ;;;     with substantially less work.
 ;;;   * Change focus behavior of McCLIM text entry gadget
 ;;;   * Implement focus-aware cursor shapes in McCLIM
-;;;   * Make sure the MOP usage works outside CMUCL/SBCL
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.method-browser
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:import-from #:alexandria
+   #:when-let
+   #:if-let)
+
+  (:export
+   #:method-browser))
+
+(in-package #:clim-demo.method-browser)
 
 ;;; CLOS / MOP Utilities
 
 (defun compute-gf-specializers (gf)
   "Computes a list of lists of the types for which required argument is
 specialized on, removing duplicates"
-  (let* ((specializers (mapcar #'c2mop:method-specializers
-                               (c2mop:generic-function-methods gf))))
-    (loop for index from 0 below (length (first specializers))
-         collect (remove-duplicates (mapcar (lambda (specs) (nth index specs))
-                                            specializers)))))
+  (loop with all-specializers = (mapcar #'c2mop:method-specializers
+                                        (c2mop:generic-function-methods gf))
+        with arity = (length (first all-specializers))
+        for index from 0 below arity
+        collect (remove-duplicates (mapcar (lambda (specs)
+                                             (nth index specs))
+                                           all-specializers))))
 
-;;; FIXME: why is this necessary?  I'm pretty sure the #+CMU clause
-;;; here has been superseded by events for quite a while now.  (Should
-;;; c2mop:class not cater for these implementation differences?)
-(defun classp (x)
-  (or (typep x 'cl:class)
-      #+CMU (typep x 'pcl::class)
-      #+scl (typep x 'clos::std-class)))
+(defun compute-specializer-object (specializer)
+  (cond ((typep specializer 'c2mop:class)
+         ;; Implementation-dependent whether prototypes for
+         ;; built-in classes (like integer, t) are available.
+         (handler-case
+             (c2mop:class-prototype (c2mop:ensure-finalized specializer))
+           (error ()
+             'no-prototype)))
+        ((typep specializer 'c2mop:eql-specializer)
+         (c2mop:eql-specializer-object specializer))
+        (t
+         (error "Can't compute effective methods, specializer ~A is ~
+                 not understood."
+                specializer))))
 
 ;;; FIXME: returns nil if there is both an EQL specializer and a
 ;;; class specializer for which no prototype instance is available.
@@ -74,20 +93,7 @@ specialized on, removing duplicates"
       (c2mop:compute-applicable-methods-using-classes gf specializers)
     (if validp
         applicable-methods
-        (let ((instances
-               (mapcar (lambda (s)
-                         (cond ((classp s)
-                                ;; Implementation-dependent whether prototypes for
-                                ;; built-in classes (like integer, t) are available.
-                                (multiple-value-bind (prot err)
-                                    (ignore-errors (c2mop:class-prototype s))
-                                  (if err 'no-prototype prot)))
-                               ((typep s 'c2mop:eql-specializer)
-                                (c2mop:eql-specializer-object s))
-                               (t
-                                (error "Can't compute effective methods, specializer ~A is not understood."
-                                       s))))
-                       specializers)))
+        (let ((instances (mapcar #'compute-specializer-object specializers)))
           (unless (member 'no-prototype instances)
             (compute-applicable-methods gf instances))))))
 
@@ -102,8 +108,8 @@ specialized on, removing duplicates"
                     (cond
                       ((eql a (find-class t)) t)
                       ((eql b (find-class t)) nil)
-                      ((and (classp a)
-                            (classp b))
+                      ((and (typep a 'c2mop:class)
+                            (typep b 'c2mop:class))
                        (string< (class-name a)
                                 (class-name b)))
                       ((and (typep a 'c2mop:eql-specializer)
@@ -123,19 +129,12 @@ specialized on, removing duplicates"
 
 (defun simple-generic-function-lambda-list (gf)
   "Returns the required arguments of a generic function"
-  (let ((ll (c2mop:generic-function-lambda-list gf)))
-    (subseq ll 0 (apply #'min
-                        (remove-if #'null
-                                   (list
-                                    (length ll)
-                                    (position '&key ll)
-                                    (position '&optional ll)
-                                    (position '&rest ll)
-                                    (position '&aux ll)))))))
+  (values (alexandria:parse-ordinary-lambda-list
+           (c2mop:generic-function-lambda-list gf))))
 
 (defun specializer-pretty-name (spec)
   "Pretty print the name of a method specializer"
-  (cond ((classp spec)
+  (cond ((typep spec 'c2mop:class)
          (princ-to-string (class-name spec)))
         ((typep spec 'c2mop:eql-specializer)
          (format nil "(EQL '~A)" (c2mop:eql-specializer-object spec)))
@@ -192,27 +191,24 @@ specialized on, removing duplicates"
    (arg-types :accessor arg-types :initarg :arg-types :initform nil))
   (:menu-bar nil)
   (:panes
-    ;; Text box for the user to enter a function name
-    (gf-name-input :text-field
-                   :activate-callback 'gf-name-input-callback
-                   :background +white+
-                   :text-style (make-text-style :sans-serif :roman :large))
-    ;; Empty vertical layout pane where option-panes for arguments are added
-    (arg-pane :vrack-pane)
-    ;; Blank pane where the program can render output
-    (output-pane :application-pane
-                 :text-style (make-text-style :sans-serif :roman :normal)
-                 :display-time t
-                 :display-function 'display-methods))
+   ;; Text box for the user to enter a function name
+   (gf-name-input :text-field :value-changed-callback 'gf-name-input-callback)
+   ;; Empty vertical layout pane where option-panes for arguments are added
+   (arg-pane :vrack-pane)
+   ;; Blank pane where the program can render output
+   (output-pane :application-pane :display-time t
+                                  :display-function 'display-methods))
   (:layouts
    (default
-       (vertically ()
-         (labelling (:label "Enter Name of Generic Function")
-           gf-name-input)
-         (labelling (:label "Specializers")
-           (spacing (:thickness 6)  arg-pane))
-         (scrolling (:width 800 :height 600)
-           output-pane)))))
+    (vertically ()
+      (labelling (:label "Enter Name of Generic Function")
+        gf-name-input)
+      (labelling (:label "Specializers")
+        (spacing (:thickness 6)
+          arg-pane))
+      (labelling (:label "Applicable methods")
+       (scrolling (:width 800 :height 600)
+         output-pane))))))
 
 ;;; When the user types a method name and hits enter, the callback function
 ;;; below will be called, setting in motion the process of updating the
@@ -220,19 +216,18 @@ specialized on, removing duplicates"
 ;;; build a set of controls for selecting argument types, and finally
 ;;; printing a table listing the methods.
 
-(defun gf-name-input-callback (gadget)
+(defun gf-name-input-callback (gadget value)
   "Callback invoked by the text input gadget when the user hits enter"
-  (let ((gf (maybe-find-gf (gadget-value gadget))))
-    (when gf
-      (setup-new-gf *application-frame* gf))))
+  (setup-new-gf (gadget-client gadget) (maybe-find-gf value)))
 
 (defun setup-new-gf (frame gf)
   "Update the application frame to display the supplied generic function"
-  (setf (gf frame) gf)
-  (setf (arg-types frame) (compute-initial-arg-types gf))
+  (setf (gf frame) gf
+        (arg-types frame) (when gf (compute-initial-arg-types gf)))
   (changing-space-requirements ()
-    (gen-arg-pane frame (arg-types frame)))
-  (redisplay-frame-pane frame (get-frame-pane frame 'output-pane) :force-p t))
+    (make-arg-pane frame))
+  (when-let ((output (get-frame-pane frame 'output-pane)))
+    (redisplay-frame-pane frame output :force-p t)))
 
 (defun compute-initial-arg-types (gf)
   "Returns a list containing the initial specializers to use for each required argument of a function"
@@ -243,39 +238,49 @@ specialized on, removing duplicates"
 ;;; class such as 'push-button can be translated to a concrete pane class
 ;;; appropriate for your window system.
 
-(defun gen-arg-pane (frame arg-types)
+(defun make-arg-pane (frame)
   "Generates contents of argument pane. For each required argument an
 option-pane is created allowing the user to select one of the specializers
 available for that argument."
-  (let ((container (find-pane-named frame 'arg-pane)))
-    ;; Delete the children of the container pane
-    (dolist (child (sheet-children container))
-      (sheet-disown-child container child))
-    ;; Repopulate the container pane with a new table pane containing
-    ;; option-panes for each specializer argument.
-    (let ((fm (frame-manager *application-frame*)))
-      (with-look-and-feel-realization (fm *application-frame*)
-        (sheet-adopt-child container
-          (make-pane 'table-pane :spacing 8    ;; McCLIM issue: spacing initarg
-            :contents (loop for index from 0 by 1
-                            for curval in arg-types
-                            for specs  in (sorted-gf-specializers (gf frame))
-                            for name   in (simple-generic-function-lambda-list (gf frame))
-                            collect (list
-                                     (make-pane 'label-pane :label (princ-to-string name))
-                                     (make-pane 'option-pane
-                                                :items specs
-                                                :value curval
-                                                :value-changed-callback
-                                                (let ((index index))
-                                                  (lambda (value-gadget value)
-                                                    (declare (ignore value-gadget))
-                                                    (setf (nth index (arg-types frame)) value)
-                                                    (redisplay-frame-pane frame (find-pane-named frame 'output-pane)
-                                                                          :force-p t)))
-                                                :name-key #'specializer-pretty-name)))) )))))
+  (when-let ((container (find-pane-named frame 'arg-pane)))
+   (let ((gf        (gf frame))
+         (arg-types (arg-types frame)))
+     ;; Delete the children of the container pane
+     (dolist (child (sheet-children container))
+       (sheet-disown-child container child))
+     ;; Repopulate the container pane with a new table pane containing
+     ;; option-panes for each specializer argument.
+     (when gf
+       (let ((fm (frame-manager frame)))
+         (with-look-and-feel-realization (fm frame)
+           (let* ((contents (make-arg-table-contents gf arg-types))
+                  (pane     (make-pane 'table-pane :spacing  8 ; McCLIM issue: spacing initarg
+                                                   :contents contents)))
+             (sheet-adopt-child container pane))))))))
+
+(defun make-arg-table-contents (gf arg-types)
+  (loop for index from 0 by 1
+        for curval in arg-types
+        for specs  in (sorted-gf-specializers gf)
+        for name   in (simple-generic-function-lambda-list gf)
+        collect (list
+                 (make-pane 'label-pane :label (princ-to-string name))
+                 (make-pane 'option-pane
+                            :items specs
+                            :value curval
+                            :value-changed-callback
+                            (let ((index index))
+                              (lambda (gadget value)
+                                (setf (nth index arg-types) value)
+                                (let ((frame (gadget-client gadget)))
+                                  (when-let ((output (find-pane-named frame 'output-pane)))
+                                    (redisplay-frame-pane frame output :force-p t)))))
+                            :name-key #'specializer-pretty-name))))
 
 ;;; Generate contents of output-pane
+
+(defparameter *column-header-ink* +gray50+)
+(defparameter *column-header-text-style* (make-text-style :sans-serif :bold :small))
 
 (defparameter *method-qualifier-ink* +red+)
 (defparameter *specializer-text-style* (make-text-style :sans-serif :roman :normal))
@@ -290,13 +295,13 @@ available for that argument."
     ;; Method qualifiers
     (formatting-cell (stream :align-x :center)
       (with-drawing-options (stream :ink *method-qualifier-ink*)
-        (alexandria:when-let ((m-q (method-qualifiers method)))
+        (when-let ((m-q (method-qualifiers method)))
           (let ((first t))
-          (dolist (symbol m-q)
-            (if first
-                (setf first nil)
-                (princ " " stream))
-            (present symbol (presentation-type-of symbol) :stream stream))))))
+            (dolist (symbol m-q)
+              (if first
+                  (setf first nil)
+                  (princ " " stream))
+              (present symbol (presentation-type-of symbol) :stream stream))))))
     ;; Method specializers
     ;; This is very silly, but put the surrounding parens in their own
     ;; column because I'm anal about the formatting.
@@ -313,19 +318,11 @@ available for that argument."
 
 (defun display-methods (frame pane)
   "Generates the display of applicable methods in the output-pane"
-  (when (gf frame)
-    (let* ((gf (gf frame))
-           (methods (compute-applicable-methods-from-specializers gf (arg-types frame)))
+  (if-let ((gf (gf frame)))
+    (let* ((methods (compute-applicable-methods-from-specializers gf (arg-types frame)))
            (combination (c2mop:generic-function-method-combination gf))
            (effective-methods (ignore-errors (c2mop:compute-effective-method gf combination methods)))
            (serial-methods (walk-em-form effective-methods)))
-      ;; Print the header
-      (fresh-line)
-      (with-drawing-options (pane :text-style (make-text-style :sans-serif :bold :large)
-                                  :ink +royal-blue+)
-        (surrounding-output-with-border (pane :shape :underline)
-          (princ "Applicable Methods" pane)))
-      (terpri)
       ;; Generate a table for the methods
       (formatting-table (pane :x-spacing "   ")
         (formatting-row (pane)
@@ -333,32 +330,32 @@ available for that argument."
         (dolist (method serial-methods)
           (formatting-row (pane)
             (present-method method pane))))
-      (terpri pane))))
+      (terpri pane))
+    (with-drawing-options (pane :text-face :italic :ink +gray40+)
+      (write-string "No generic function found" pane))))
 
 (defun ink-for-specializer (spec)
   "Determine a color to use when displaying a specializer, highlighting if one
 of the types selected by the user."
-  (if (not (typep *application-frame* 'method-browser))
-      +foreground-ink+
-      (if (member spec (arg-types *application-frame*))
-          +OliveDrab4+
-          +grey18+)))
-
-(defparameter *column-header-ink* +gray50+)
-(defparameter *column-header-text-style* (make-text-style :sans-serif :bold :small))
+  (cond ((not (typep *application-frame* 'method-browser))
+         +foreground-ink+)
+        ((member spec (arg-types *application-frame*))
+         +olivedrab4+)
+        (t
+         +grey18+)))
 
 (defun gf-column-headers (gf stream)
   "Produces a row of column titles for the method table"
   (flet ((header (label)
            (formatting-cell (stream :align-x :center)
-             (unless (zerop (length label))
+             (when label
                (with-drawing-options (stream :ink *column-header-ink*
                                              :text-style *column-header-text-style*)
                  (surrounding-output-with-border (stream :shape :underline)
                    (princ label stream)))))))
     ;; Method type
-    (header "")
+    (header nil)
     (header "Qualifier")
-    (header "")
+    (header nil)
     (dolist (arg (simple-generic-function-lambda-list gf))
       (header (princ-to-string arg)))))
