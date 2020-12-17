@@ -9,11 +9,11 @@
 ;;;
 ;;; Several examples of using `accepting-values'.
 
-(cl:in-package #:clim-demo)
+(cl:in-package #:clim-demo.accepting-values)
 
 (define-application-frame av-test ()
   ((own-window-p :initform nil))
-  (:menu-bar t)
+
   (:panes
    (screen :application
            :display-time t
@@ -22,17 +22,15 @@
    (own-window-option
     (with-radio-box (:orientation :vertical
                      :value-changed-callback
-                     #'(lambda (this-gadget selected-gadget)
-                         (declare (ignore this-gadget))
-                         (with-slots (own-window-p) *application-frame*
+                     #'(lambda (gadget value)
+                         (with-slots (own-window-p) (gadget-client gadget)
                            (setf own-window-p
-                                 (string=
-                                  (gadget-label selected-gadget)
-                                  "yes")))))
+                                 (string= (gadget-label value) "yes")))))
       (radio-box-current-selection "no")
       "yes"))
-   (interactor :interactor :min-width 600)
-   (doc :pointer-documentation))
+   (interactor :interactor :min-width 600))
+  (:menu-bar t)
+  (:pointer-documentation t)
   (:layouts
    (defaults
     (horizontally ()
@@ -42,112 +40,49 @@
         +fill+)
       (vertically ()
         screen
-        interactor
-        doc)))))
+        interactor)))))
+
+(defvar *tests* '())
 
 (defun av-test-display-screen (frame pane)
   (declare (ignore frame))
   (with-text-size (pane :large)
-    (fresh-line pane)
-    (present '(com-accepting-interval) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-accepting-square) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-reset-clock-1) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-reset-clock-2) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-accepting-tag) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-menu-choose-1) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-menu-choose-2) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-menu-choose-3) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-menu-choose-4) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-accept-popup) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-accepting-with-list-pane-view) 'command :stream pane)
-    (fresh-line pane)
-    (present '(com-accepting-with-gadgets) 'command :stream pane)
+    (flet ((present-test (command)
+             (fresh-line pane)
+             (present `(,command) 'command :stream pane)))
+      (map nil #'present-test (reverse *tests*)))
     (fresh-line pane)))
 
 (define-av-test-command (com-refresh-av-test :name t :menu t)
     ()
-  (window-clear (find-pane-named *application-frame* 'screen))
-  (window-clear (find-pane-named *application-frame* 'interactor))
-  (av-test-display-screen *application-frame*
-                          (find-pane-named *application-frame* 'screen)))
+  (let* ((frame *application-frame*)
+         (screen (find-pane-named frame 'screen)))
+    (window-clear screen)
+    (window-clear (find-pane-named frame 'interactor))
+    (av-test-display-screen frame screen)))
 
-(define-av-test-command (com-accepting-interval :name t :menu nil)
-    ()
-  (with-slots (own-window-p) *application-frame*
-    (format t "Result: ~S~%" (multiple-value-list (accepting-interval :ow own-window-p))))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-accepting-square :name t :menu nil)
-    ()
-  (with-slots (own-window-p) *application-frame*
-    (format t "Result: ~S~%" (multiple-value-list (accepting-square :ow own-window-p))))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-reset-clock-1 :name t :menu nil)
-    ()
-  (with-slots (own-window-p) *application-frame*
-    (format t "Result: ~S~%" (multiple-value-list (reset-clock-1 :ow own-window-p))))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-reset-clock-2 :name t :menu nil)
-    ()
-  (with-slots (own-window-p) *application-frame*
-    (format t "Result: ~S~%" (multiple-value-list (reset-clock-2 :ow own-window-p))))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-accepting-tag :name t :menu nil)
-    ()
-  (with-slots (own-window-p) *application-frame*
-    (format t "Result: ~S~%" (multiple-value-list (accepting-tag :ow own-window-p))))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-menu-choose-1 :name t :menu nil)
-    ()
-  (format t "Result: ~S~%" (multiple-value-list (menu-choose-1)))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-menu-choose-2 :name t :menu nil)
-    ()
-  (format t "Result: ~S~%" (multiple-value-list (menu-choose-2)))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-menu-choose-3 :name t :menu nil)
-    ()
-  (format t "Result: ~S~%" (multiple-value-list (menu-choose-3)))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-menu-choose-4 :name t :menu nil)
-    ()
-  (format t "Result: ~S~%" (multiple-value-list (menu-choose-4)))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-accept-popup :name t :menu nil)
-    ()
-  (format *standard-output* "Popup Test. ")
-  (format t "Result: ~S~%" (multiple-value-list
-                            (accept-popup '(1 2 3 4 5 6 7 8))))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-accepting-with-list-pane-view :name t :menu nil)
-    ()
-  (with-slots (own-window-p) *application-frame*
-    (format t "Result: ~S~%" (multiple-value-list
-                              (accepting-with-list-pane-view :ow own-window-p))))
-  (finish-output *standard-output*))
-
-(define-av-test-command (com-accepting-with-gadgets :name t :menu nil)
-    ()
-  (with-slots (own-window-p) *application-frame*
-    (format t "Result: ~S~%" (multiple-value-list
-                              (accepting-with-gadgets :ow own-window-p))))
-  (finish-output *standard-output*))
+(macrolet ((def (command-name test-name &key (own-window-p t) (arguments '()))
+             `(progn
+                (pushnew ',command-name *tests*)
+                (define-av-test-command (,command-name :name t :menu nil)
+                    ()
+                  ,(if own-window-p
+                       `(with-slots (own-window-p) *application-frame*
+                          (format t "Result: ~S~%" (multiple-value-list
+                                                    (,test-name :ow own-window-p))))
+                       `(format t "Result: ~S~%" (multiple-value-list
+                                                  (,test-name ,@arguments))))
+                  (finish-output *standard-output*)))))
+  (def com-accepting-interval            accepting-interval)
+  (def com-accepting-square              accepting-square)
+  (def com-reset-clock-1                 reset-clock-1)
+  (def com-reset-clock-2                 reset-clock-2)
+  (def com-accepting-tag                 accepting-tag)
+  (def com-menu-choose-1                 menu-choose-1                 :own-window-p nil)
+  (def com-menu-choose-2                 menu-choose-2                 :own-window-p nil)
+  (def com-menu-choose-3                 menu-choose-3                 :own-window-p nil)
+  (def com-menu-choose-4                 menu-choose-4                 :own-window-p nil)
+  (def com-accept-popup                  accept-popup                  :own-window-p nil
+                                                                       :arguments ('(1 2 3 4 5 6 7 8)))
+  (def com-accepting-with-list-pane-view accepting-with-list-pane-view)
+  (def com-accepting-with-gadgets        accepting-with-gadgets))

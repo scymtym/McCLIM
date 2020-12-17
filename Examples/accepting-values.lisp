@@ -11,7 +11,15 @@
 ;;; Some simple examples from the Franz user manual. You can run these
 ;;; from the listener or via the accepting values demo.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.accepting-values
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:export
+   #:av-test))
+
+(in-package #:clim-demo.accepting-values)
 
 (defun accepting-interval (&key (min -1.0) (max 1.0) (stream *query-io*) (ow t))
   (accepting-values (stream :resynchronize-every-pass t :own-window ow)
