@@ -44,7 +44,7 @@
                (:file "render-image-tests")
                (:file "image-viewer")
                (:file "accepting-values")
-               (:file "accepting-values-test")
+               (:file "accepting-values-test" :depends-on ("accepting-values"))
                (:file "graph-toy")
                (:file "coordinate-swizzling")
                (:file "hierarchy-tool")

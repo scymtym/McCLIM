@@ -1,3 +1,14 @@
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2017 Alessandro Serra <gas2serra@gmail.com>
+;;;  (c) copyright 2018 admich <andrea.demichele@gmail.com>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Several examples of using `accepting-values'.
+
 (cl:in-package #:clim-demo)
 
 (define-application-frame av-test ()
@@ -6,33 +17,33 @@
   (:panes
    (screen :application
            :display-time t
-	   :display-function #'av-test-display-screen
+           :display-function #'av-test-display-screen
            :text-style (make-text-style :sans-serif :roman :normal))
    (own-window-option
-    (clim:with-radio-box (:orientation :vertical
-				       :value-changed-callback
-				       #'(lambda (this-gadget selected-gadget)
-					   (declare (ignore this-gadget))
-					   (with-slots (own-window-p) clim:*application-frame*
-					     (setf own-window-p
-						   (string=
-						    (clim:gadget-label selected-gadget)
-						    "yes")))))
-      (clim:radio-box-current-selection "no")
+    (with-radio-box (:orientation :vertical
+                     :value-changed-callback
+                     #'(lambda (this-gadget selected-gadget)
+                         (declare (ignore this-gadget))
+                         (with-slots (own-window-p) *application-frame*
+                           (setf own-window-p
+                                 (string=
+                                  (gadget-label selected-gadget)
+                                  "yes")))))
+      (radio-box-current-selection "no")
       "yes"))
    (interactor :interactor :min-width 600)
    (doc :pointer-documentation))
   (:layouts
    (defaults
-       (horizontally ()
-	 (vertically ()
-	  (labelling (:label "Own Window")
-	    own-window-option)
-	  +fill+)
-	 (vertically ()
-	   screen
-	   interactor
-	   doc)))))
+    (horizontally ()
+      (vertically ()
+        (labelling (:label "Own Window")
+          own-window-option)
+        +fill+)
+      (vertically ()
+        screen
+        interactor
+        doc)))))
 
 (defun av-test-display-screen (frame pane)
   (declare (ignore frame))
@@ -63,52 +74,40 @@
     (present '(com-accepting-with-gadgets) 'command :stream pane)
     (fresh-line pane)))
 
-(define-av-test-command (com-refresh-av-test
-			 :name t
-			 :menu t)
+(define-av-test-command (com-refresh-av-test :name t :menu t)
     ()
   (window-clear (find-pane-named *application-frame* 'screen))
   (window-clear (find-pane-named *application-frame* 'interactor))
   (av-test-display-screen *application-frame*
-			  (find-pane-named *application-frame* 'screen)))
+                          (find-pane-named *application-frame* 'screen)))
 
-(define-av-test-command (com-accepting-interval
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-accepting-interval :name t :menu nil)
     ()
-  (with-slots (own-window-p) clim:*application-frame*
+  (with-slots (own-window-p) *application-frame*
     (format t "Result: ~S~%" (multiple-value-list (accepting-interval :ow own-window-p))))
   (finish-output *standard-output*))
 
-(define-av-test-command (com-accepting-square
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-accepting-square :name t :menu nil)
     ()
-  (with-slots (own-window-p) clim:*application-frame*
+  (with-slots (own-window-p) *application-frame*
     (format t "Result: ~S~%" (multiple-value-list (accepting-square :ow own-window-p))))
   (finish-output *standard-output*))
 
-(define-av-test-command (com-reset-clock-1
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-reset-clock-1 :name t :menu nil)
     ()
-  (with-slots (own-window-p) clim:*application-frame*
+  (with-slots (own-window-p) *application-frame*
     (format t "Result: ~S~%" (multiple-value-list (reset-clock-1 :ow own-window-p))))
   (finish-output *standard-output*))
 
-(define-av-test-command (com-reset-clock-2
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-reset-clock-2 :name t :menu nil)
     ()
-  (with-slots (own-window-p) clim:*application-frame*
+  (with-slots (own-window-p) *application-frame*
     (format t "Result: ~S~%" (multiple-value-list (reset-clock-2 :ow own-window-p))))
   (finish-output *standard-output*))
 
-(define-av-test-command (com-accepting-tag
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-accepting-tag :name t :menu nil)
     ()
-  (with-slots (own-window-p) clim:*application-frame*
+  (with-slots (own-window-p) *application-frame*
     (format t "Result: ~S~%" (multiple-value-list (accepting-tag :ow own-window-p))))
   (finish-output *standard-output*))
 
@@ -132,27 +131,23 @@
   (format t "Result: ~S~%" (multiple-value-list (menu-choose-4)))
   (finish-output *standard-output*))
 
-
-(define-av-test-command (com-accept-popup
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-accept-popup :name t :menu nil)
     ()
   (format *standard-output* "Popup Test. ")
-  (format t "Result: ~S~%" (multiple-value-list (accept-popup '(1 2 3 4 5 6 7 8))))
+  (format t "Result: ~S~%" (multiple-value-list
+                            (accept-popup '(1 2 3 4 5 6 7 8))))
   (finish-output *standard-output*))
 
-(define-av-test-command (com-accepting-with-list-pane-view
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-accepting-with-list-pane-view :name t :menu nil)
     ()
-  (with-slots (own-window-p) clim:*application-frame*
-    (format t "Result: ~S~%" (multiple-value-list (accepting-with-list-pane-view :ow own-window-p))))
+  (with-slots (own-window-p) *application-frame*
+    (format t "Result: ~S~%" (multiple-value-list
+                              (accepting-with-list-pane-view :ow own-window-p))))
   (finish-output *standard-output*))
 
-(define-av-test-command (com-accepting-with-gadgets
-			 :name t
-			 :menu nil)
+(define-av-test-command (com-accepting-with-gadgets :name t :menu nil)
     ()
-  (with-slots (own-window-p) clim:*application-frame*
-    (format t "Result: ~S~%" (multiple-value-list (accepting-with-gadgets :ow own-window-p))))
+  (with-slots (own-window-p) *application-frame*
+    (format t "Result: ~S~%" (multiple-value-list
+                              (accepting-with-gadgets :ow own-window-p))))
   (finish-output *standard-output*))
