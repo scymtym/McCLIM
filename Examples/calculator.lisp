@@ -7,6 +7,7 @@
 ;;;  (c) copyright 2000,2016 Robert Strandh <robert.strandh@gmail.com>
 ;;;  (c) copyright 2002 Gilbert Baumann <gbaumann@common-lisp.net>
 ;;;  (c) copyright 2017 Cyrus Harmon <cyrus@bobobeach.com>
+;;;  (c) copyright 2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -32,8 +33,7 @@
 
 (defun queue-number (number)
   (lambda (gadget)
-    (declare (ignore gadget))
-    (with-slots (calc-state) *application-frame*
+    (with-slots (calc-state) (gadget-client gadget)
       (if (numberp (first calc-state))
           (setf (first calc-state) (+ (* 10 (first calc-state)) number))
           (push number calc-state))
@@ -41,29 +41,25 @@
 
 (defun queue-operator (operator)
   (lambda (gadget)
-    (declare (ignore gadget))
-    (do-operation t)
-    (with-slots (calc-state) *application-frame*
+    (do-operation gadget)
+    (with-slots (calc-state) (gadget-client gadget)
       (if (functionp (first calc-state))
           (setf (first calc-state) operator)
           (push operator calc-state)))))
 
 (defun do-operation (gadget)
-  (declare (ignore gadget))
-  (with-slots (calc-state) *application-frame*
+  (with-slots (calc-state) (gadget-client gadget)
     (when (= 3 (length calc-state))
       (setf calc-state (list (funcall (second calc-state) (third calc-state) (first calc-state))))
       (show (first calc-state)))))
 
 (defun initac (gadget)
-  (declare (ignore gadget))
-  (with-slots (calc-state) *application-frame*
+  (with-slots (calc-state) (gadget-client gadget)
     (setf calc-state (list 0)))
   (show 0))
 
 (defun initce (gadget)
-  (declare (ignore gadget))
-  (with-slots (calc-state) *application-frame*
+  (with-slots (calc-state) (gadget-client gadget)
     (when (numberp (first calc-state))
       (pop calc-state))
     (show 0)))
@@ -71,28 +67,18 @@
 (defgeneric calculator-frame-top-level (frame &key command-parser
                                                    command-unparser
                                                    partial-command-parser
-                                                   prompt))
+                                                   prompt)
+  (:method ((frame application-frame) &key command-parser
+                                           command-unparser
+                                           partial-command-parser
+                                           prompt)
+    (declare (ignore command-parser command-unparser partial-command-parser prompt))
+    (clim-extensions:simple-event-loop)))
 
-(defmethod calculator-frame-top-level
-    ((frame application-frame)
-     &key (command-parser 'command-line-command-parser)
-       (command-unparser 'command-line-command-unparser)
-       (partial-command-parser
-        'command-line-read-remaining-arguments-for-partial-command)
-       (prompt "Command: "))
-  (declare (ignore command-parser command-unparser partial-command-parser prompt))
-  (clim-extensions:simple-event-loop))
-
-(defun make-button (label operator &key width height
-                                        (max-width +fill+) min-width
-                                        (max-height +fill+) min-height)
-  (make-pane 'push-button
-             :label label
-             :activate-callback operator
-             :text-style *calculator-text-style*
-             :width width :height height
-             :max-width  max-width :min-width min-width
-             :max-height max-height :min-height min-height))
+(defun make-button (label operator)
+  (make-pane 'push-button :label label
+                          :activate-callback operator
+                          :text-style *calculator-text-style*))
 
 (define-application-frame calculator-app ()
   ((text-field :initform nil)
@@ -117,17 +103,17 @@
    (screen   :text-field :value "0" :text-style *calculator-text-style*)
    (ac       (make-button "AC" #'initac))
    (ce       (make-button "CE" #'initce)))
-
   (:layouts
    (default
-       (with-slots (text-field) *application-frame*
-         (vertically (:width 150 :max-width 500)
-           (setf text-field screen)
-           (horizontally (:height 50) ac ce)
-           (tabling (:grid t)
-             (list one two plus)
-             (list three four dash)
-             (list five six multiply)
-             (list seven eight divide)
-             (list nine zero result))))))
+    (with-slots (text-field) *application-frame*
+      (spacing (:thickness 1)
+       (vertically (:spacing 1)
+         (setf text-field screen)
+         (1/6 (horizontally (:spacing 1) ac ce))
+         (5/6 (tabling (:spacing 1)
+                (list one two plus)
+                (list three four dash)
+                (list five six multiply)
+                (list seven eight divide)
+                (list nine zero result))))))))
   (:top-level (calculator-frame-top-level . nil)))
