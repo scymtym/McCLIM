@@ -1,9 +1,22 @@
-(in-package clim-demo)
+;;; ---------------------------------------------------------------------------
+;;;   License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2018 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate transformed and overlapping patterns.
+
+(in-package #:clim-demo)
 
 (define-application-frame patterns-overlap ()
   ()
   (:menu-bar nil)
-  (:pane :application :display-function #'display :width 125 :height 125 :scroll-bars nil))
+  (:pane :application :display-function #'display
+                      :width            125
+                      :height           125
+                      :scroll-bars      nil))
 
 (defparameter *pat*
   (let ((array (make-array (list 300 300) :initial-element 0))
