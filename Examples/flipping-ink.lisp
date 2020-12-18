@@ -1,10 +1,23 @@
-(in-package clim-demo)
+;;; ---------------------------------------------------------------------------
+;;;   License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2018 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate the effect of flipping ink on different backgrounds.
+
+(in-package #:clim-demo)
 
 (define-application-frame flipping-ink ()
   ()
   ;(:geometry :min-width 100 :min-height 100)
   (:menu-bar nil)
-  (:pane :application :display-function #'display :width 125 :height 125 :scroll-bars nil))
+  (:pane :application :display-function #'display
+                      :width            125
+                      :height           125
+                      :scroll-bars      nil))
 
 (defparameter *ink* (make-flipping-ink +red+ +blue+))
 
