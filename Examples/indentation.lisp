@@ -1,4 +1,15 @@
-(cl:in-package #:clim-demo)
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2019 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2019 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate and test text indentation with `indenting-output'.
+
+(in-package #:clim-demo)
 
 (define-application-frame indentation ()
   ()
