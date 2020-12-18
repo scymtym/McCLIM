@@ -9,7 +9,15 @@
 ;;;
 ;;; Demonstrate and test text indentation with `indenting-output'.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.indentation
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:export
+   #:indentation))
+
+(in-package #:clim-demo.indentation)
 
 (define-application-frame indentation ()
   ()
@@ -19,7 +27,8 @@
    :height 400
    :display-function #'display))
 
-(defmethod display ((frame indentation) pane)
+(defun display (frame pane)
+  (declare (ignore frame))
   (write-string "First line" pane)
   (terpri pane)
 

@@ -122,7 +122,7 @@ name."))
             (make-demo-button "Text transformation" 'clim-demo.text-transformation-test:text-transformation-test)
             (make-demo-button "Text multiline positioning" 'clim-demo.text-multiline-positioning:text-multiline-positioning)
             (make-demo-button "SEOS baseline and wrapping" 'clim-demo.seos-baseline:seos-baseline)
-            (make-demo-button "Indentation" 'indentation)
+            (make-demo-button "Indentation" 'clim-demo.indentation:indentation)
             (make-demo-button "Presentation translators" 'clim-demo.presentation-translators-test:presentation-translators-test)
             (make-demo-button "Graph formatting" 'clim-demo.graph-formatting-test:graph-formatting-test))))))))
 
