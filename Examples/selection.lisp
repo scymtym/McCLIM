@@ -8,7 +8,16 @@
 ;;;
 ;;; Demonstrate interaction with the system clipboard.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.selection-demo
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:export
+   #:selection-demo
+   #:run))
+
+(in-package #:clim-demo.selection-demo)
 
 (define-application-frame selection-demo ()
   ((pasted-element :initform nil :accessor pasted-element)
@@ -29,7 +38,7 @@
                        (200 int))))
   (:pointer-documentation t))
 
-(defmethod display ((frame selection-demo) pane)
+(defun display (frame pane)
   (incf (display-count frame))
   (flet ((show-number (n)
            (format pane "~r" n)))
@@ -61,14 +70,15 @@
     (present (make-instance 'image)))
   (with-translation (pane 575 20)
     (present (make-instance 'image :caption "Figure 1: Glider.") 'figure))
-  (with-temporary-margins (pane :top '(:absolute 150)
-                                :left '(:absolute 450)
-                                :right '(:absolute 750)
-                                :move-cursor nil)
+  (clime:with-temporary-margins (pane :top '(:absolute 150)
+                                      :left '(:absolute 450)
+                                      :right '(:absolute 750)
+                                      :move-cursor nil)
     (setf (stream-cursor-position pane) (values 450 150))
     (present (format nil "Short text (chrzęść Mårt)."))
     (terpri)
-    (present (format nil "This whole text is a string: ~{~R~^, ~}." (alexandria:iota 15 :start 42 :step 6)))
+    (present (format nil "This whole text is a string: ~{~R~^, ~}."
+                     (alexandria:iota 15 :start 42 :step 6)))
     (fresh-line pane)
     (terpri pane)
     (surrounding-output-with-border (pane)
@@ -83,7 +93,7 @@
     (macrolet ((thunk (type)
                  `(formatting-cell (pane)
                     (multiple-value-bind (object ptype)
-                        (request-selection pane (selection-box frame) ,type)
+                        (clime:request-selection pane (selection-box frame) ,type)
                       (if object
                           (present object (or ptype (presentation-type-of object)))
                           (format pane "(nothing)")))))
@@ -125,53 +135,53 @@
 (define-presentation-action copy-integer
     (integer nil selection-demo :gesture :select)
     (object)
-  (publish-selection *standard-output* (selection-box *application-frame*) object 'integer))
+  (clime:publish-selection *standard-output* (selection-box *application-frame*) object 'integer))
 
 (define-presentation-action copy-string
     (string nil selection-demo :gesture :select)
     (object)
-  (publish-selection *standard-output* (selection-box *application-frame*) object 'string))
+  (clime:publish-selection *standard-output* (selection-box *application-frame*) object 'string))
 
 (define-presentation-action copy-figure
     (figure nil selection-demo :gesture :select)
     (object)
-  (publish-selection *standard-output* (selection-box *application-frame*) object 'figure))
+  (clime:publish-selection *standard-output* (selection-box *application-frame*) object 'figure))
 
 (define-presentation-action copy-image
     (image nil selection-demo :gesture :select)
     (object)
-  (publish-selection *standard-output* (selection-box *application-frame*) object 'image))
+  (clime:publish-selection *standard-output* (selection-box *application-frame*) object 'image))
 
 (define-presentation-action copy-float
     (float nil selection-demo :gesture :select)
     (object)
-  (publish-selection *standard-output* (selection-box *application-frame*) object 'float))
+  (clime:publish-selection *standard-output* (selection-box *application-frame*) object 'float))
 
-(define-selection-translator int->float
+(clime:define-selection-translator int->float
     (integer float global-command-table) (object)
   (coerce object 'float))
 
-(define-selection-translator figure->int
+(clime:define-selection-translator figure->int
     (figure integer global-command-table) (object)
   (values 31337 'integer))
 
-(define-selection-translator image->int
+(clime:define-selection-translator image->int
     (image integer global-command-table) (object)
   42)
 
-(define-selection-translator int->string
+(clime:define-selection-translator int->string
     (integer string global-command-table) (object)
   (format nil "~d" object))
 
-(define-selection-translator figure->html
+(clime:define-selection-translator figure->html
     (figure :|text/html| global-command-table) (object)
   (format nil "<figure>magic pufff</figure>"))
 
-(define-selection-translator html->float
+(clime:define-selection-translator html->float
     (:|text/html| float global-command-table) (object)
   3.471111)
 
-(define-selection-translator float->html
+(clime:define-selection-translator float->html
     (float :|text/html| global-command-table) (object)
   (format nil "<float>~s</float>" object))
 
@@ -180,28 +190,28 @@
   (declare (ignore args))
   (parse-integer obj :junk-allowed t))
 
-(define-selection-translator string->int
+(clime:define-selection-translator string->int
     (string integer global-command-table :tester test--string->int) (object)
   (values (parse-integer object :junk-allowed t) 'integer))
 
-(define-selection-translator figure->string
+(clime:define-selection-translator figure->string
     (figure string global-command-table) (object)
   (caption object))
 
-(define-selection-translator figure->image
+(clime:define-selection-translator figure->image
     (figure image global-command-table) (object)
   object)
 
 (define-selection-demo-command (com-paste :menu t) ()
   (setf (pasted-element *application-frame*)
-        (request-selection *standard-output* (selection-box *application-frame*) t)))
+        (clime:request-selection *standard-output* (selection-box *application-frame*) t)))
 
 (define-selection-demo-command (com-print-integer :name t)
     ((a integer))
   (format *standard-input* "integer: ~a" a))
 
-;; (defun cl-user::run ()
-;;   (run-frame-top-level
-;;    (make-application-frame 'selection-demo)))
-
-;; (bt:make-thread #'cl-user::run)
+(defun run (&key new-process)
+  (let ((frame (make-application-frame 'selection-demo)))
+    (if new-process
+        (bt:make-thread (lambda () (run-frame-top-level frame)))
+        (run-frame-top-level frame))))
