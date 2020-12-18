@@ -8,7 +8,15 @@
 ;;;
 ;;; Demonstrate the positioning of multiline text.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.text-multiline-positioning
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:export
+   #:text-multiline-positioning))
+
+(in-package #:clim-demo.text-multiline-positioning)
 
 (define-application-frame text-multiline-positioning ()
   ()
@@ -16,22 +24,22 @@
   (:pane :application :display-function #'display :scroll-bars nil))
 
 (defun draw-lazy (pane align-x align-y)
-  (let* ((string* (format nil
-                          "~A~%~A~%~A~%~A~%~%~s~%~A"
-                          "First line of text."
-                          "The quick brown fox jumps over"
-                          "the lazy dog. Belive it or not."
-                          "Below is an empty line:"
-                          ;; <intentionally empty>
-                          (list :align-x align-x :align-y align-y)
-                          "Last line of text. ytmMΣ音!")))
+  (let ((string* (format nil "First line of text.~@
+                              The quick brown fox jumps over~@
+                              the lazy dog. Belive it or not.~@
+                              Below is an empty line:~@
+                              ~@
+                              ~s~@
+                              Last line of text. ytmMΣ音!"
+                         (list :align-x align-x :align-y align-y))))
     ;; XXX: surrounding-output-with-border makes transformed text drawing MANY
     ;; times slower when replaying. This may be indicator, that we redraw things
     ;; too much when we manipulate output records. Also for some reason border
     ;; is a little off despite text-bounding-rectangle* being correct (uncomment
     ;; Core/clim-basic/recording.lisp:draw-text for a hack which shows the
     ;; bounding rectangle).
-    (surrounding-output-with-border (pane :line-dashes t :line-thickness 1
+    (surrounding-output-with-border (pane :line-dashes t
+                                          :line-thickness 1
                                           :padding-x 0
                                           :padding-y 0)
       (draw-text* pane string* 0 0 :transform-glyphs t
@@ -40,13 +48,14 @@
     (draw-line* pane 0 -5 0 5 :ink +blue+ :line-thickness 1)
     (draw-rectangle* pane -1 -1 2 2 :ink +dark-red+)))
 
-(defmethod display ((frame text-multiline-positioning) pane)
+(defun display (frame pane)
+  (declare (ignore frame))
   (with-drawing-options (pane :text-style (make-text-style nil nil 12)
                               ;; this is also good, but the test is more clear
                               ;; to understand without transformations.
                               #|:transformation (make-rotation-transformation (/ pi 4))|#)
-    (let* ((align-x '((:left . 50) (:center  . 425) (:right  . 800)))
-           (align-y '((:top  . 50)  (:center . 250) (:bottom . 450)))
+    (let* ((align-x '((:left . 50) (:center . 425) (:right  . 800)))
+           (align-y '((:top  . 50) (:center . 250) (:bottom . 450)))
            (align-xy '((:left :baseline 50 650)
                        (:center :baseline* 425 650)
                        (:right :baseline 800 650)))
