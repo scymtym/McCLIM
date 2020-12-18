@@ -8,7 +8,16 @@
 ;;;
 ;;; Demonstrate line and page wrapping modes when outputting text.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.seos-baseline
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:export
+   #:seos-baseline
+   #:run))
+
+(in-package #:clim-demo.seos-baseline)
 
 (define-application-frame seos-baseline ()
   ()
@@ -19,18 +28,18 @@
          :display-function #'display
          :end-of-line-action :allow
          :end-of-page-action :allow
-         :text-margins '(:left (:absolute 30)
-                         :right (:relative 30)
-                         :top (:relative 30)
+         :text-margins '(:left   (:absolute 30)
+                         :right  (:relative 30)
+                         :top    (:relative 30)
                          :bottom (:absolute 370))))
 
 (defun show-line (stream &rest args)
-  (loop for (size text) on args by #'cddr do
-       (with-drawing-options (stream :text-size size)
-         (format stream text)))
+  (loop for (size text) on args by #'cddr
+        do (with-drawing-options (stream :text-size size)
+             (format stream text)))
   (terpri stream))
 
-(defmethod display ((frame seos-baseline) pane)
+(defun display (frame pane)
   (declare (ignore frame))
   (show-line pane :normal "Hello " :huge "world!")
   (show-line pane
@@ -64,11 +73,11 @@ See the introduction in \"15.3 The Text Cursor\"."
                :ink +red+ :line-dashes t :filled nil))
 
 (define-seos-baseline-command (com-redisplay :keystroke #\space) ()
-  (schedule-event *standard-output*
-                  (make-instance 'window-repaint-event
-                                 :region +everywhere+
-                                 :sheet *standard-output*)
-                  1))
+  (clime:schedule-event *standard-output*
+                        (make-instance 'window-repaint-event
+                                       :region +everywhere+
+                                       :sheet *standard-output*)
+                        1))
 
 (make-command-table 'seos-command-table
                     :errorp nil
@@ -107,4 +116,5 @@ See the introduction in \"15.3 The Text Cursor\"."
 (define-seos-baseline-command (com-wrap-page :keystroke #\e) ()
   (setf (stream-end-of-page-action *standard-output*) :wrap))
 
-;(run-frame-top-level (make-application-frame 'seos-baseline))
+(defun run ()
+  (run-frame-top-level (make-application-frame 'seos-baseline)))
