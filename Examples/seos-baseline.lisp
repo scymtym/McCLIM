@@ -1,3 +1,12 @@
+;;; ---------------------------------------------------------------------------
+;;;   License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2019 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate line and page wrapping modes when outputting text.
 
 (in-package #:clim-demo)
 
