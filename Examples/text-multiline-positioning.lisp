@@ -1,3 +1,13 @@
+;;; ---------------------------------------------------------------------------
+;;;   License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2018 Daniel Kochmanski <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate the positioning of multiline text.
+
 (in-package #:clim-demo)
 
 (define-application-frame text-multiline-positioning ()
@@ -24,15 +34,13 @@
     (surrounding-output-with-border (pane :line-dashes t :line-thickness 1
                                           :padding-x 0
                                           :padding-y 0)
-      (clim:draw-text* pane string*
-                       0 0 :transform-glyphs t
-                       :align-x align-x :align-y align-y))
-    (clim:draw-line* pane -5 0 5 0 :ink +blue+ :line-thickness 1)
-    (clim:draw-line* pane 0 -5 0 5 :ink +blue+ :line-thickness 1)
-    (clim:draw-rectangle* pane -1 -1 2 2 :ink +dark-red+)))
+      (draw-text* pane string* 0 0 :transform-glyphs t
+                                   :align-x align-x :align-y align-y))
+    (draw-line* pane -5 0 5 0 :ink +blue+ :line-thickness 1)
+    (draw-line* pane 0 -5 0 5 :ink +blue+ :line-thickness 1)
+    (draw-rectangle* pane -1 -1 2 2 :ink +dark-red+)))
 
 (defmethod display ((frame text-multiline-positioning) pane)
-
   (with-drawing-options (pane :text-style (make-text-style nil nil 12)
                               ;; this is also good, but the test is more clear
                               ;; to understand without transformations.
