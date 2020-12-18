@@ -8,14 +8,23 @@
 ;;;
 ;;; Demonstrate outputting transformed text.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.text-transformation-test
+  (:use
+   #:clim-lisp
+   #:clim)
 
-(define-application-frame text-transformations-test ()
+  (:export
+   #:text-transformation-test))
+
+(in-package #:clim-demo.text-transformation-test)
+
+(define-application-frame text-transformation-test ()
   ()
   (:menu-bar nil)
   (:pane :application :display-function #'display :scroll-bars nil))
 
-(defmethod display ((frame text-transformations-test) pane)
+(defun display (frame pane)
+  (declare (ignore frame))
   (let* ((string "aTΣ音◌᷉")
          (y-offset 75)
          (x-offset 75)
@@ -48,9 +57,8 @@
                                                    (* 8 x-offset) (/ y-offset 2))
                                   :text-style text-style)
         (draw-point* pane 0 0 :ink +blue+ :line-thickness 10)
-        ;; XXX: two ~%~% cause error (empty line)
         (let ((string "The quick brown fox jumps over the lazy dog"))
-          (draw-text* pane (format nil "~A~%~A~%~A" string string string)
+          (draw-text* pane (format nil "~A~%~A~2%~A" string string string)
                       0 0 :transform-glyphs t :ink +dark-red+))
         (draw-line* pane 0 0 500 0))
 
@@ -140,4 +148,4 @@
                                         :toward-x dx
                                         :toward-y dy)))))))
 
-(define-text-transformations-test-command (com-refresh-text-transform :keystroke #\space) ())
+(define-text-transformation-test-command (com-refresh-text-transform :keystroke #\space) ())
