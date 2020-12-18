@@ -1,3 +1,13 @@
+;;; ---------------------------------------------------------------------------
+;;;   License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2019 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate interaction with the system clipboard.
+
 (in-package #:clim-demo)
 
 (define-application-frame selection-demo ()
