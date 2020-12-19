@@ -1,3 +1,14 @@
+;;; ---------------------------------------------------------------------------
+;;;   License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2017 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate the combination of the macros `foramtting-table' and
+;;; `surrounding-output-with-border'.
+
 (in-package #:clim-demo)
 
 (define-application-frame table-demo ()
@@ -38,7 +49,6 @@
        (progn ,@body)))
 
 (defmethod display ((frame table-demo) pane)
-  (declare (ignorable frame))
   (setf (stream-cursor-position pane) (values 100 100))
   (with-text-family (pane :fix)
     (formatting-table (pane :x-spacing 20 :y-spacing 5)
@@ -65,7 +75,7 @@
                                                     'table-coordinates
                                                     :single-box t)
                    (format pane "row ~s, cell ~s" row cell)))))))))
-    (terpri)
+    (terpri pane)
     (multiple-value-bind (x y) (stream-cursor-position pane)
       (declare (ignore x))
       (setf (stream-cursor-position pane) (values 100 y)))
