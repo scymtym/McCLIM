@@ -42,11 +42,6 @@ denoted by this symbol."
         (run-frame-top-level frame))
     frame))
 
-(defgeneric display (frame pane)
-  (:documentation "Generic method meant to be specialized at least on
-the first argument to avoid creating too many functions with similar
-name."))
-
 (define-application-frame demodemo ()
   ()
   (:menu-bar nil)
