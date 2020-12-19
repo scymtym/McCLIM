@@ -1,6 +1,12 @@
-;;;;  Copyright (c) 2019 Daniel Kochmański
-;;;;
-;;;;    License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;   License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2019 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Demonstrate uses of the `tracking-pointer' macro.
 
 (in-package #:clim-demo)
 
@@ -33,64 +39,66 @@ all clauses "active" in this test.
           (app2 :application :display-function #'display)
           (int  :interactor))
   (:pointer-documentation t)
-  (:layouts (default (vertically ()
-                       (horizontally ()
-                         (labelling (:label "app1 (application)") app1)
-                         (labelling (:label "app2 (application)") app2))
-                       (horizontally ()
-                         (labelling (:label "pane (basic pane)") pane)
-                         (labelling (:label "int  (interactor)") int))
-                       ;; All below gadgets should be replacable with
-                       ;; accepting-values.
-                       (horizontally ()
-                         (labelling (:label "Presentations")
-                           (with-radio-box (:value-changed-callback
-                                            (lambda (g v)
-                                              (declare (ignore g))
-                                              (setf (context-type *application-frame*)
-                                                    (alexandria:switch (v :test #'string=
-                                                                          :key #'gadget-label)
-                                                      ("every" t)
-                                                      ("none" nil)
-                                                      ("blank" 'blank-area)
-                                                      ("integer" 'integer)
-                                                      ("(or foo string)" '(or foo string))
-                                                      ("foo" 'foo)))))
-                             "every" "none" "blank" "integer" "(or foo string)" "foo"))
-                         (vertically ()
-                           (labelling (:label "Tracked sheet")
-                             (with-radio-box (:value-changed-callback
-                                              (lambda (g v)
-                                                (declare (ignore g))
-                                                (setf (tracked-sheet *application-frame*)
-                                                      (alexandria:switch (v :test #'string=
-                                                                            :key #'gadget-label)
-                                                        ("app1" 'app1)
-                                                        ("app2" 'app2)
-                                                        ("pane" 'pane)
-                                                        ("int" 'int)))))
-                               "app1" "app2" "int" "pane"))
-                           (make-pane :toggle-button :label "Multiple Window" :value t
-                                      :value-changed-callback
-                                      (lambda (gadget value)
-                                        (declare (ignore gadget))
-                                        (setf (multiple-window-p *application-frame*) value)))
-                           (make-pane :toggle-button :label "Transformp" :value t
-                                      :value-changed-callback
-                                      (lambda (gadget value)
-                                        (declare (ignore gadget))
-                                        (setf (transformp *application-frame*) value)))
-                           (make-pane :toggle-button :label "Repaint damaged" :value t
-                                      :value-changed-callback
-                                      (lambda (gadget value)
-                                        (declare (ignore gadget))
-                                        (setf (repaintp *application-frame*) value)))
-                           (make-pane 'push-button :label "Track pointer"
-                                      :activate-callback
-                                      (lambda (gadget)
-                                        (declare (ignore gadget))
-                                        (execute-frame-command *application-frame*
-                                                               '(track-pointer))))))))))
+  (:layouts
+   (default
+    (vertically ()
+      (horizontally ()
+        (labelling (:label "app1 (application)") app1)
+        (labelling (:label "app2 (application)") app2))
+      (horizontally ()
+        (labelling (:label "pane (basic pane)") pane)
+        (labelling (:label "int  (interactor)") int))
+      ;; All below gadgets should be replacable with
+      ;; accepting-values.
+      (horizontally ()
+        (labelling (:label "Presentations")
+          (with-radio-box (:value-changed-callback
+                           (lambda (g v)
+                             (declare (ignore g))
+                             (setf (context-type *application-frame*)
+                                   (alexandria:switch (v :test #'string=
+                                                         :key #'gadget-label)
+                                     ("every" t)
+                                     ("none" nil)
+                                     ("blank" 'blank-area)
+                                     ("integer" 'integer)
+                                     ("(or foo string)" '(or foo string))
+                                     ("foo" 'foo)))))
+            "every" "none" "blank" "integer" "(or foo string)" "foo"))
+        (vertically ()
+          (labelling (:label "Tracked sheet")
+            (with-radio-box (:value-changed-callback
+                             (lambda (g v)
+                               (declare (ignore g))
+                               (setf (tracked-sheet *application-frame*)
+                                     (alexandria:switch (v :test #'string=
+                                                           :key #'gadget-label)
+                                       ("app1" 'app1)
+                                       ("app2" 'app2)
+                                       ("pane" 'pane)
+                                       ("int" 'int)))))
+              "app1" "app2" "int" "pane"))
+          (make-pane :toggle-button :label "Multiple Window" :value t
+                                    :value-changed-callback
+                                    (lambda (gadget value)
+                                      (declare (ignore gadget))
+                                      (setf (multiple-window-p *application-frame*) value)))
+          (make-pane :toggle-button :label "Transformp" :value t
+                                    :value-changed-callback
+                                    (lambda (gadget value)
+                                      (declare (ignore gadget))
+                                      (setf (transformp *application-frame*) value)))
+          (make-pane :toggle-button :label "Repaint damaged" :value t
+                                    :value-changed-callback
+                                    (lambda (gadget value)
+                                      (declare (ignore gadget))
+                                      (setf (repaintp *application-frame*) value)))
+          (make-pane 'push-button :label "Track pointer"
+                                  :activate-callback
+                                  (lambda (gadget)
+                                    (declare (ignore gadget))
+                                    (execute-frame-command *application-frame*
+                                                           '(track-pointer))))))))))
 
 (define-presentation-type foo ())
 
