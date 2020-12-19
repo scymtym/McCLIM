@@ -1,20 +1,24 @@
-;;;;  Copyright (c) 2019 Daniel Kochmański
-;;;;
-;;;;    License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;   License: License: BSD-2-Clause.
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2019 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; This demo demonstrates a few ways how drag-and-drop behavior could
+;;; be added to an application.
 
-;;;  In this demo I'm going to present a few ways how drag-and-drop
-;;;  behavior could be added to the application.
-
-
 (defpackage #:clim-demo.drag-and-drop-example
   (:use #:clim-lisp #:clim)
   (:export #:dnd-commented))
+
 (in-package #:clim-demo.drag-and-drop-example)
 
 
-;;;  CUSTOM-PANE is built outside of CLIM abstractions which are
-;;;  arranged around streams and output records. It will draft how
-;;;  drag-and-drop could be implemented from scratch.
+;;; CUSTOM-PANE is built outside of CLIM abstractions which are
+;;; arranged around streams and output records. It will draft how
+;;; drag-and-drop could be implemented from scratch.
 (defclass custom-pane (basic-pane clime:always-repaint-background-mixin)
   ((pos-x :initform 50)
    (pos-y :initform 50)
@@ -96,7 +100,6 @@
                (horizontally ()
                  (labelling (:label "Interactor")   int)
                  (labelling (:label "Description")  hlp))))))
-
 
 (defun show-help (frame stream)
   (declare (ignore frame))
@@ -218,7 +221,6 @@ any presentation in tracking-pointer and check type as we go.")))
   (let ((cursor-state :motion)
         (damaged-sheet nil)
         (damaged-region +nowhere+))
-
     (labels ((draw-cursor-state (&optional new-state)
                (when new-state
                  (setf cursor-state new-state))
@@ -245,52 +247,43 @@ any presentation in tracking-pointer and check type as we go.")))
       (let ((tracked-sheet (find-pane-named *application-frame* 'scr)))
         (tracking-pointer (tracked-sheet :context-type '(or what-1 what-2 what-acceptor)
                                          :multiple-window multi)
-          (:pointer-button-press
-           (&key event x y)
-           (draw-cursor-state :clicked)
-           (draw-cursor (event-sheet event) x y))
-          (:pointer-button-release
-           (&key event x y)
-           (draw-cursor-state :motion)
-           (draw-cursor (event-sheet event) x y))
-          (:pointer-motion
-           (&key window x y)
-           (draw-cursor window x y))
-          (:presentation-button-press
-           (&key presentation event x y)
-           (when (presentation-subtypep (presentation-type presentation) '(or what-1 what-2))
-             (draw-cursor-state :dragging))
-           (draw-cursor (event-sheet event) x y))
-          (:presentation-button-release
-           (&key presentation event x y)
-           (when (presentation-subtypep (presentation-type presentation) 'what-acceptor)
-             #|do something|#)
-           (draw-cursor-state :motion)
-           (draw-cursor (event-sheet event) x y))
-          (:presentation
-           (&key presentation window x y)
-           (draw-cursor window x y)
-           (with-bounding-rectangle* (x1 y1 x2 y2) presentation
-             (let ((dx (/ (+ x1 x2) 2))
-                   (dy (/ (+ y1 y2) 2)))
-               (with-output-recording-options (window :record nil)
-                 (draw-arrow* window (+ dx 32) (+ dy 32) dx dy :ink +red+ :line-thickness 2))
-               (let ((rect (make-rectangle* dx dy (+ dx 32) (+ dy 32))))
-                 (damage-region rect)))))
-          (:keyboard
-           (&key gesture)
-           (case (keyboard-event-character gesture)
-             (#\space
-              (window-clear *pointer-documentation-output*)
-              (return-from com-pointer-tracking-internal)))))))))
+          (:pointer-button-press (&key event x y)
+            (draw-cursor-state :clicked)
+            (draw-cursor (event-sheet event) x y))
+          (:pointer-button-release (&key event x y)
+            (draw-cursor-state :motion)
+            (draw-cursor (event-sheet event) x y))
+          (:pointer-motion (&key window x y)
+            (draw-cursor window x y))
+          (:presentation-button-press (&key presentation event x y)
+            (when (presentation-subtypep (presentation-type presentation) '(or what-1 what-2))
+              (draw-cursor-state :dragging))
+            (draw-cursor (event-sheet event) x y))
+          (:presentation-button-release (&key presentation event x y)
+            (when (presentation-subtypep (presentation-type presentation) 'what-acceptor)
+              #|do something|#)
+            (draw-cursor-state :motion)
+            (draw-cursor (event-sheet event) x y))
+          (:presentation (&key presentation window x y)
+            (draw-cursor window x y)
+            (with-bounding-rectangle* (x1 y1 x2 y2) presentation
+              (let ((dx (/ (+ x1 x2) 2))
+                    (dy (/ (+ y1 y2) 2)))
+                (with-output-recording-options (window :record nil)
+                  (draw-arrow* window (+ dx 32) (+ dy 32) dx dy :ink +red+ :line-thickness 2))
+                (let ((rect (make-rectangle* dx dy (+ dx 32) (+ dy 32))))
+                  (damage-region rect)))))
+          (:keyboard (&key gesture)
+            (case (keyboard-event-character gesture)
+              (#\space
+               (window-clear *pointer-documentation-output*)
+               (return-from com-pointer-tracking-internal)))))))))
 
-(define-dnd-commented-command
-    (com-pointer-tracking :menu t)
+(define-dnd-commented-command (com-pointer-tracking :menu t)
     ()
   (com-pointer-tracking-internal t))
 
-(define-dnd-commented-command
-    (com-pointer-tracking* :menu t)
+(define-dnd-commented-command (com-pointer-tracking* :menu t)
     ()
   (com-pointer-tracking-internal nil))
 
@@ -350,6 +343,7 @@ any presentation in tracking-pointer and check type as we go.")))
               :text-size :normal :ink +dark-blue+))
 
 ;;; dragging-output macro
+
 (define-presentation-type cross ())
 (define-presentation-type cross* ())
 
@@ -378,6 +372,7 @@ any presentation in tracking-pointer and check type as we go.")))
 
 
 ;;; drag-and-drop translators
+
 (define-drag-and-drop-translator drag-figure (figure command figure-basket dnd-commented)
     (object destination-object)
   `(com-print-string ,(format nil "~s -> ~s" object destination-object)))
@@ -410,7 +405,8 @@ any presentation in tracking-pointer and check type as we go.")))
   `(com-print-string ,(format nil "~s -> ~s" object destination-object)))
 
 
-(defmethod display ((frame dnd-commented) pane)
+(defun display (frame pane)
+  (declare (ignore frame))
   (with-translation (pane 10 10)
     (dotimes (i 3)
       (dotimes (j 3)
@@ -441,16 +437,15 @@ any presentation in tracking-pointer and check type as we go.")))
   (with-translation (pane 200 130)
     (present (gensym "cross") 'cross :stream pane))
 
-  (loop
-     for y from 210 by 50
-     for basket in '(what-acceptor
-                     grey-circle-acceptor
-                     sideless-figure-acceptor
-                     basket
-                     figure-basket
-                     square-basket
-                     circle-basket
-                     triangle-basket
-                     sideful-figure-basket)
-     do (with-translation (pane 10 y)
-          (present basket basket :stream pane :single-box t))))
+  (loop for y from 210 by 50
+        for basket in '(what-acceptor
+                        grey-circle-acceptor
+                        sideless-figure-acceptor
+                        basket
+                        figure-basket
+                        square-basket
+                        circle-basket
+                        triangle-basket
+                        sideful-figure-basket)
+        do (with-translation (pane 10 y)
+             (present basket basket :stream pane :single-box t))))
