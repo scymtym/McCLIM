@@ -9,7 +9,15 @@
 ;;; Demonstrate the combination of the macros `foramtting-table' and
 ;;; `surrounding-output-with-border'.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.table-demo
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:export
+   #:table-demo))
+
+(in-package #:clim-demo.table-demo)
 
 (define-application-frame table-demo ()
   ((tab1-active-row  :initform nil :accessor active-row1)
@@ -48,7 +56,7 @@
        (surrounding-output-with-border ,options ,@body)
        (progn ,@body)))
 
-(defmethod display ((frame table-demo) pane)
+(defun display (frame pane)
   (setf (stream-cursor-position pane) (values 100 100))
   (with-text-family (pane :fix)
     (formatting-table (pane :x-spacing 20 :y-spacing 5)
@@ -104,5 +112,5 @@
                                                      :single-box t)
                     (format pane "col ~s, cell ~s" column cell)))))))))))
 
-(defun tabledemo ()
+(defun table-demo ()
   (run-frame-top-level (make-application-frame 'table-demo)))

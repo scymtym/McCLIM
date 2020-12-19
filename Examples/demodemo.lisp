@@ -112,7 +112,7 @@ name."))
             (make-demo-button "Coordinate swizzling"
                               'clim-demo.coord-swizzling:coordinate-swizzling)
             (make-demo-button "Scroll Test 2" 'Scroll-test-2)
-            (make-demo-button "Tables with borders" 'table-demo)
+            (make-demo-button "Tables with borders" 'clim-demo.table-demo:table-demo)
             (make-demo-button "Menu Test"  'clim-demo.menu-test:menu-test)
             (make-demo-button "Drag and Drop" 'dragndrop)
             (make-demo-button "Pane hierarchy viewer" 'clim-demo.hierarchy:hierarchy)
