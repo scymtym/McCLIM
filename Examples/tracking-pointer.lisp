@@ -8,7 +8,15 @@
 ;;;
 ;;; Demonstrate uses of the `tracking-pointer' macro.
 
-(in-package #:clim-demo)
+(defpackage #:clim-demo.tracking-pointer
+  (:use
+   #:clim-lisp
+   #:clim)
+
+  (:export
+   #:tracking-pointer))
+
+(in-package #:clim-demo.tracking-pointer)
 
 #|
 This test would be far more complete if we had one more control box
@@ -26,7 +34,7 @@ all clauses "active" in this test.
   "keyboard")
 |#
 
-(define-application-frame tracking-pointer-test ()
+(define-application-frame tracking-pointer ()
   ((multiple-window-p :initform t :accessor multiple-window-p)
    (transformp :initform t :accessor transformp)
    (repaintp :initform t :accessor repaintp)
@@ -44,7 +52,7 @@ all clauses "active" in this test.
     (vertically ()
       (horizontally ()
         (labelling (:label "app1 (application)") app1)
-        (labelling (:label "app2 (application)") app2))
+        (labelling (:label "app2 (application with transformation)") app2))
       (horizontally ()
         (labelling (:label "pane (basic pane)") pane)
         (labelling (:label "int  (interactor)") int))
@@ -53,11 +61,10 @@ all clauses "active" in this test.
       (horizontally ()
         (labelling (:label "Presentations")
           (with-radio-box (:value-changed-callback
-                           (lambda (g v)
-                             (declare (ignore g))
-                             (setf (context-type *application-frame*)
-                                   (alexandria:switch (v :test #'string=
-                                                         :key #'gadget-label)
+                           (lambda (gadget value)
+                             (setf (context-type (gadget-client gadget))
+                                   (alexandria:switch (value :test #'string=
+                                                             :key #'gadget-label)
                                      ("every" t)
                                      ("none" nil)
                                      ("blank" 'blank-area)
@@ -65,44 +72,42 @@ all clauses "active" in this test.
                                      ("(or foo string)" '(or foo string))
                                      ("foo" 'foo)))))
             "every" "none" "blank" "integer" "(or foo string)" "foo"))
-        (vertically ()
-          (labelling (:label "Tracked sheet")
-            (with-radio-box (:value-changed-callback
-                             (lambda (g v)
-                               (declare (ignore g))
-                               (setf (tracked-sheet *application-frame*)
-                                     (alexandria:switch (v :test #'string=
-                                                           :key #'gadget-label)
-                                       ("app1" 'app1)
-                                       ("app2" 'app2)
-                                       ("pane" 'pane)
-                                       ("int" 'int)))))
-              "app1" "app2" "int" "pane"))
-          (make-pane :toggle-button :label "Multiple Window" :value t
-                                    :value-changed-callback
-                                    (lambda (gadget value)
-                                      (declare (ignore gadget))
-                                      (setf (multiple-window-p *application-frame*) value)))
-          (make-pane :toggle-button :label "Transformp" :value t
-                                    :value-changed-callback
-                                    (lambda (gadget value)
-                                      (declare (ignore gadget))
-                                      (setf (transformp *application-frame*) value)))
-          (make-pane :toggle-button :label "Repaint damaged" :value t
-                                    :value-changed-callback
-                                    (lambda (gadget value)
-                                      (declare (ignore gadget))
-                                      (setf (repaintp *application-frame*) value)))
-          (make-pane 'push-button :label "Track pointer"
-                                  :activate-callback
-                                  (lambda (gadget)
-                                    (declare (ignore gadget))
-                                    (execute-frame-command *application-frame*
-                                                           '(track-pointer))))))))))
+        (labelling (:label "Tracked Sheet")
+          (with-radio-box (:value-changed-callback
+                           (lambda (gadget value)
+                             (setf (tracked-sheet (gadget-client gadget))
+                                   (alexandria:switch (value :test #'string=
+                                                             :key #'gadget-label)
+                                     ("app1" 'app1)
+                                     ("app2" 'app2)
+                                     ("pane" 'pane)
+                                     ("int" 'int)))))
+            "app1" "app2" "int" "pane"))
+        (labelling (:label "Tracking Options")
+          (vertically ()
+            (make-pane :toggle-button :label "Multiple Window" :value t
+                                      :value-changed-callback
+                                      (lambda (gadget value)
+                                        (setf (multiple-window-p (gadget-client gadget)) value)))
+            (make-pane :toggle-button :label "Transformp" :value t
+                                      :value-changed-callback
+                                      (lambda (gadget value)
+                                        (setf (transformp (gadget-client gadget)) value)))
+            (make-pane :toggle-button :label "Repaint Damaged" :value t
+                                      :value-changed-callback
+                                      (lambda (gadget value)
+                                        (setf (repaintp (gadget-client gadget)) value)))
+            :fill
+            (make-pane 'push-button :label "Track Pointer"
+                                    :activate-callback
+                                    (lambda (gadget)
+                                      (execute-frame-command
+                                       (gadget-client gadget) '(track-pointer)))))))))))
 
 (define-presentation-type foo ())
 
-(defmethod display ((frame tracking-pointer-test) pane)
+(defun display (frame pane)
+  (declare (ignore frame))
   (when (eql (pane-name pane) 'app2)
     (setf (medium-transformation (sheet-medium pane))
           (make-scaling-transformation* 2 2))
@@ -122,55 +127,53 @@ all clauses "active" in this test.
 (defun make-draw-cursor-function ()
   (let ((last-sheet nil)
         (last-region nil))
-    (lambda (window x y id)
-      (when (and (repaintp *application-frame*) last-sheet)
-        (handle-repaint last-sheet (or last-region +everywhere+)))
-      (if (output-recording-stream-p window)
-          (with-output-recording-options (window :record nil)
-            (draw-point* window x y :line-thickness 32)
-            (draw-point* window x y :line-thickness 24 :ink +red+))
-          (progn
-            (draw-point* window x y :line-thickness 32)
-            (draw-point* window x y :line-thickness 24 :ink +red+)))
-      (setf last-sheet window
-            last-region (make-rectangle* (- x 16) (- y 16)
-                                         (+ x 16) (+ y 16)))
-      (window-clear *pointer-documentation-output*)
-      (format *pointer-documentation-output* "Press SPACE to exit.~%")
-      (format *pointer-documentation-output* "Window: ~4a, Clause ID: ~s.~%" (pane-name window) id)
-      (finish-output *pointer-documentation-output*))))
+    (lambda (window x y id &key presentation)
+      (with-identity-transformation (window)
+        (when (and (repaintp *application-frame*) last-sheet)
+          (handle-repaint last-sheet (or last-region +everywhere+)))
+        (flet ((draw-it ()
+                 (draw-point* window x y :line-thickness 16)
+                 (draw-point* window x y :line-thickness 12 :ink +red+)))
+          (if (output-recording-stream-p window)
+              (with-output-recording-options (window :record nil)
+                (draw-it))
+              (draw-it)))
+        (setf last-sheet window
+              last-region (make-rectangle* (- x 8) (- y 8)
+                                           (+ x 8) (+ y 8))))
+      (let ((stream *pointer-documentation-output*))
+        (window-clear stream)
+        (format stream "Press SPACE to exit.~@
+                        Window: ~4A, Clause ID: ~A~@[, Presentation: ~A~]"
+                (pane-name window) id (when presentation
+                                        (presentation-type-name
+                                         (presentation-type presentation))))
+        (finish-output stream)))))
 
-(define-tracking-pointer-test-command (track-pointer :name t) ()
-  (let* ((tracked-sheet (find-pane-named *application-frame* (tracked-sheet *application-frame*)))
+(define-tracking-pointer-command (track-pointer :name t) ()
+  (let* ((frame *application-frame*)
+         (tracked-sheet (find-pane-named frame (tracked-sheet frame)))
          (draw-cursor (make-draw-cursor-function)))
-    (tracking-pointer (tracked-sheet :multiple-window (multiple-window-p *application-frame*)
-                                     :transformp (transformp *application-frame*)
+    (tracking-pointer (tracked-sheet :multiple-window (multiple-window-p frame)
+                                     :transformp (transformp frame)
                                      :highlight t
-                                     :context-type (context-type *application-frame*))
-      (:pointer-motion
-       (&key window x y)
-       (funcall draw-cursor window x y :pointer-motion))
-      (:pointer-button-press
-       (&key event x y)
-       (funcall draw-cursor (event-sheet event) x y :pointer-button-press))
-      (:pointer-button-release
-       (&key event x y)
-       (funcall draw-cursor (event-sheet event) x y :pointer-button-release))
-      (:presentation
-       (&key presentation window x y)
-       (declare (ignore presentation))
-       (funcall draw-cursor window x y :presentation))
-      (:presentation-button-press
-       (&key presentation event x y)
-       (declare (ignore presentation event x y)))
-      (:presentation-button-release
-       (&key presentation event x y)
-       (declare (ignore presentation event x y)))
-      (:keyboard
-       (&key gesture)
-       ;; when gesture is a space then it should be already character.
-       (when (eventp gesture)
-         (setq gesture (keyboard-event-character gesture)))
-       (when (eql gesture #\space)
-         (window-clear *pointer-documentation-output*)
-         (return-from track-pointer))))))
+                                     :context-type (context-type frame))
+      (:pointer-motion (&key window x y)
+        (funcall draw-cursor window x y :pointer-motion))
+      (:pointer-button-press (&key event x y)
+        (funcall draw-cursor (event-sheet event) x y :pointer-button-press))
+      (:pointer-button-release (&key event x y)
+        (funcall draw-cursor (event-sheet event) x y :pointer-button-release))
+      (:presentation (&key presentation window x y)
+        (funcall draw-cursor window x y :presentation :presentation presentation))
+      (:presentation-button-press (&key presentation event x y)
+        (declare (ignore presentation event x y)))
+      (:presentation-button-release (&key presentation event x y)
+        (declare (ignore presentation event x y)))
+      (:keyboard (&key gesture)
+        ;; when gesture is a space then it should be already character.
+        (when (eventp gesture)
+          (setq gesture (keyboard-event-character gesture)))
+        (when (eql gesture #\space)
+          (window-clear *pointer-documentation-output*)
+          (return-from track-pointer))))))
