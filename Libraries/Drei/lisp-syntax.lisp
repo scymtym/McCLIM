@@ -2157,10 +2157,6 @@ cannot be found, return nil."
       (delete-region start mark)
       t)))
 
-(defgeneric forward-one-list (mark syntax)
-  (:documentation "Move `mark' forward by one list.
-Return T if successful, or NIL if the buffer limit was reached."))
-
 (defmethod forward-one-list (mark (syntax lisp-syntax))
   (update-parse syntax 0 (offset mark))
   (loop for start = (offset mark)
@@ -2174,10 +2170,6 @@ Return T if successful, or NIL if the buffer limit was reached."))
      when (form-list-p potential-form)
      do (setf (offset mark) (end-offset potential-form))
      (return t)))
-
-(defgeneric backward-one-list (mark syntax)
-  (:documentation "Move `mark' backward by one list.  Return T if
-successful, or NIL if the buffer limit was reached."))
 
 (defmethod backward-one-list (mark (syntax lisp-syntax))
   (update-parse syntax 0 (offset mark))
