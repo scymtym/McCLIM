@@ -1,22 +1,16 @@
-;;; -*- Mode: Lisp; Package: CLIM-INTERNALS -*-
-
-;;;  (c) copyright 1998,1999,2000 by Michael McDonald (mikemac@mikemac.com)
-;;;  (c) copyright 2014 by Robert Strandh (robert.strandh@gmail.com)
-
-;;; This library is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU Library General Public
-;;; License as published by the Free Software Foundation; either
-;;; version 2 of the License, or (at your option) any later version.
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
 ;;;
-;;; This library is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; Library General Public License for more details.
+;;;  (c) copyright 1998,1999,2000 Michael McDonald <mikemac@mikemac.com>
+;;;  (c) copyright 2002 Gilbert Baumann <gbaumann@common-lisp.net>
+;;;  (c) copyright 2002 Timothy Moore <tmoore@common-lisp.net>
+;;;  (c) copyright 2014 Robert Strandh <robert.strandh@gmail.com>
+;;;  (c) copyright 2019 Daniel Kochmański <daniel@turtleware.eu>
 ;;;
-;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-;;; Boston, MA  02111-1307  USA.
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Association between sheet and medium.
 
 (in-package #:clim-internals)
 
