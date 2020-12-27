@@ -35,8 +35,6 @@
    (medium :initform nil :accessor pixmap-medium)
    (region :initform nil :accessor sheet-region)))
 
-(defgeneric (setf %sheet-medium) (medium sheet))
-
 ;;; added this. CHECKME -- BTS
 (defmethod (setf %sheet-medium) (value (pixmap mirrored-pixmap))
   (setf (slot-value pixmap 'medium) value))

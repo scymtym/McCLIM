@@ -14,6 +14,8 @@
 
 (in-package #:clim-internals)
 
+(defgeneric (setf %sheet-medium) (medium sheet))
+
 (defclass standard-sheet-output-mixin ()
   ())
 
