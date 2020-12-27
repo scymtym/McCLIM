@@ -28,10 +28,8 @@
 ;;; the pane and gadget itself as well as the command tables. The
 ;;; solely input-editor oriented stuff is in input-editor.lisp.
 
-(in-package :drei)
+(in-package #:drei)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; The Drei gadget and pane.
 ;;;
 ;;; An application can use Drei in two different ways - by using
@@ -390,7 +388,7 @@ record of the Drei area instance."))
 record."))
 
 (defmethod initialize-instance :after ((area drei-area)
-				       &key x-position y-position)
+                                       &key x-position y-position)
   (check-type x-position number)
   (check-type y-position number)
   (setf (area-position area) (list x-position y-position)
@@ -563,8 +561,6 @@ record."))
     ;; the pane.
     (redisplay-frame-pane (pane-frame *minibuffer*) *minibuffer* :force-p t)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Programmer interface stuff
 ;;;
 ;;; We want it to be dead-easy to integrate Drei in CLIM applications.
@@ -574,18 +570,18 @@ record."))
 ;;; break. Let's hope nothing of that sort happens (this works in
 ;;; McCLIM. The method, not the hoping.)
 (defmethod make-pane-1 :around (fm (frame application-frame)
-                                   (type (eql :drei))
-                                   &rest args &key
-                                   (syntax nil) (initial-contents "")
-                                   (minibuffer t) (border-width 1)
-                                   (scroll-bars :horizontal)
-                                   (drei-class 'drei-gadget-pane)
-                                   (view 'textual-drei-syntax-view))
+                                (type (eql :drei))
+                                &rest args
+                                &key (syntax nil) (initial-contents "")
+                                     (minibuffer t) (border-width 1)
+                                     (scroll-bars :horizontal)
+                                     (drei-class 'drei-gadget-pane)
+                                     (view 'textual-drei-syntax-view))
   (check-type initial-contents array)
   (check-type border-width integer)
   (check-type scroll-bars (member t :both :vertical :horizontal nil))
   (with-keywords-removed (args (:minibuffer :scroll-bars :border-width
-                                                         :syntax :drei-class :view))
+                                            :syntax :drei-class :view))
     (let* ((borderp (and border-width (plusp border-width)))
            (minibuffer-pane (cond ((eq minibuffer t)
                                    (make-pane 'drei-minibuffer-pane))
@@ -596,9 +592,9 @@ record."))
                                   (t (error "Provided minibuffer
 is not T, NIL or a `minibuffer-pane'."))))
            (drei-pane (apply #'make-pane-1 fm frame drei-class
-                       :minibuffer minibuffer-pane
-                       :view (make-instance view)
-                       args))
+                             :minibuffer minibuffer-pane
+                             :view (make-instance view)
+                             args))
            (pane drei-pane)
            (view (view drei-pane)))
       (letf (((read-only-p (buffer view)) nil))
@@ -609,15 +605,15 @@ is not T, NIL or a `minibuffer-pane'."))))
                                      syntax)
                                    (syntax-from-name (string syntax))
                                    (error "Syntax ~A not found" (string syntax)))
-                 :buffer (buffer view))))
+                               :buffer (buffer view))))
       (when scroll-bars
         (setf pane (scrolling (:scroll-bar scroll-bars)
                      pane)))
       (when minibuffer
         (setf pane (make-pane 'drei-constellation
-                    :drei drei-pane
-                    :minibuffer minibuffer-pane
-                    :contents (list pane minibuffer-pane))))
+                              :drei drei-pane
+                              :minibuffer minibuffer-pane
+                              :contents (list pane minibuffer-pane))))
       (when borderp
         (setf pane (climi::bordering
                        (:border-width border-width)
