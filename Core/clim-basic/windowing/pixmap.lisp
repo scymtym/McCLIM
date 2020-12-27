@@ -18,7 +18,7 @@
 ;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
-(in-package :clim-internals)
+(in-package #:clim-internals)
 
 (defclass pixmap ()
   ((sheet :initarg :sheet :reader pixmap-sheet)
@@ -57,7 +57,7 @@
     (continuation medium (sheet mirrored-pixmap))
   (funcall continuation (pixmap-medium sheet)))
 
-;;;; BTS stopped adding. ^-- CHECKME
+;;; BTS stopped adding. ^-- CHECKME
 
 (defmethod initialize-instance :after ((pixmap mirrored-pixmap) &rest args)
   (declare (ignore args))

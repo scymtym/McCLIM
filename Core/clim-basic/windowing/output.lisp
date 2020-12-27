@@ -14,11 +14,11 @@
 ;;; Library General Public License for more details.
 ;;;
 ;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the 
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+;;; License along with this library; if not, write to the
+;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
-(in-package :clim-internals)
+(in-package #:clim-internals)
 
 (defclass standard-sheet-output-mixin ()
   ())
@@ -32,14 +32,14 @@
            :writer (setf %sheet-medium))))
 
 (macrolet ((frob (fn &rest args)
-	     `(defmethod ,fn ,(substitute '(medium sheet-with-medium-mixin)
-					  'medium
-					  args)
-	        ;; medium arg is really a sheet
-		(let ((medium (sheet-medium medium)))
-		  ,(if (symbolp fn)
-		       `(,fn ,@args)
-		       `(funcall #',fn ,@args))))))
+             `(defmethod ,fn ,(substitute '(medium sheet-with-medium-mixin)
+                                          'medium
+                                          args)
+                ;; medium arg is really a sheet
+                (let ((medium (sheet-medium medium)))
+                  ,(if (symbolp fn)
+                       `(,fn ,@args)
+                       `(funcall #',fn ,@args))))))
   (frob medium-foreground medium)
   (frob medium-background medium)
   (frob (setf medium-foreground) design medium)
@@ -58,7 +58,7 @@
   (frob (setf medium-text-style) text-style medium)
   (frob medium-current-text-style medium)
   (frob medium-beep medium))
-  
+
 (defclass temporary-medium-sheet-output-mixin (sheet-with-medium-mixin)
   ())
 
@@ -67,7 +67,7 @@
 
 (defmethod initialize-instance :after
     ((sheet permanent-medium-sheet-output-mixin) &key port)
-  ;; hmm, 
+  ;; hmm,
   (setf (%sheet-medium sheet) (make-medium port sheet))
   ;; hmm...
   (engraft-medium (sheet-medium sheet) (port sheet) sheet))
