@@ -114,7 +114,12 @@
                              (collect-translator trans)))
                          from-presentation (list context-type) frame
                          window x y event
-                         :override (list :modifier-state (window-modifier-state window)))
+                         ;; Fall back to the modifier state of WINDOW
+                         ;; if we don't have an event.
+                         :override (if (null event)
+                                       (list :modifier-state
+                                             (window-modifier-state window))
+                                       '()))
                         (collect-translator)))
          ;; Default feedback and highlight functions are those of the
          ;; translator that got us here. Initial highlight value nil
