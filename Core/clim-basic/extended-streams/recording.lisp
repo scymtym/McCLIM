@@ -1117,11 +1117,16 @@ were added."
       (let ((my-coord-seq (slot-value record 'coord-seq)))
         (sequence= my-coord-seq coord-seq #'coordinate=))))
 
-(defun fix-line-style-unit (line-style medium)
-  (let ((thickness (line-style-effective-thickness line-style medium)))
+(defun fix-line-style-unit (graphic medium)
+  (let* ((line-style (graphics-state-line-style graphic))
+         (thickness (line-style-effective-thickness line-style medium)))
     (unless (eq (line-style-unit line-style) :normal)
-      (setf (slot-value line-style 'unit) :normal
-            (slot-value line-style 'thickness) thickness))
+      (let ((dashes (line-style-effective-dashes line-style medium)))
+        (setf (slot-value graphic 'line-style)
+              (make-line-style :thickness thickness
+                               :joint-shape (line-style-joint-shape line-style)
+                               :cap-shape (line-style-cap-shape line-style)
+                               :dashes dashes))))
     thickness))
 
 (defmacro generate-medium-recording-body (class-name args)
@@ -1213,7 +1218,7 @@ were added."
 
 (def-grecording draw-point (gs-line-style-mixin)
     (point-x point-y)
-  (let ((border (graphics-state-line-style-border graphic medium)))
+  (let ((border (/ (fix-line-style-unit graphic medium) 2)))
     (with-transformed-position ((medium-transformation medium) point-x point-y)
       (setf (slot-value graphic 'point-x) point-x
             (slot-value graphic 'point-y) point-y)
@@ -1246,17 +1251,15 @@ were added."
 ;;; bad than untransforming the coords back to how they were.
 (def-grecording draw-points (coord-seq-mixin gs-line-style-mixin)
     ((coord-seq (copy-sequence-into-vector coord-seq)))
-  (let ((transformed-coord-seq (transform-positions (medium-transformation medium) coord-seq))
-        (border (graphics-state-line-style-border graphic medium)))
+  (let* ((transformed-coord-seq (transform-positions (medium-transformation medium) coord-seq))
+         (border (/ (fix-line-style-unit graphic medium) 2)))
     (setf (slot-value graphic 'coord-seq) transformed-coord-seq)
     (coord-seq-bounds transformed-coord-seq border)))
 
 (def-grecording draw-line (gs-line-style-mixin)
     (point-x1 point-y1 point-x2 point-y2)
   (let* ((transform (medium-transformation medium))
-         (line-style (graphics-state-line-style graphic))
-         (thickness (fix-line-style-unit line-style medium))
-         (border (/ thickness 2)))
+         (border (/ (fix-line-style-unit graphic medium) 2)))
     (with-transformed-position (transform point-x1 point-y1)
       (with-transformed-position (transform point-x2 point-y2)
         (setf (slot-value graphic 'point-x1) point-x1
@@ -1298,9 +1301,7 @@ were added."
     ((coord-seq (copy-sequence-into-vector coord-seq)))
   (let* ((transformation (medium-transformation medium))
          (transformed-coord-seq (transform-positions transformation coord-seq))
-         (line-style (graphics-state-line-style graphic))
-         (thickness (fix-line-style-unit line-style medium))
-         (border (/ thickness 2)))
+         (border (/ (fix-line-style-unit graphic medium) 2)))
     (setf coord-seq transformed-coord-seq)
     (coord-seq-bounds transformed-coord-seq border)))
 
@@ -1426,9 +1427,7 @@ were added."
   (let* ((transform (medium-transformation medium))
          (transformed-coord-seq (transform-positions transform coord-seq))
          (border (unless filled
-                   (let* ((line-style (graphics-state-line-style graphic))
-                          (thickness (fix-line-style-unit line-style medium)))
-                     (/ thickness 2)))))
+                   (/ (fix-line-style-unit graphic medium) 2))))
     (setf coord-seq transformed-coord-seq)
     (polygon-record-bounding-rectangle transformed-coord-seq
                                        closed filled line-style border
@@ -1446,9 +1445,7 @@ were added."
          (pre-coords (expand-rectangle-coords left top right bottom))
          (coords (transform-positions transform pre-coords))
          (border (unless filled
-                   (let* ((line-style (graphics-state-line-style graphic))
-                          (thickness (fix-line-style-unit line-style medium)))
-                     (/ thickness 2)))))
+                   (/ (fix-line-style-unit graphic medium) 2))))
     (setf (values left top) (transform-position transform left top))
     (setf (values right bottom) (transform-position transform right bottom))
     (polygon-record-bounding-rectangle coords t filled line-style border
@@ -1469,9 +1466,7 @@ were added."
     (coord-seq filled)
   (let* ((transform (medium-transformation medium))
          (border (unless filled
-                   (let* ((line-style (graphics-state-line-style graphic))
-                          (thickness (fix-line-style-unit line-style medium)))
-                     (/ thickness 2)))))
+                   (/ (fix-line-style-unit graphic medium) 2))))
     (let ((transformed-coord-seq
             (map-repeated-sequence 'vector 2
                                    (lambda (x y)
@@ -1549,9 +1544,7 @@ were added."
                                             :end-angle end-angle))
       (if filled
           (values min-x min-y max-x max-y)
-          (let* ((line-style (graphics-state-line-style graphic))
-                 (thickness (fix-line-style-unit line-style medium))
-                 (border (/ thickness 2)))
+          (let ((border (/ (fix-line-style-unit graphic medium) 2)))
             (values (floor (- min-x border))
                     (floor (- min-y border))
                     (ceiling (+ max-x border))
