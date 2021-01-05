@@ -262,20 +262,28 @@
 
 ;;; Constants dealing with events
 
-(defconstant +pointer-left-button+   #x01)
-(defconstant +pointer-middle-button+ #x02)
-(defconstant +pointer-right-button+  #x04)
-(defconstant +pointer-wheel-up+      #x08)
-(defconstant +pointer-wheel-down+    #x10)
-(defconstant +pointer-wheel-left+    #x20)
-(defconstant +pointer-wheel-right+   #x40)
+(macrolet ((define (variable-name file-name)
+             `(eval-when (:compile-toplevel :load-toplevel :execute)
+                (defvar ,variable-name
+                  (let* ((file-pathname #.(or *compile-file-pathname*
+                                              *load-pathname*))
+                         (data-pathname (merge-pathnames
+                                         (make-pathname
+                                          :name      ,file-name
+                                          :type      "sexp"
+                                          :directory '(:relative :up :up :up "data"))
+                                         file-pathname)))
+                    (alexandria:with-input-from-file (stream data-pathname)
+                      (read stream)))))))
+  (define *pointer-buttons* "pointer-buttons")
+  (define *modifier-keys*   "modifier-keys"))
 
-(defconstant +shift-key+             #x0100)
-(defconstant +control-key+           #x0200)
-(defconstant +meta-key+              #x0400)
-(defconstant +super-key+             #x0800)
-(defconstant +hyper-key+             #x1000)
-(defconstant +alt-key+               #x2000)
+(macrolet ((define (variable)
+             `(progn
+                ,@(loop :for (name value) :in (symbol-value variable)
+                        :collect `(defconstant ,name ,value)))))
+  (define *pointer-buttons*)
+  (define *modifier-keys*))
 
 ;; Key names are a symbol whose value is port-specific. Key names
 ;; corresponding to the set of standard characters (such as the

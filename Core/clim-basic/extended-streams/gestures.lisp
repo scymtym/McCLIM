@@ -6,7 +6,7 @@
 ;;;  (c) copyright 2000,2014 Robert Strandh <robert.strandh@gmail.com>
 ;;;  (c) copyright 2001,2002 Tim Moore <moore@bricoworks.com>
 ;;;  (c) copyright 2019,2020 Daniel Kochmański <daniel@turtleware.eu>
-;;;  (c) copyright 2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2020, 2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -39,23 +39,15 @@
 
 ;;; 22.3 Gestures and Gesture Names
 
-(defconstant +gesture-modifier-key-to-event-modifier+
-  `((:shift   . ,+shift-key+)
-    (:control . ,+control-key+)
-    (:meta    . ,+meta-key+)
-    (:super   . ,+super-key+)
-    (:hyper   . ,+hyper-key+)))
-
 (defun make-modifier-state (&rest modifiers)
   (reduce #'logior modifiers
           :key (lambda (modifier-key-name)
-                 (or (alexandria:assoc-value
-                      +gesture-modifier-key-to-event-modifier+ modifier-key-name)
+                 (or (second (find modifier-key-name *modifier-keys* :key #'fourth))
                      (error "~@<~S is not a known modifier key ~
                             name. Valid modifier key names are ~{~S~^, ~
                             ~}.~@:>"
                             modifier-key-name
-                            (map 'list #'car +gesture-modifier-key-to-event-modifier+))))))
+                            (remove :unmapped (map 'list #'fourth *modifier-keys*)))))))
 
 (defconstant +gesture-key-name-to-char+
   '((:newline   . #\newline)
@@ -95,27 +87,17 @@
                 t
                 (apply #'make-modifier-state modifiers)))))
 
-(defconstant +gesture-button-to-event-button+
-  `((:left        . ,+pointer-left-button+)
-    (:middle      . ,+pointer-middle-button+)
-    (:right       . ,+pointer-right-button+)
-    (:wheel-up    . ,+pointer-wheel-up+)
-    (:wheel-down  . ,+pointer-wheel-down+)
-    (:wheel-left  . ,+pointer-wheel-left+)
-    (:wheel-right . ,+pointer-wheel-right+)))
-
 (defun normalize-pointer-physical-gesture (gesture-spec)
   (destructuring-bind (button-name &rest modifiers)
       (alexandria:ensure-list gesture-spec) ; extension
     (values (cond ((eq button-name t)
                    button-name)
-                  ((alexandria:assoc-value
-                    +gesture-button-to-event-button+ button-name))
+                  ((second (find button-name *pointer-buttons* :key #'fourth)))
                   (t
                    (error "~@<~S is not a known pointer button. Known ~
                            buttons are ~{~S~^, ~}.~@:>"
                           button-name
-                          (map 'list #'car +gesture-button-to-event-button+))))
+                          (map 'list #'fourth *pointer-buttons*))))
             (if (equal modifiers '(t))
                 t
                 (apply #'make-modifier-state modifiers)))))

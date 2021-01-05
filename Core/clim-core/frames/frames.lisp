@@ -2,17 +2,16 @@
 ;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
 ;;; ---------------------------------------------------------------------------
 ;;;
-;;;  (c) copyright 1998,1999,2000 by Michael McDonald (mikemac@mikemac.com)
-;;;  (c) copyright 2000 by Iban Hatchondo (hatchond@emi.u-bordeaux.fr)
-;;;  (c) copyright 2000 by Julien Boninfante (boninfan@emi.u-bordeaux.fr)
-;;;  (c) copyright 2000, 2014 by Robert Strandh (robert.strandh@gmail.com)
-;;;  (c) copyright 2004 by Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
-;;;  (c) copyright 2019, 2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 1998,1999,2000 Michael McDonald <mikemac@mikemac.com>
+;;;  (c) copyright 2000 Iban Hatchondo <hatchond@emi.u-bordeaux.fr>
+;;;  (c) copyright 2000 Julien Boninfante <boninfan@emi.u-bordeaux.fr>
+;;;  (c) copyright 2000,2014 Robert Strandh <robert.strandh@gmail.com>
+;;;  (c) copyright 2004 Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
+;;;  (c) copyright 2019,2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
 ;;; Application frame classes and implementations of related protocol.
-;;;
 
 (in-package #:clim-internals)
 
@@ -964,21 +963,6 @@ frames and will not have focus.
 (defgeneric frame-update-pointer-documentation
     (frame input-context stream event))
 
-(defconstant +button-documentation+ '((#.+pointer-left-button+ "L")
-                                      (#.+pointer-middle-button+ "M")
-                                      (#.+pointer-right-button+ "R")
-                                      (#.+pointer-wheel-up+ "WheelUp")
-                                      (#.+pointer-wheel-down+ "WheelDown")
-                                      (#.+pointer-wheel-left+ "WheelLeft")
-                                      (#.+pointer-wheel-right+ "WheelRight")))
-
-(defconstant +modifier-documentation+
-  '((#.+shift-key+ "sh" "Shift")
-    (#.+control-key+ "c" "Control")
-    (#.+meta-key+ "m" "Meta")
-    (#.+super-key+ "s" "Super")
-    (#.+hyper-key+ "h" "Hyper")))
-
 ;;; Give a coherent order to sets of modifier combinations.  Multi-key combos
 ;;; come after single keys.
 
@@ -994,12 +978,10 @@ frames and will not have focus.
       (when (eq style :long)
         (write-string "<nothing>" stream))
       (loop with trailing = nil
-            for (bit short long) in +modifier-documentation+
+            for (nil bit long) in *modifier-keys*
             when (logtest bit modifiers)
             do (progn
-                 (format stream "~:[~;-~]~A" trailing (if (eq style :short)
-                                                          short
-                                                          long))
+                 (format stream "~:[~;-~]~A" trailing long)
                  (setq trailing t)))))
 
 ;;; XXX Warning: Changing rapidly!
@@ -1029,7 +1011,7 @@ frames and will not have focus.
          (y (device-event-y event))
          (presentation (stream-output-history stream))
          (new-translators
-           (loop for (button) in +button-documentation+
+           (loop for (nil button) in *pointer-buttons*
                  for context-list = (multiple-value-list
                                      (find-innermost-presentation-match
                                       input-context presentation frame
@@ -1086,7 +1068,7 @@ alive.")
                    (replay (background-message pstream) pstream))))
           (loop for (button presentation translator context)
                 in new-translators
-                for name = (cadr (assoc button +button-documentation+))
+                for name = (third (find button *pointer-buttons* :key #'second))
                 for first-one = t then nil
                 do (progn
                      (unless first-one
