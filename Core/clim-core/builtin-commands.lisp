@@ -24,32 +24,51 @@
     ()
   nil)
 
+(defun format-commands (command-table &key frame (stream *standard-output*))
+  (let ((commands      '()))
+    (map-over-command-table-names
+     (lambda (name command)
+       (unless (find name commands :key #'second)
+         (let ((keystrokes '()))
+           (map-over-command-table-menu
+            (lambda (item table)
+              (declare (ignore table))
+              (when (eq (eq (command-menu-item-type item) :command)
+                        (eq (command-item-name item) command))
+                (when-let ((keystroke (command-menu-item-keystroke item)))
+                  (push keystroke keystrokes))))
+            command-table)
+           (push (list name command keystrokes) commands))))
+     command-table)
+    (formatting-item-list (stream)
+      (loop for (nil command keystrokes) in (sort commands #'string-lessp
+                                                  :key #'first)
+            for enabledp = (or (null frame) (command-enabled command frame))
+            do (formatting-cell (stream)
+                 (present command
+                          `(command-name :command-table ,command-table
+                                         :enabledp ,enabledp)
+                          :stream stream)
+                 (when keystrokes
+                   (write-char #\Space stream)
+                   (with-drawing-options (stream :text-size :smaller)
+                     (map nil (alexandria:rcurry #'format-keyboard-gesture :stream stream)
+                          keystrokes))))))))
+
 (define-command (com-help :command-table global-command-table :name "Help")
     ((kind '(completion (("Keyboard" keyboard) ("Commands" commands))
-             :value-key cadr)
-             :prompt "with"
-             :default 'keyboard
-             :display-default nil))
-  (if (eq kind 'keyboard)
-      (format *query-io* "Input editor commands are like Emacs.~%")
-      (let ((command-table (frame-command-table *application-frame*))
-            (command-names nil))
-        (map-over-command-table-names #'(lambda (name command)
-                                          (push (cons name command)
-                                                command-names))
-                                      command-table)
-        (setf command-names (remove-duplicates command-names :key #'cdr))
-        (setf command-names (sort command-names #'(lambda (a b)
-                                                    (string-lessp (car a)
-                                                                  (car b)))))
-        (formatting-item-list (*query-io*)
-          (loop
-             for (nil . command) in command-names
-             do (formatting-cell (*query-io*)
-                 (present command
-                          `(command-name :command-table ,command-table)
-                          :stream *query-io*)))))))
-
+             :value-key second)
+           :prompt "with"
+           :default 'keyboard
+           :display-default nil))
+  (let ((frame *application-frame*)
+        (stream *query-io*))
+    (ecase kind
+      (keyboard
+       (format stream "Input editor commands are like Emacs.~%"))
+      (commands
+       (format-commands (frame-command-table frame)
+                        :frame frame :stream stream)))))
 
 ;;; Describe command.  I don't know if this should go in the global command
 ;;; table, but we don't exactly have a surplus of commands yet...

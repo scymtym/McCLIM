@@ -273,7 +273,8 @@
 ;;;  27.6.1 Command Presentation Types
 
 (define-presentation-type command-name
-    (&key (command-table (frame-command-table *application-frame*)))
+    (&key (command-table (frame-command-table *application-frame*))
+          (enabledp t))
   :inherit-from t)
 
 (define-presentation-method presentation-typep (object (type command-name))
@@ -291,9 +292,20 @@
     (object (type command-name) stream (view textual-view) &key)
   (let ((command-line-name (command-line-name-for-command object command-table
                                                           :errorp nil)))
-    (if command-line-name
-        (write-string command-line-name stream)
-        (prin1 object stream))))
+    (flet ((print-it ()
+             (if command-line-name
+                 (write-string command-line-name stream)
+                 (prin1 object stream))))
+      (cond ((and (not (command-accessible-in-command-table-p
+                        object command-table))
+                  (extended-output-stream-p stream))
+             (with-drawing-options (stream :ink +dark-red+)
+               (print-it)))
+            ((and (not enabledp) (extended-output-stream-p stream))
+             (with-drawing-options (stream :ink +gray50+)
+               (print-it)))
+            (t
+             (print-it))))))
 
 (define-presentation-method accept
     ((type command-name) stream (view textual-view) &key)
