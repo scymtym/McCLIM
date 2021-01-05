@@ -1,23 +1,20 @@
-;;; -*- Mode: Lisp; Package: CLIM-INTERNALS -*-
-
-;;;  (c) copyright 2002 by Tim Moore (moore@bricoworks.com)
-
-;;; This library is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU Library General Public
-;;; License as published by the Free Software Foundation; either
-;;; version 2 of the License, or (at your option) any later version.
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
 ;;;
-;;; This library is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; Library General Public License for more details.
+;;;  (c) copyright 2002-2006 Tim Moore <moore@bricoworks.com>
+;;;  (c) copyright 2002 Alexey Dejneka
+;;;  (c) copyright 2003 Andy Hefner <ahefner@common-lisp.net>
+;;;  (c) copyright 2006,2007 Troels Henriksen <thenriksen@common-lisp.net>
+;;;  (c) copyright 2007 Christophe Rhodes <crhodes@common-lisp.net>
+;;;  (c) copyright 2016 Otso Rajala <ojrajala@gmail.com>
+;;;  (c) copyright 2016,2020 Daniel Kochmański <daniel@turtleware.eu>
 ;;;
-;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-;;; Boston, MA  02111-1307  USA.
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Builtin commands. Some are available in the global command table.
 
-(in-package :clim-internals)
+(in-package #:clim-internals)
 
 ;;; Commands and presentation translators that live in the
 ;;; global-command-table.
@@ -285,7 +282,7 @@
 ;;;
 ;;; XXX But I am using a presentation type option to choice the
 ;;; subform reader; what's the difference? Granted the presentation
-;;;type specifier is constant.... -- moore
+;;; type specifier is constant.... -- moore
 
 (defvar *dot-ok*)
 (defvar *termch*)
@@ -353,23 +350,21 @@
       (setq ptype 'expression))
     (if (or subform-read auto-activate)
         (values object ptype)
-        (loop
-          for gesture = (read-gesture :stream stream)
-          until (or (activation-gesture-p gesture) (delimiter-gesture-p gesture))
-          finally
-             (when (delimiter-gesture-p gesture)
-               (unread-gesture gesture :stream stream))
-             (return (values object ptype))))))
+        (loop for gesture = (read-gesture :stream stream)
+              until (or (activation-gesture-p gesture)
+                        (delimiter-gesture-p gesture))
+              finally
+                 (when (delimiter-gesture-p gesture)
+                   (unread-gesture gesture :stream stream))
+                 (return (values object ptype))))))
 
 (define-presentation-method accept ((type expression)
                                     (stream input-editing-stream)
                                     (view textual-view)
                                     &key)
-  ;; This method is specialized to
-  ;; input-editing-streams and has thus been
-  ;; made slightly more tolerant of input
-  ;; errors. It is slightly hacky, but seems
-  ;; to work fine.
+  ;; This method is specialized to input-editing-streams and has thus
+  ;; been made slightly more tolerant of input errors. It is slightly
+  ;; hacky, but seems to work fine.
   (let* ((object nil)
          (ptype nil))
     #.(funcall (if #+openmcl t #-openmcl nil #'identity #'fourth)
@@ -392,38 +387,37 @@
                               ;; READER-ERROR and remove whatever the user wrote
                               ;; to the stream.
                               (loop for potential-object =
-                                   (handler-case (funcall
-                                                  (if preserve-whitespace
-                                                      *sys-read-preserving-whitespace*
-                                                      *sys-read*)
-                                                  stream
-                                                  *eof-error-p*
-                                                  *eof-value*
-                                                  *recursivep*)
-                                     ((and reader-error) (e)
-                                       (declare (ignore e))
-                                       nil))
-                                   unless (null potential-object)
-                                   return potential-object))))))
-    (setq ptype (presentation-type-of object))
+                                       (handler-case (funcall
+                                                      (if preserve-whitespace
+                                                          *sys-read-preserving-whitespace*
+                                                          *sys-read*)
+                                                      stream
+                                                      *eof-error-p*
+                                                      *eof-value*
+                                                      *recursivep*)
+                                         ((and reader-error) (e)
+                                           (declare (ignore e))
+                                           nil))
+                                    unless (null potential-object)
+                                    return potential-object))))))
+    (setf ptype (presentation-type-of object))
     (unless (presentation-subtypep ptype 'expression)
-      (setq ptype 'expression))
+      (setf ptype 'expression))
     (if (or subform-read auto-activate)
         (values object ptype)
-        (loop
-          for gesture = (read-gesture :stream stream)
-          until (or (activation-gesture-p gesture) (delimiter-gesture-p gesture))
-          finally
-             (when (delimiter-gesture-p gesture)
-               (unread-gesture gesture :stream stream))
-             (return (values object ptype))))))
+        (loop for gesture = (read-gesture :stream stream)
+              until (or (activation-gesture-p gesture)
+                        (delimiter-gesture-p gesture))
+              finally (when (delimiter-gesture-p gesture)
+                        (unread-gesture gesture :stream stream))
+                      (return (values object ptype))))))
 
 
 (with-system-redefinition-allowed
     (defun read (&optional (stream *standard-input*)
-                   (eof-error-p t)
-                   (eof-value nil)
-                   (recursivep nil))
+                           (eof-error-p t)
+                           (eof-value nil)
+                           (recursivep nil))
       (if (typep stream 'input-editing-stream)
           (let ((*eof-error-p* eof-error-p)
                 (*eof-value* eof-value)
@@ -433,9 +427,9 @@
           (funcall *sys-read* stream eof-error-p eof-value recursivep)))
 
   (defun read-preserving-whitespace (&optional (stream *standard-input*)
-                                       (eof-error-p t)
-                                       (eof-value nil)
-                                       (recursivep nil))
+                                               (eof-error-p t)
+                                               (eof-value nil)
+                                               (recursivep nil))
     (if (typep stream 'input-editing-stream)
         (let ((*eof-error-p* eof-error-p)
               (*eof-value* eof-value)
