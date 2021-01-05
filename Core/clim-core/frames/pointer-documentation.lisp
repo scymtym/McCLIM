@@ -26,17 +26,6 @@
            (< a b))
           (t (< cnt-a cnt-b)))))
 
-(defun print-modifiers (stream modifiers style)
-  (if (zerop modifiers)
-      (when (eq style :long)
-        (write-string "<nothing>" stream))
-      (loop with trailing = nil
-            for (nil bit long) in *modifier-keys*
-            when (logtest bit modifiers)
-            do (progn
-                 (format stream "~:[~;-~]~A" trailing long)
-                 (setq trailing t)))))
-
 ;;; XXX Warning: Changing rapidly!
 ;;;
 ;;; We don't actually want to print out the translator documentation and redraw
@@ -121,15 +110,13 @@ alive.")
                    (replay (background-message pstream) pstream))))
           (loop for (button presentation translator context)
                 in new-translators
-                for name = (third (find button *pointer-buttons* :key #'second))
                 for first-one = t then nil
                 do (progn
                      (unless first-one
                        (write-string "; " pstream))
-                     (unless (zerop current-modifier)
-                       (print-modifiers pstream current-modifier :short)
-                       (write-string "-" pstream))
-                     (format pstream "~A: " name)
+                     (format-pointer-gesture (list :pointer button current-modifier)
+                                             :stream pstream)
+                     (format pstream ": ")
                      (document-presentation-translator translator
                                                        presentation
                                                        (input-context-type context)
@@ -171,7 +158,8 @@ alive.")
                            (write-string " or " pstream)))
                        (when (> count 0)
                          (write-string ", " pstream)))
-                   (print-modifiers pstream first-modifier :long))
+                   (format-gesture-modifiers
+                    first-modifier :stream pstream :print-nothing t))
           (write-char #\. pstream))))))
 
 (defmethod frame-update-pointer-documentation
