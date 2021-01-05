@@ -44,6 +44,7 @@
     :depends-on ("commands" "presentations" "standard-presentations" "incremental-redisplay" "panes")
     :serial t
     :components ((:file "frames" )
+                 (:file "pointer-documentation")
                  (:file "redefinition")
                  (:file "define-application-frame")
                  (:file "window-stream")))
