@@ -273,16 +273,16 @@
   (drag-file-feedback frame from-presentation stream x0 y0 x1 y1 state :invalid))
 
 (defun drag-documentation (object destination-object event description stream)
-  (format stream "~A ~A ~A~
-                  ~:[~*~; to ~:*~A ~A~]~
-                  ~@[ with modifiers ~D~]"
+  (format stream "~A ~A ~A ~:[~*~; to ~:*~A ~A~]"
           description (type-of object) (name object)
           (when destination-object
             (type-of destination-object))
           (when destination-object
-            (name destination-object))
-          (when event
-            (event-modifier-state event)))
+            (name destination-object)))
+  (when event
+    (format stream " with modifiers ")
+    (climi::format-gesture-modifiers
+     (event-modifier-state event) :stream stream))
   (force-output stream))
 
 (defun not-same-or-old-parent (object destination-object)

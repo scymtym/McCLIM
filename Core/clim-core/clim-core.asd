@@ -17,9 +17,11 @@
                  (:file "drag-and-drop")))
    (:module "formatting"
     :depends-on ("presentations" "theming")
+    :serial t
     :components ((:file "bordered-output")
                  (:file "table-formatting")
-                 (:file "graph-formatting")))
+                 (:file "graph-formatting")
+                 (:file "misc-formatting")))
    (:file "input-editing" :depends-on ("presentations" "formatting"))
    (:file "standard-presentations" :depends-on ("input-editing" "presentations"))
    (:file "incremental-redisplay" :depends-on ("standard-presentations"))
