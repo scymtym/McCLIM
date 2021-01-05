@@ -94,15 +94,13 @@
      (prog1 :miter
        (warn "Unknown join style ~s, using :MITER." clim-shape)))))
 
-(defmethod line-style-effective-dashes (line-style (medium clx-medium))
+(defmethod clime:line-style-effective-dashes (line-style (medium clx-medium))
   (when-let ((dashes (call-next-method)))
     ;; X limits individual dash lengths to the range [0,255].
     (flet ((clamp-to-255 (length)
              (min length 255)))
       (declare (dynamic-extent #'clamp-to-255))
-      (if (realp dashes)
-          (clamp-to-255 dashes)
-          (map 'list #'clamp-to-255 dashes)))))
+      (map 'list #'clamp-to-255 dashes))))
 
 (flet ((update-dash-pattern (gc line-style medium)
          (if-let ((dash-pattern (clime:line-style-effective-dashes line-style medium)))
@@ -123,7 +121,7 @@
                      (eql (line-style-thickness new-value)
                           (line-style-thickness old-line-style)))
           (setf (xlib:gcontext-line-width gc)
-                (round (line-style-effective-thickness new-value medium))))
+                (round (clime:line-style-effective-thickness new-value medium))))
         (unless (eq new-cap-shape (line-style-cap-shape old-line-style))
           (setf (xlib:gcontext-cap-style gc)
                 (translate-cap-shape new-cap-shape)))
@@ -148,7 +146,7 @@
               ;; MEDIUM and must there be called after the
               ;; CALL-NEXT-METHOD call.
               (setf (xlib:gcontext-line-width gc)
-                    (round (line-style-effective-thickness line-style medium)))
+                    (round (clime:line-style-effective-thickness line-style medium)))
               (update-dash-pattern gc line-style medium)))))
       new-value)))
 
@@ -588,7 +586,7 @@ translated, so they begin at different position than [0,0])."))
                                (medium-sheet medium))
                               x y)
     (with-clx-graphics () medium
-      (let ((diameter (line-style-effective-thickness line-style medium)))
+      (let ((diameter (clime:line-style-effective-thickness line-style medium)))
         (if (< diameter 2)
             (let ((x (round-coordinate x))
                   (y (round-coordinate y)))
@@ -611,7 +609,7 @@ translated, so they begin at different position than [0,0])."))
                                 (medium-sheet medium))
                                coord-seq)
     (with-clx-graphics () medium
-      (let ((diameter (line-style-effective-thickness line-style medium)))
+      (let ((diameter (clime:line-style-effective-thickness line-style medium)))
         (if (< diameter 2)
             (do-sequence ((x y) coord-seq)
               (let ((x (round-coordinate x))

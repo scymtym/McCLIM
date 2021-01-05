@@ -1724,8 +1724,8 @@
    #:never-repaint-background-mixin
    #:background
    #:foreground
-   ;; #:line-style-effective-thickness
-   ;; #:line-style-effective-dashes
+   #:line-style-effective-thickness
+   #:line-style-effective-dashes
    ;; medium
    #:medium-miter-limit
    #:medium-draw-circle*

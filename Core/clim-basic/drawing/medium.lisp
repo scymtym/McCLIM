@@ -302,13 +302,19 @@
 
 (defmethod line-style-effective-dashes (line-style medium)
   (when-let ((dashes (line-style-dashes line-style)))
-    (let ((scale (line-style-scale line-style medium)))
-      (flet ((scale (length)
-               (* scale length)))
-        (declare (dynamic-extent #'scale))
-        (if (eq dashes t)
-            (scale 3) ; arbitrary default length
-            (map 'list #'scale dashes))))))
+    (cond ((not (eq (line-style-unit line-style) :normal))
+           (let ((scale (line-style-scale line-style medium)))
+             (flet ((scale (length)
+                      (* scale length)))
+               (declare (dynamic-extent #'scale))
+               (if (eq dashes t)
+                   (let ((scaled (scale 3))) ; arbitrary default length
+                     (list scaled scaled))
+                   (map 'list #'scale dashes)))))
+          ((eq dashes t)
+           '(3 3))
+          (t
+           dashes))))
 
 (defmethod medium-miter-limit ((medium medium))
   #.(* 2 single-float-epsilon))
