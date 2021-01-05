@@ -71,20 +71,49 @@ documentation."))
 
 (defmethod frame-compute-pointer-documentation-state
     ((frame standard-application-frame) input-context stream event)
-  (let* ((current-modifier (event-modifier-state event))
-         (x (device-event-x event))
-         (y (device-event-y event))
-         (presentation (stream-output-history stream))
-         (new-translators
-           (loop for (nil button) in *pointer-buttons*
-                 for context-list = (multiple-value-list
-                                     (find-innermost-presentation-match
-                                      input-context presentation frame
-                                      stream x y event
-                                      :override (list :button button)))
-                 when (first context-list)
-                 collect (list* button context-list))))
-    (list current-modifier new-translators)))
+  (let* ((current-modifiers (event-modifier-state event))
+         (x                 (device-event-x event))
+         (y                 (device-event-y event))
+         (result            '())
+         (other-modifiers   '()))
+    (labels ((consider-gesture (button modifiers translator presentation context size)
+               (cond ((or (eq modifiers t)
+                          (eql modifiers current-modifiers))
+                      (let* ((existing         (alexandria:assoc-value result button))
+                             (existing-context (third existing))
+                             (existing-size    (fourth existing)))
+                        (when (or (not existing)
+                                  (and (eq context existing-context)
+                                       (< size existing-size)))
+                          (setf (alexandria:assoc-value result button)
+                                (list presentation translator context size)))))
+                     ((eq (menu translator) t)
+                      (pushnew modifiers other-modifiers))))
+             (consider-translator (translator presentation context size)
+               (let ((gesture (gesture translator)))
+                 (unless (eq gesture t)
+                   (loop for (nil button modifiers) in gesture
+                         do (consider-gesture
+                             button modifiers translator presentation context size))))))
+      ;; Look for applicable translators using all "ordinary"
+      ;; presentation.
+      (map-applicable-translators
+       (lambda (translator presentation context)
+         (multiple-value-bind (min-x min-y max-x max-y)
+             (output-record-hit-detection-rectangle* presentation)
+           (let ((size (* (- max-x min-x) (- max-y min-y))))
+             (consider-translator translator presentation context size))))
+       (stream-output-history stream) input-context frame stream x y event
+       :override '(:modifier-state nil :button nil))
+      ;; Look for applicable translators using the blank area
+      ;; presentation.
+      (map-applicable-translators
+       (lambda (translator presentation context)
+         (consider-translator translator presentation context most-positive-fixnum))
+       (make-blank-area-presentation stream event)
+       input-context frame stream x y event
+       :override '(:modifier-state nil :button nil)))
+    (list current-modifiers (sort result #'< :key #'car) other-modifiers)))
 
 (defmethod frame-compare-pointer-documentation-state
     ((frame standard-application-frame) input-context stream
@@ -106,6 +135,34 @@ documentation."))
   "The amount of seconds a background message will be kept
 alive.")
 
+(defun invoke-formatting-pointer-documentation-table (stream continuation)
+  (with-bounding-rectangle* (x1 y1 x2 y2) stream
+    (declare (ignore x1 x2))
+    (formatting-table (stream :x-spacing 8)
+      (let ((output-count 0))
+        (flet ((invoke-as-cell (continuation)
+                 (formatting-column (stream)
+                   (formatting-cell (stream)
+                     (let ((x (stream-cursor-position stream)))
+                       (when (plusp output-count)
+                         (draw-line* stream x y1 x y2 :ink +gray40+ :line-thickness 2)
+                         (incf x 8)
+                         (stream-increment-cursor-position stream 8 0))
+                       (incf output-count)
+                       (with-temporary-margins (stream :left x)
+                         (funcall continuation stream)))))))
+          (funcall continuation stream #'invoke-as-cell))))))
+
+(defmacro formatting-pointer-documentation-table ((stream) &body body)
+  (check-type stream symbol)
+  (alexandria:with-unique-names (cell)
+    `(invoke-formatting-pointer-documentation-table
+      ,stream (lambda (,stream ,cell)
+                (declare (ignorable ,stream))
+                (macrolet ((cell ((stream) &body body)
+                             `(funcall ,',cell (lambda (,stream) ,@body))))
+                  ,@body)))))
+
 ;;; Give a coherent order to sets of modifier combinations.  Multi-key combos
 ;;; come after single keys.
 (defun compare-modifiers (modifiers1 modifiers2)
@@ -116,14 +173,13 @@ alive.")
         (< count1 count2))))
 
 (defmethod frame-print-pointer-documentation
+    ((frame standard-application-frame) input-context stream (state null) event)
+  nil)
+
+(defmethod frame-print-pointer-documentation
     ((frame standard-application-frame) input-context stream state event)
-  (unless state
-    (return-from frame-print-pointer-documentation nil))
-  (destructuring-bind (current-modifier new-translators)
-      state
-    (let ((x (device-event-x event))
-          (y (device-event-y event))
-          (pstream *pointer-documentation-output*)
+  (destructuring-bind (current-modifier new-translators other-modifiers) state
+    (let ((pstream *pointer-documentation-output*)
           (frame *application-frame*))
       (if (null new-translators)
           (when-let ((message (background-message pstream)))
@@ -136,58 +192,36 @@ alive.")
                    (setf (output-record-parent message) nil)
                    (stream-add-output-record pstream message)
                    (replay message pstream))))
-          (loop for (button presentation translator context)
-                in new-translators
-                for first-one = t then nil
-                do (unless first-one
-                     (write-string "; " pstream))
-                   (format-pointer-gesture (list :pointer button current-modifier)
-                                           :stream pstream)
-                   (format pstream ": ")
-                   (document-presentation-translator translator
-                                                     presentation
-                                                     (input-context-type context)
-                                                     frame
-                                                     event
-                                                     stream
-                                                     x y
-                                                     :stream pstream
-                                                     :documentation-type
-                                                     :pointer)
-                finally (when new-translators
-                          (write-char #\. pstream))))
-      ;; Wasteful to do this after doing ... something (used to be
-      ;; find-innermost-presentation-context) above... look at doing
-      ;; this first and then doing the innermost test.
-      (let ((other-modifiers '()))
-        (map-applicable-translators
-         (lambda (translator presentation context)
-           (declare (ignore presentation context))
-           (let ((gesture (gesture translator)))
-             (unless (eq gesture t)
-               (loop for (name type modifier) in gesture
-                     unless (or (eq modifier t)
-                                (eql modifier current-modifier))
-                     do (pushnew modifier other-modifiers)))))
-         (stream-output-history stream) input-context frame stream
-         x y nil :menu t :override '(:button nil :modifier-state nil))
-        (when other-modifiers
-          (terpri pstream)
-          (write-string "To see other commands, press " pstream)
-          (loop for (first-modifier . rest-modifiers)
-                on (sort other-modifiers #'compare-modifiers)
-                for count from 0
-                do (if (null rest-modifiers)
-                       (progn
-                         (when (> count 1)
-                           (write-char #\, pstream))
-                         (when (> count 0)
-                           (write-string " or " pstream)))
-                       (when (> count 0)
-                         (write-string ", " pstream)))
-                   (format-gesture-modifiers
-                    first-modifier :stream pstream :print-nothing t))
-          (write-char #\. pstream))))))
+          (formatting-pointer-documentation-table (pstream)
+            (loop with x = (device-event-x event)
+                  with y = (device-event-y event)
+                  for (button . (presentation translator context)) in new-translators
+                  do (cell (pstream)
+                       (format-pointer-gesture (list :pointer button current-modifier)
+                                               :stream pstream)
+                       (stream-increment-cursor-position pstream 8 0)
+                       (with-temporary-margins (pstream :left (stream-cursor-position pstream))
+                         (document-presentation-translator
+                          translator presentation (input-context-type context)
+                          frame event stream x y
+                          :stream pstream :documentation-type :pointer))))
+            (when other-modifiers
+              (cell (pstream)
+                (format pstream "To see other commands, press~%")
+                (loop for (first-modifier . rest-modifiers)
+                      on (sort other-modifiers #'compare-modifiers)
+                      for count from 0
+                      do (if (null rest-modifiers)
+                             (progn
+                               (when (> count 1)
+                                 (write-char #\, pstream))
+                               (when (> count 0)
+                                 (write-string " or " pstream)))
+                             (when (> count 0)
+                               (write-string ", " pstream)))
+                         (format-gesture-modifiers
+                          first-modifier :stream pstream :print-nothing t))
+                (write-char #\. pstream))))))))
 
 (defmethod frame-update-pointer-documentation
     ((frame standard-application-frame) input-context stream event)
