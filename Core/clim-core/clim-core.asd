@@ -23,7 +23,9 @@
                  (:file "graph-formatting")
                  (:file "misc-formatting")))
    (:file "input-editing" :depends-on ("presentations" "formatting"))
-   (:file "standard-presentations" :depends-on ("input-editing" "presentations"))
+   (:file "standard-presentations"
+    :pathname "presentations/standard-presentations"
+    :depends-on ("input-editing" "presentations"))
    (:file "incremental-redisplay" :depends-on ("standard-presentations"))
    (:file "describe" :depends-on ("presentations" "standard-presentations" "formatting"))
    (:module "commands"
