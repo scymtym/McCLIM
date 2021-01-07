@@ -88,7 +88,8 @@ interface management system."
                               :components ((:file "presentation-types")
                                            (:file "presentation-functions")
                                            (:file "presentation-inheritance")
-                                           (:file "translators")))
+                                           (:file "translators")
+                                           (:file "standard-presentations")))
                              (:module "frames"
                               :depends-on ("package")
                               :components ((:file "define-application-frame"))))))
