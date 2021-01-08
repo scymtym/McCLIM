@@ -328,7 +328,8 @@ mandated by file types or attribute lists.")
             (:default-initargs :name ,name))))
 
 (define-presentation-method accept
-    ((type syntax) stream (view textual-view) &key)
+    ((type syntax) stream (view textual-view) &key default default-type)
+  (declare (ignore default default-type))
   (multiple-value-bind (object success string)
       (complete-input stream
                       (lambda (so-far action)

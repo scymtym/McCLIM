@@ -55,7 +55,8 @@
   (write-string "None" stream))
 
 (define-presentation-method accept ((type null) stream (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (values (completing-from-suggestions (stream)
             (suggest "None" nil)
             (suggest "" nil))))
@@ -75,7 +76,8 @@
   (write-string (if object "Yes" "No") stream))
 
 (define-presentation-method accept ((type boolean) stream (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (accept-using-completion
    type stream (lambda (input-string mode)
                  (complete-from-possibilities
@@ -98,7 +100,7 @@
       (princ object stream)))
 
 (define-presentation-method accept ((type symbol) stream (view textual-view)
-                                    &key (default-type type) default)
+                                    &key default (default-type type))
   (let ((read-result (accept-using-read stream type)))
     (if (and (null read-result) default)
         (values default default-type)
@@ -648,7 +650,8 @@
 (define-presentation-method accept ((type completion)
                                     stream
                                     (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (let ((type (apply #'make-presentation-type-specifier
                      `(completion ,@parameters)
                      options)))
@@ -837,7 +840,8 @@
         (write-char separator stream)))))
 
 (define-presentation-method accept ((type sequence) stream (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (loop with separators = (list separator)
         for element = (accept element-type
                               :stream stream
@@ -912,7 +916,8 @@
 (define-presentation-method accept ((type sequence-enumerated)
                                     stream
                                     (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (loop with separators = (list separator)
         for (first-type . rest-types) on types
         for (element element-type)
@@ -960,7 +965,8 @@
 (define-presentation-method accept ((type or)
                                     (stream input-editing-stream)
                                     (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (with-input-context (type) (object type-var)
       (loop with string = (read-token stream)
             for or-type in types
@@ -1003,8 +1009,11 @@
            :stream stream :view view
            :acceptably acceptably :for-context-type for-context-type))
 
-(define-presentation-method accept
-    ((type and) (stream input-editing-stream) (view textual-view) &rest args &key)
+(define-presentation-method accept ((type and)
+                                    (stream input-editing-stream)
+                                    (view textual-view)
+                                    &rest args &key default default-type)
+  (declare (ignore default default-type))
   (let ((subtype (first types)))
     (multiple-value-bind (obj ptype)
         (apply-presentation-generic-function accept subtype stream view args)

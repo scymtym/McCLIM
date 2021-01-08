@@ -751,7 +751,8 @@ invoke the command, and the accumulated numeric argument."
 (define-presentation-method accept :around
   ((type command-or-form)
    (stream drei-input-editing-mixin)
-   view &key)
+   view &key default default-type)
+  (declare (ignore default default-type))
   (with-drei-options ((drei-instance stream)
                       :syntax "Lisp"
                       :keep-syntax t)
@@ -760,7 +761,8 @@ invoke the command, and the accumulated numeric argument."
 (define-presentation-method accept :around
   ((type command)
    (stream drei-input-editing-mixin)
-   view &key)
+   view &key default default-type)
+  (declare (ignore default default-type))
   (with-drei-options ((drei-instance stream)
                       :syntax "Fundamental"
                       :keep-syntax nil)
@@ -770,7 +772,8 @@ invoke the command, and the accumulated numeric argument."
   ((type expression)
    (stream drei-input-editing-mixin)
    view
-   &key)
+   &key default default-type)
+  (declare (ignore default default-type))
   (with-drei-options ((drei-instance stream)
                       :syntax "Lisp"
                       :keep-syntax t)
@@ -780,7 +783,8 @@ invoke the command, and the accumulated numeric argument."
 (define-presentation-method accept ((type expression)
                                     (stream drei-input-editing-mixin)
                                     (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (let ((*completion-gestures* nil)
         (*possibilities-gestures* nil))
     (with-delimiter-gestures (nil :override t)

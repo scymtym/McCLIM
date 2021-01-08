@@ -337,7 +337,8 @@
 )                                       ; with-system-redefinition-allowed
 
 (define-presentation-method accept ((type expression) stream (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (let* ((object nil)
          (ptype nil))
     #.(funcall (if #+openmcl t #-openmcl nil #'identity #'fourth)
@@ -380,7 +381,8 @@
 (define-presentation-method accept ((type expression)
                                     (stream input-editing-stream)
                                     (view textual-view)
-                                    &key)
+                                    &key default default-type)
+  (declare (ignore default default-type))
   ;; This method is specialized to input-editing-streams and has thus
   ;; been made slightly more tolerant of input errors. It is slightly
   ;; hacky, but seems to work fine.

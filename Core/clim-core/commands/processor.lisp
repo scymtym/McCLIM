@@ -231,7 +231,9 @@
         (princ name stream))))
 
 (define-presentation-method accept
-    ((type command-table) stream (view textual-view) &key)
+    ((type command-table) stream (view textual-view)
+     &key default default-type)
+  (declare (ignore default default-type))
   (multiple-value-bind (table success string)
       (completing-from-suggestions (stream)
         (loop
@@ -308,7 +310,8 @@
              (print-it))))))
 
 (define-presentation-method accept
-    ((type command-name) stream (view textual-view) &key)
+    ((type command-name) stream (view textual-view) &key default default-type)
+  (declare (ignore default default-type))
   (flet ((generator (string suggester)
            (declare (ignore string))
            (let ((possibilities nil))
@@ -373,7 +376,8 @@
   (funcall *command-unparser* command-table stream object))
 
 (define-presentation-method accept
-    ((type command) stream (view textual-view) &key)
+    ((type command) stream (view textual-view) &key default default-type)
+  (declare (ignore default default-type))
   (let ((command-table (find-command-table command-table))
         (start-position (and (getf options :echo t)
                              (input-editing-stream-p stream)
@@ -417,7 +421,9 @@
 ;;; all the cleanup like replacing input, etc.
 
 (define-presentation-method accept
-    ((type command-or-form) stream (view textual-view) &key)
+    ((type command-or-form) stream (view textual-view)
+     &key default default-type)
+  (declare (ignore default default-type))
   (let ((command-ptype `(command :command-table ,command-table)))
     (with-input-context (`(or ,command-ptype form))
         (object type event options)
@@ -439,7 +445,8 @@
 
 (define-presentation-method accept
     ((type stream-destination) stream (view textual-view)
-     &key (default '*standard-output*) (prompt "stream form"))
+     &key (default '*standard-output*) default-type (prompt "stream form"))
+  (declare (ignore default-type))
   (let ((dest (eval (accept 'form :stream stream :view view
                                   :default default :prompt prompt))))
     (if (and (streamp dest)
@@ -449,7 +456,8 @@
 
 (define-presentation-method accept
     ((type file-destination) stream (view textual-view)
-     &key (prompt "destination file"))
+     &key default default-type (prompt "destination file"))
+  (declare (ignore default default-type))
   (let ((path (accept 'pathname :stream stream :view view :prompt prompt)))
     ;; Give subclasses a shot
     (with-presentation-type-decoded (type-name) type
@@ -457,7 +465,8 @@
 
 (define-presentation-method accept
     ((type output-destination) stream (view textual-view)
-     &key (default "Stream") (prompt nil))
+     &key (default "Stream") default-type (prompt nil))
+  (declare (ignore default-type))
   (let ((type (accept `(member-alist ,*output-destination-types*)
                       :stream stream :view view
                       :default default :prompt prompt

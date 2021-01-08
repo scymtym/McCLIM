@@ -133,22 +133,23 @@
   (princ (c2mop:generic-function-name object) stream))
 
 (define-presentation-method accept
-    ((type generic-function) stream (view textual-view) &key)
+    ((type generic-function) stream (view textual-view)
+     &key default default-type)
+  (declare (ignore default default-type))
   ;; generic-functions are a subclass of standard-object, so they can be
   ;; accepted as expressions!
-  (let ((fn (accept 'expression
-		    :stream stream
-		    :view view
-		    :history 'generic-function
-		    :prompt nil)))
+  (let ((fn (accept 'expression :stream stream
+                                :view view
+                                :history 'generic-function
+                                :prompt nil)))
     ;;
     (when (typep fn 'generic-function)
       (return-from accept fn))
     (handler-case
-	(fdefinition fn)
+        (fdefinition fn)
       (error ()
-	(simple-parse-error "~S is not the name of a generic function."
-			    fn)))))
+        (simple-parse-error "~S is not the name of a generic function."
+                            fn)))))
 
 (define-presentation-method present (object (type bytes)
                                      stream (view textual-view)
@@ -1645,20 +1646,17 @@ if you are interested in fixing this."))
   (princ (package-name object) stream))
 
 (define-presentation-method accept ((type package) stream (view textual-view)
-				    &key)
-  (multiple-value-bind
-	(object success)
+                                    &key default default-type)
+  (declare (ignore default default-type))
+  (multiple-value-bind (object success)
       (completing-from-suggestions (stream)
-	(loop
-	   for p in (list-all-packages)
-	   do (progn
-		(suggest (package-name p) p)
-		(loop
-		   for n in (package-nicknames p)
-		   do (suggest n p)))))
+        (loop for p in (list-all-packages)
+              do (suggest (package-name p) p)
+                 (loop for n in (package-nicknames p)
+                       do (suggest n p))))
     (if success
-	object
-	(simple-parse-error "No package"))))
+        object
+        (simple-parse-error "No package"))))
 
 (define-command (com-set-package :name t
                                  :menu t

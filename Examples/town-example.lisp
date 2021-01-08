@@ -162,12 +162,13 @@
 
 ;;; accept method for a town presentation (in any view mode):
 
-(define-presentation-method accept ((type town) stream view &key)
+(define-presentation-method accept ((type town) stream view
+                                    &key default default-type)
+  (declare (ignore default default-type))
   (values ; suppress values after the first
    ;; provide completion over the names of the towns
    (completing-from-suggestions (Stream :partial-completers '(#\Space))
      (maphash #'suggest *towns*))))
-
 
 ;;; how to present a town in CLIM in text-mode:
 
