@@ -261,17 +261,35 @@
 ;;; already determined that that the numeric class of type is a subtype of
 ;;;supertype.
 
-(defun number-subtypep (low high super-low super-high)
-  (if (eq low '*)
-      (unless (eq super-low '*)
-        (return-from number-subtypep nil))
-      (unless (or (eq super-low '*) (>= low super-low))
-        (return-from number-subtypep nil)))
-  (if (eq high '*)
-      (unless (eq super-high '*)
-        (return-from number-subtypep nil))
-      (unless (or (eq super-high '*) (<= high super-high))
-        (return-from number-subtypep nil)))
+(defun number-subtypep (low high super-low super-high integerp)
+  (flet ((compare-bound (sub super flip)
+           (labels((goodp (low high adjust)
+                     (let ((diff (if flip
+                                     (- low high)
+                                     (- high low))))
+                       (cond ((not adjust) (<= 0 diff))
+                             (integerp     (<= adjust diff))
+                             (t            (< 0 diff)))))
+                   (check (low high adjust)
+                     (unless (goodp low high adjust)
+                       (return-from number-subtypep nil))))
+             (cond ((eq sub '*)
+                    (unless (eq super '*)
+                      (return-from number-subtypep nil)))
+                   ((consp sub)
+                    (cond ((eq super '*))
+                          ((consp super)
+                           (check (first sub) (first super) nil))
+                          (t
+                           (check (first sub) super (if integerp -1 nil)))))
+                   (t
+                    (cond ((eq super '*))
+                          ((consp super)
+                           (check sub (first super) 1))
+                          (t
+                           (check sub super nil))))))))
+    (compare-bound low  super-low  t)
+    (compare-bound high super-high nil))
   t)
 
 (macrolet
@@ -288,8 +306,12 @@
                       `(and (not (integerp object))
                             (rationalp object))
                       `(,predicate object))
-                 (or (eq low '*) (<= low object))
-                 (or (eq high '*) (<= object high))))
+                 (cond ((eq low '*) t)
+                       ((consp low) (< (first low) object))
+                       (t (<= low object)))
+                 (cond ((eq high '*) t)
+                       ((consp high) (< object (first high)))
+                       (t (<= object high)))))
 
           (define-presentation-method presentation-subtypep
               ((type ,type) maybe-supertype)
@@ -297,7 +319,8 @@
               (let ((super-low low)
                     (super-high high))
                 (with-presentation-type-parameters (,type type)
-                  (values (number-subtypep low high super-low super-high)
+                  (values (number-subtypep low high super-low super-high
+                                           ,(eq type 'integer))
                           t))))))))
   (define real     realp     number)
   (define rational rationalp real)
