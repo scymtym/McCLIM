@@ -1,14 +1,28 @@
+;;;  Drawing Utilities for Concrete Gadgets
+
 (in-package #:climi)
 
-;;;;
-;;;;  Drawing Utilities for Concrete Gadgets
-;;;;
+(defun display-gadget-background (gadget color x1 y1 x2 y2)
+  (draw-rectangle* gadget x1 y1 x2 y2 :ink color :filled t))
+
+;;; Engraved text
+
+(defun draw-label-text* (stream text x y &key ink engravedp)
+  (cond (engravedp
+         (draw-text* stream text (1+ x) (1+ y) :ink *3d-light-color*)
+         (draw-text* stream text x      y      :ink *3d-dark-color*))
+        (t
+         (draw-text* stream text x y :ink ink))))
 
 ;;; Labels
 
-(defmethod compose-label-space
-    ((gadget labelled-gadget-mixin) &key (wider 0) (higher 0))
-  (with-slots (label align-x align-y) gadget
+(defgeneric compose-label-space (gadget &key wider higher))
+
+(defgeneric draw-label* (gadget x1 y1 x2 y2 &key label ink activep))
+
+(defmethod compose-label-space ((gadget labelled-gadget-mixin) &key (wider  0)
+                                                                    (higher 0))
+  (with-slots (align-x align-y label) gadget
     (let* ((text-style (pane-text-style gadget))
            (as (text-style-ascent text-style gadget))
            (ds (text-style-descent text-style gadget))
@@ -17,27 +31,30 @@
       (make-space-requirement :width w  :min-width w  :max-width  +fill+
                               :height h :min-height h :max-height +fill+))))
 
-(defmethod draw-label* ((pane labelled-gadget-mixin) x1 y1 x2 y2
-                        &key (ink +foreground-ink+))
-  (with-slots (align-x align-y label) pane
-    (let* ((text-style (pane-text-style pane))
-           (as (text-style-ascent text-style pane))
-           (ds (text-style-descent text-style pane))
-           (w  (text-size pane label :text-style text-style)))
-      (draw-text* pane label
-                  (case align-x
-                    ((:left) x1)
-                    ((:right) (- x2 w))
-                    ((:center) (/ (+ x1 x2 (- w)) 2))
-                    (otherwise x1)) ; defensive programming
-                  (case align-y
-                    ((:top) (+ y1 as))
-                    ((:center) (/ (+ y1 y2 (- as ds)) 2))
-                    ((:bottom) (- y2 ds))
-                    (otherwise (/ (+ y1 y2 (- as ds)) 2))) ;defensive programming
-                  ;; Giving the text-style here shouldn't be neccessary --GB
-                  :text-style text-style
-                  :ink ink))))
+(defmethod draw-label* ((gadget gadget) x1 y1 x2 y2
+                        &key (label   (alexandria:required-argument :label))
+                             (align-x (pane-align-x gadget))
+                             (align-y (pane-align-y gadget))
+                             (ink     +foreground-ink+)
+                             (activep (gadget-active-p gadget)))
+  (let ((text-style (pane-text-style gadget)))
+    (flet ((width () (text-size gadget label :text-style text-style))
+           (as () (text-style-ascent text-style gadget))
+           (ds () (text-style-descent text-style gadget)))
+      (let ((x (ecase align-x
+                 (:left   x1)
+                 (:right  (- x2 (width)))
+                 (:center (/ (+ x1 x2 (- (width))) 2))))
+            (y (ecase align-y
+                 (:top      (+ y1 (as)))
+                 (:center   (/ (+ y1 y2 (- (as) (ds))) 2))
+                 (:bottom   (- y2 (ds)))
+                 (:baseline y2))))
+        (draw-label-text* gadget label x y :ink ink :engravedp (not activep))))))
 
-(defun display-gadget-background (gadget color x1 y1 x2 y2)
-  (draw-rectangle* gadget x1 y1 x2 y2 :ink color :filled t))
+(defmethod draw-label* ((gadget labelled-gadget-mixin) x1 y1 x2 y2
+                        &rest args
+                        &key (label (gadget-label gadget)) ink activep)
+  (declare (ignore ink activep))
+  (apply #'call-next-method gadget x1 y1 x2 y2 :label label
+         (alexandria:remove-from-plist args :label)))

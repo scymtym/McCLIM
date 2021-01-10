@@ -72,9 +72,7 @@
              (y1 (+ y1 border-thickness y-spacing))
              (x2 (- x2 border-thickness x-spacing))
              (y2 (- y2 border-thickness y-spacing)))
-        (if (gadget-active-p pane)
-            (draw-label* pane x1 y1 x2 y2 :ink (effective-gadget-foreground pane))
-            (draw-engraved-label* pane x1 y1 x2 y2))))))
+        (draw-label* pane x1 y1 x2 y2 :ink (effective-gadget-foreground pane))))))
 
 
 ;;; ---------------------------------------------------------------------------
@@ -161,10 +159,8 @@
                       (+ (/ (+ y1 y2) 2) (/ (+ as ds) 2)))
             (draw-toggle-button-indicator pane (toggle-button-indicator-type pane) (gadget-value pane)
                                           tx1 ty1 tx2 ty2)
-            (if (gadget-active-p pane)
-                (draw-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2
-                             :ink (effective-gadget-foreground pane))
-                (draw-engraved-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2))))))))
+            (draw-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2
+                         :ink (effective-gadget-foreground pane))))))))
 
 (defmethod handle-event ((pane toggle-button-pane) (event pointer-button-release-event))
   (with-slots (armed) pane
@@ -200,9 +196,7 @@
         (multiple-value-bind (x1 y1 x2 y2)
             (values (+ x1 x-spacing) (+ y1 y-spacing)
                     (- x2 x-spacing) (- y2 y-spacing))
-          (if (gadget-active-p pane)
-              (draw-label* pane x1 y1 x2 y2 :ink (effective-gadget-foreground pane))
-              (draw-engraved-label* pane x1 y1 x2 y2)))))))
+          (draw-label* pane x1 y1 x2 y2 :ink (effective-gadget-foreground pane)))))))
 
 (defmethod compose-space ((gadget menu-button-pane) &key width height)
   (declare (ignore width height))
@@ -698,13 +692,9 @@
            (draw-value (x y)
              (let ((text (format-value (gadget-value pane)
                                        (slider-decimal-places pane))))
-               (if (gadget-active-p pane)
-                   (draw-text* pane text x y)
-                   (progn
-                     (draw-text* pane text (1+ x) (1+ y)
-                                 :ink *3d-light-color*)
-                     (draw-text* pane text x y
-                                 :ink *3d-dark-color*))))))
+               (draw-label* pane x y x y :label   text
+                                         :align-x :left
+                                         :align-y :baseline))))
       (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region pane))
         (display-gadget-background pane background-color 0 0 (- x2 x1) (- y2 y1))
         (ecase (gadget-orientation pane)
@@ -1071,14 +1061,12 @@ response to scroll wheel events."))
                 do (multiple-value-bind (foreground background)
                        (funcall inks elt-index)
                      (draw-rectangle* pane rx0 y0 rx1 y1 :filled t :ink background)
-                     (let ((x sx0)
-                           (y (+ y0 ascent))
+                     (let ((x      sx0)
+                           (y      (+ y0 ascent))
                            (string (elt strings elt-index)))
-                       (if (gadget-active-p pane)
-                           (draw-text* pane string x y :ink foreground)
-                           (progn
-                             (draw-text* pane string (1+ x) (1+ y) :ink *3d-light-color*)
-                             (draw-text* pane string x      y      :ink *3d-dark-color*)))))
+                       (draw-label-text* pane string x y
+                                         :ink       foreground
+                                         :engravedp (not (gadget-active-p pane)))))
                 ;; If the displayed items do not fill the entire sheet
                 ;; region/viewport region, fill the part that is not
                 ;; covered using the background ink.
@@ -1284,7 +1272,10 @@ if INVOKE-CALLBACK is given."))
                                enter/exit-arms/disarms-mixin
                                3d-border-mixin
                                option-pane)
-  ((current-label :initform "" :accessor generic-option-pane-label)))
+  ((current-label :initform "" :accessor generic-option-pane-label))
+  (:default-initargs
+   :align-x :center
+   :align-y :center))
 
 (defun option-pane-evil-backward-map (pane value)
   (let ((key-fn (list-pane-value-key pane)))
@@ -1587,34 +1578,12 @@ if INVOKE-CALLBACK is given."))
   (disarm-gadget pane))
 
 (defmethod handle-repaint ((pane generic-option-pane) region)
-  (with-bounding-rectangle* (x0 y0 x1 y1) (sheet-region pane)
-    (multiple-value-bind (widget-width widget-height)
-        (generic-option-pane-widget-size pane)
-      (declare (ignore widget-height))
-      (draw-rectangle* pane x0 y0 x1 y1 :ink (effective-gadget-background pane))
-      (let* ((tx1 (- x1 widget-width))
-             (x (/ (- tx1 x0) 2))
-             (y (/ (+ (- y1 y0)
-                      (- (text-style-ascent (pane-text-style pane) pane)
-                         (text-style-descent (pane-text-style pane) pane)))
-                   2)))
-        (if (gadget-active-p pane)
-            (draw-text* pane (slot-value pane 'current-label)
-                        x y
-                        :align-x :center
-                        :align-y :baseline)
-            (progn
-              (draw-text* pane (slot-value pane 'current-label)
-                          (1+ x) (1+ y)
-                          :align-x :center
-                          :align-y :baseline
-                          :ink *3d-light-color*)
-              (draw-text* pane (slot-value pane 'current-label)
-                          x y
-                          :align-x :center
-                          :align-y :baseline
-                          :ink *3d-dark-color*))))
-      (generic-option-pane-draw-widget pane))))
+  (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
+    (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-background pane))
+    (let* ((widget-width (generic-option-pane-widget-size pane))
+           (tx2 (- x2 widget-width)))
+      (draw-label* pane x1 y1 tx2 y2 :label (slot-value pane 'current-label)))
+    (generic-option-pane-draw-widget pane)))
 
 
 ;;; --------------------------------------------------------------------------

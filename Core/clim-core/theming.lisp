@@ -144,8 +144,6 @@
 ;; DRAW-BORDERED-POLYGON medium point-seq &key border-width style
 ;;
 ;; -GB
-(defgeneric compose-label-space (gadget &key wider higher))
-(defgeneric draw-label* (pane x1 y1 x2 y2 &key ink))
 
 (labels ((line-hnf (x1 y1 x2 y2)
            (values (- y2 y1) (- x1 x2) (- (* x1 y2) (* y1 x2))))
@@ -327,14 +325,10 @@
                (multiple-value-bind (outer-points omiddle-points)
                    (shrink-polygon point-seq (* 1/3 border-width))
                  (draw-pieces outer-points omiddle-points +black+ +black+)
-                 (draw-pieces imiddle-points inner-points +black+ +black+))))))))) 
+                 (draw-pieces imiddle-points inner-points +black+ +black+)))))))))
 
   (defun draw-bordered-rectangle* (medium x1 y1 x2 y2 &rest options)
     (apply #'draw-bordered-polygon
            medium
            (polygon-points (make-rectangle* x1 y1 x2 y2))
-           options))
-
-  (defun draw-engraved-label* (pane x1 y1 x2 y2)
-    (draw-label* pane (1+ x1) (1+ y1) (1+ x2) (1+ y2) :ink *3d-light-color*)
-    (draw-label* pane x1 y1 x2 y2 :ink *3d-dark-color*)))
+           options)))
