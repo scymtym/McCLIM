@@ -980,10 +980,9 @@ response to scroll wheel events."))
   (with-slots (items-width) pane
     (or items-width
         (setf items-width
-              (reduce #'max (map 'vector (lambda (item-string)
-                                           (text-size pane item-string))
-                                 (generic-list-pane-item-strings pane))
-                      :initial-value 0)))))
+              (reduce #'max (generic-list-pane-item-strings pane)
+                      :initial-value 0 :key (lambda (item-string)
+                                              (text-size pane item-string)))))))
 
 (defgeneric generic-list-pane-items-length (generic-list-pane))
 
