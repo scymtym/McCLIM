@@ -70,6 +70,27 @@
   (make-pane-constructor push-button)
   (make-pane-constructor toggle-button))
 
+(defun toggle-active (gadget value)
+  (let ((frame (gadget-client gadget))
+        (seen  '()))
+    (setf (gadget-label gadget) (if value
+                                    "Gadgets Active"
+                                    "Gadgets Inactive"))
+    ;; The following does not use VALUE to make sure that
+    ;; `[de]activate-gadget' and `gadget-active-p' work together
+    ;; properly.
+    (map-over-sheets (lambda (sheet)
+                       (when (and (gadgetp sheet)
+                                  (not (eq sheet gadget))
+                                  (notany (alexandria:curry
+                                           #'sheet-ancestor-p sheet)
+                                          seen))
+                         (push sheet seen)
+                         (if (gadget-active-p sheet)
+                             (deactivate-gadget sheet)
+                             (activate-gadget sheet))))
+                     (frame-top-level-sheet frame))))
+
 (define-application-frame gadget-test ()
   ()
   (:menu-bar
@@ -120,8 +141,9 @@
               (list (push-button :label "A") (push-button :label "B"))
               (list (push-button :label "C") (push-button :label "D"))
               (list (push-button :label "E") (push-button :label "F")))))
-   (toggle-btn :toggle-button :label "Toggle"
-                              :value t)
+   (toggle-btn :toggle-button :label "Gadgets Active"
+                              :value t
+                              :value-changed-callback 'toggle-active)
    (scroll    (raising (:border-width 1 :background +Gray83+)
                 (scrolling (:background +Gray83+ :width 100 :height 100)
                   (horizontally ()
@@ -165,10 +187,10 @@
           radar
           text-edit)
         (vertically ()
+          toggle-btn
           push-btn
           table
-          toggle-btn
-          scroll
+          (:fill scroll)
           radio-box
           check-box)))))
   (:top-level (gadget-test-frame-top-level . nil)))
@@ -186,17 +208,24 @@
                            (list 0.20 0.06 0.30 0.40)
                            (list 0.20 0.07 0.60 0.90)
                            (list 0.20 0.08 0.80 0.30)
-                           (list 0.20 0.09 0.60 0.20)))))
+                           (list 0.20 0.09 0.60 0.20))
+           :reader points)))
 
-(defmethod note-sheet-grafted ((sheet radar-pane))
+(defun schedule-repaint (sheet)
   (clime:schedule-event sheet (make-instance 'timer-event :sheet sheet) 0.1))
 
+(defmethod note-sheet-grafted ((sheet radar-pane))
+  (schedule-repaint sheet))
+
+(defmethod note-gadget-activated ((client t) (gadget radar-pane))
+  (schedule-repaint gadget))
+
 (defmethod handle-event ((pane radar-pane) (event timer-event))
-  (with-slots (points) pane
+  (when (gadget-active-p pane)
     (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
-      (let ((xf (- x2 x1))
-            (yf (- y2 y1)))
-        (dolist (point points)
+      (let ((dx (- x2 x1))
+            (dy (- y2 y1)))
+        (dolist (point (points pane))
           (destructuring-bind (radius grow x y) point
             (let ((old-radius radius))
               (setf radius
@@ -209,20 +238,16 @@
                           0.01)))
               (setf (first point) radius)
               ;; v- fix with a transform?
-              (let ((x (+ x1 (* x xf)))
-                    (y (+ y1 (* y yf)))
-                    (rx (* radius xf))
-                    (ry (* radius yf))
-                    (orx (* old-radius xf))
-                    (ory (* old-radius yf)))
-                (draw-ellipse* pane x y
-                               0 ory
-                               orx 0
+              (let ((x (+ x1 (* x dx)))
+                    (y (+ y1 (* y dy)))
+                    (rx (* radius dx))
+                    (ry (* radius dy))
+                    (orx (* old-radius dx))
+                    (ory (* old-radius dy)))
+                (draw-ellipse* pane x y 0 ory orx 0
                                :ink +background-ink+ :filled nil)
                 (when (> radius 0.01)
-                  (draw-ellipse* pane x y
-                                 0 ry
-                                 rx 0
-                                 :ink +black+ :filled nil)))))))))
-  (when (sheet-grafted-p pane)
-    (clime:schedule-event pane (make-instance 'timer-event :sheet pane) 0.1)))
+                  (draw-ellipse* pane x y 0 ry rx 0
+                                 :ink +black+ :filled nil))))))))
+    (when (sheet-grafted-p pane)
+      (clime:schedule-event pane (make-instance 'timer-event :sheet pane) 0.1))))
