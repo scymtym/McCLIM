@@ -1,27 +1,20 @@
-;;; -*- Mode: Lisp; Syntax: ANSI-Common-Lisp; Package: CLIM-DEMO; Base: 10; Lowercase: Yes -*-
-
-;;;  (c) copyright 2000 by
-;;;           Iban Hatchondo (hatchond@emi.u-bordeaux.fr)
-;;;           Julien Boninfante (boninfan@emi.u-bordeaux.fr)
-
-;;; This library is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU Library General Public
-;;; License as published by the Free Software Foundation; either
-;;; version 2 of the License, or (at your option) any later version.
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
 ;;;
-;;; This library is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; Library General Public License for more details.
+;;;  (c) copyright 2000 Iban Hatchondo <hatchond@emi.u-bordeaux.fr>
+;;;  (c) copyright 2000 Julien Boninfante <boninfan@emi.u-bordeaux.fr>
+;;;  (c) copyright 2002 Brian Spilsbury
+;;;  (c) copyright 2005 Andy Hefner <ahefner@common-lisp.net>
+;;;  (c) copyright 2006 David Lichteblau <dlichteblau@common-lisp.net>
+;;;  (c) copyright 2016 Robert Strandh <robert.strandh@gmail.com>
+;;;  (c) copyright 2018,2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
-;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-;;; Boston, MA  02111-1307  USA.
+;;; ---------------------------------------------------------------------------
+;;;
+;;; This examples shows the different gadget classes.
 
-(in-package :clim-demo)
-
-;;; Gadget Test/Demo
+(in-package #:clim-demo)
 
 (defun gadget-test (&optional frame-manager-name)
   (run-frame-top-level
@@ -43,35 +36,30 @@
     (clim-extensions:simple-event-loop))
   (frame-exit frame))
 
-(make-command-table 'lisp-menu
-                    :errorp nil
-                    :menu '(("Heir" :menu lisp-sub-menu)
-                            ("Lisp" :command test)
-                            ("Lisp" :command test)))
+(make-command-table 'lisp-menu :errorp nil
+                               :menu '(("Heir" :menu lisp-sub-menu)
+                                       ("Lisp" :command test)
+                                       ("Lisp" :command test)))
 
-(make-command-table 'lisp-sub-menu
-                    :errorp nil
-                    :menu '(("Does"  :command test)
-                            ("This"  :command test)
-                            ("Work?" :command test)))
+(make-command-table 'lisp-sub-menu :errorp nil
+                                   :menu '(("Does"  :command test)
+                                           ("This"  :command test)
+                                           ("Work?" :command test)))
 
-(make-command-table 'edit-menu
-                    :errorp nil
-                    :menu '(("Edit" :command test)
-                            ("Edit" :command test)
-                            ("Edit" :command test)))
+(make-command-table 'edit-menu :errorp nil
+                               :menu '(("Edit" :command test)
+                                       ("Edit" :command test)
+                                       ("Edit" :command test)))
 
-(make-command-table 'view-menu
-                    :errorp nil
-                    :menu '(("View" :command test)
-                            ("View" :command test)
-                            ("View" :command test)))
+(make-command-table 'view-menu :errorp nil
+                               :menu '(("View" :command test)
+                                       ("View" :command test)
+                                       ("View" :command test)))
 
-(make-command-table 'search-menu
-                    :errorp nil
-                    :menu '(("Search" :command test)
-                            ("Search" :command test)
-                            ("Search" :command test)))
+(make-command-table 'search-menu :errorp nil
+                                 :menu '(("Search" :command test)
+                                         ("Search" :command test)
+                                         ("Search" :command test)))
 
 (macrolet ((make-pane-constructor (class-name)
              `(defmacro ,class-name (&rest options)
@@ -83,121 +71,101 @@
   (make-pane-constructor toggle-button))
 
 (define-application-frame gadget-test ()
-    ()
-    (:menu-bar
-     (("Lisp"   :menu lisp-menu)
-      ("Edit"   :menu edit-menu)
-      ("View"   :menu view-menu)
-      ("Search" :menu search-menu)))
-    (:panes
-     (tf1        :push-button
-                 :text-style (make-text-style :fix :roman 24)
-                 :label "Text Field")
-     (tf2        :push-button
-                 :text-style (make-text-style :serif :roman 24)
-                 :label "Text Field")
-     (tf3        :push-button
-                 :text-style (make-text-style :serif :italic 24)
-                 :label "Text Field")
-     (tf4        :push-button
-                 :text-style (make-text-style :sans-serif '(:bold :italic) 24)
-                 :label "Text Field")
-    (text-edit  :text-editor
-                :value "Text Editor")
-     (slider-h   :slider
-                 :min-value 0
-                 :max-value 100
-                 :value 0
-                 :show-value-p t
-                 :orientation :horizontal)
-     (slider-v   :slider
-                 :min-value 0
-                 :show-value-p t
-                 :max-value 100
-                 :orientation :vertical
-                 :value 0)
-     (slider-v2  :slider
-                 :min-value 0
-                 :max-value 100
-                 :orientation :vertical
-                 :value 0)
-     (slider-v3  :slider
-                 :min-value 0
-                 :max-value 100
-                 :show-value-p t
-                 :orientation :vertical
-                 :value 0)
-     (radar      (make-pane 'radar-pane :name 'radar))
-     (push-btn   (lowering (:border-width 3 :background +Gray83+)
-                   (horizontally ()
-                     (push-button
-                       :name  "Radiate"
-                       :label "Radiate"
-                       :activate-callback
-                         (lambda (pane &rest args)
-                           (declare (ignore pane args))
-                           nil))
-                     (push-button
-                       :label "No, Push Me")
-                     (push-button
-                       :label "Me!"))))
-     (table (lowering (:border-width 3 :background +Gray83+)
-              (tabling (:height 50)
-                (list (push-button :label "A") (push-button :label "B"))
-                (list (push-button :label "C") (push-button :label "D"))
-                (list (push-button :label "E") (push-button :label "F")))))
-     (toggle-btn :toggle-button
-                 :label "Toggle"
-                 :value t
-                 :normal +red+
-                 :highlighted +red+
-                 :pushed-and-highlighted +red+)
-     (scroll    (raising (:border-width 1 :background +Gray83+)
-                   (scrolling (:background +Gray83+ :width 100 :height 100)
-                     (horizontally ()
-                       (vertically ()
-                         (push-button :label "This is a button")
-                         (push-button :label "That is a button")
-                         (push-button :label "This is a button too"))
-                       (with-radio-box (:orientation :vertical)
-                         (clim:radio-box-current-selection "First")
-                         "Second" "Third"
-                         "Red" "Blue" "Orange"
-                         "Elephant" "Dog" "Cat")
-                       (with-radio-box (:orientation :vertical :type :some-of)
-                         (clim:radio-box-current-selection "Fourth") "Fifth" "Sixth")
-                       (with-radio-box (:orientation :vertical)
-                         (clim:radio-box-current-selection "Seventh") "Eighth" "Ninth")
-                       (with-radio-box (:orientation :vertical :type :some-of)
-                         (clim:radio-box-current-selection "Tenth") "Eleventh" "Twelth")))))
-     (radio-box  (with-radio-box (:orientation :horizontal)
-                   (clim:radio-box-current-selection "One") "Two" "Three"))
-     (check-box  (with-radio-box (:type :some-of :orientation :horizontal)
-                   (clim:radio-box-current-selection "First") "Second" "Third")))
-    (:layouts
-     (default
-       (raising (:border-width 5 :background +Gray83+)
-         (horizontally ()
-           (vertically ()
-             (horizontally ()
-               (horizontally ()
-                 (vertically ()
-                   slider-v
-                   slider-v2)
-                 slider-v3)
-               (vertically ()
-                 tf1 tf2 tf3 tf4
-                 slider-h))
-             radar
-             text-edit)
-           (vertically ()
-             push-btn
-             table
-             toggle-btn
-             scroll
-             radio-box
-             check-box)))))
-    (:top-level (gadget-test-frame-top-level . nil)))
+  ()
+  (:menu-bar
+   (("Lisp"   :menu lisp-menu)
+    ("Edit"   :menu edit-menu)
+    ("View"   :menu view-menu)
+    ("Search" :menu search-menu)))
+  (:panes
+   (tf1        :push-button :text-style (make-text-style :fix :roman 24)
+                            :label "Text Field")
+   (tf2        :push-button :text-style (make-text-style :serif :roman 24)
+                            :label "Text Field")
+   (tf3        :push-button :text-style (make-text-style :serif :italic 24)
+                            :label "Text Field")
+   (tf4        :push-button :text-style (make-text-style :sans-serif '(:bold :italic) 24)
+                            :label "Text Field")
+   (text-edit  :text-editor :value "Text Editor")
+   (slider-h   :slider :min-value 0
+                       :max-value 100
+                       :value 0
+                       :show-value-p t
+                       :orientation :horizontal)
+   (slider-v   :slider :min-value 0
+                       :show-value-p t
+                       :max-value 100
+                       :orientation :vertical
+                       :value 0)
+   (slider-v2  :slider :min-value 0
+                       :max-value 100
+                       :orientation :vertical
+                       :value 0)
+   (slider-v3  :slider :min-value 0
+                       :max-value 100
+                       :show-value-p t
+                       :orientation :vertical
+                       :value 0)
+   (radar      (make-pane 'radar-pane :name 'radar))
+   (push-btn   (lowering (:border-width 3 :background +Gray83+)
+                 (horizontally ()
+                   (push-button :name  "Radiate"
+                                :label "Radiate")
+                   (push-button :label "No, Push Me")
+                   (push-button :label "Me!"))))
+   (table (lowering (:border-width 3 :background +Gray83+)
+            (tabling (:height 50)
+              (list (push-button :label "A") (push-button :label "B"))
+              (list (push-button :label "C") (push-button :label "D"))
+              (list (push-button :label "E") (push-button :label "F")))))
+   (toggle-btn :toggle-button :label "Toggle"
+                              :value t)
+   (scroll    (raising (:border-width 1 :background +Gray83+)
+                (scrolling (:background +Gray83+ :width 100 :height 100)
+                  (horizontally ()
+                    (vertically ()
+                      (push-button :label "This is a button")
+                      (push-button :label "That is a button")
+                      (push-button :label "This is a button too"))
+                    (with-radio-box (:orientation :vertical)
+                      (radio-box-current-selection "First")
+                      "Second" "Third"
+                      "Red" "Blue" "Orange"
+                      "Elephant" "Dog" "Cat")
+                    (with-radio-box (:orientation :vertical :type :some-of)
+                      (radio-box-current-selection "Fourth") "Fifth" "Sixth")
+                    (with-radio-box (:orientation :vertical)
+                      (radio-box-current-selection "Seventh") "Eighth" "Ninth")
+                    (with-radio-box (:orientation :vertical :type :some-of)
+                      (radio-box-current-selection "Tenth") "Eleventh" "Twelth")))))
+   (radio-box  (with-radio-box (:orientation :horizontal)
+                 (radio-box-current-selection "One") "Two" "Three"))
+   (check-box  (with-radio-box (:type :some-of :orientation :horizontal)
+                 (radio-box-current-selection "First") "Second" "Third")))
+  (:layouts
+   (default
+    (raising (:border-width 5 :background +Gray83+)
+      (horizontally ()
+        (vertically ()
+          (horizontally ()
+            (horizontally ()
+              (vertically ()
+                slider-v
+                slider-v2)
+              slider-v3)
+            (vertically ()
+              tf1 tf2 tf3 tf4
+              slider-h))
+          radar
+          text-edit)
+        (vertically ()
+          push-btn
+          table
+          toggle-btn
+          scroll
+          radio-box
+          check-box)))))
+  (:top-level (gadget-test-frame-top-level . nil)))
 
 (define-command (test :command-table gadget-test) ()
   (format *trace-output* "That was just a test~%")
