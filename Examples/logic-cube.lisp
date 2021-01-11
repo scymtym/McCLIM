@@ -275,21 +275,18 @@
                                                 (face-light (or color +gray80+) side)))))))))))
 
 (defun invoke-in-lc-space (pane continuation) ; "logic-cube space" =p
-  (let* ((width  (bounding-rectangle-width pane))
-         (height (bounding-rectangle-height pane))
-         (radius (/ (min width height) 2)))
-    (with-translation (pane (/ width 2) (/ height 2))
-      (with-scaling (pane radius)
-        (funcall continuation pane)))))
+  (multiple-value-bind (width height) (bounding-rectangle-size pane)
+    (let ((radius (/ (min width height) 2)))
+      (with-translation (pane (/ width 2) (/ height 2))
+        (with-scaling (pane radius)
+          (funcall continuation pane))))))
 
 (defmethod handle-repaint ((pane logic-cube-pane) region)
   (with-bounding-rectangle* (x0 y0 x1 y1) (sheet-region pane)
-    (climi::with-double-buffering ((pane x0 y0 x1 y1) (wtf-wtf-wtf))
-      (declare (ignore wtf-wtf-wtf))
-      (draw-rectangle* pane x0 y0 x1 y1 :filled t :ink (background-color pane))
-      (invoke-in-lc-space pane #'draw-logic-cube)
-      (when (decorator pane)
-        (funcall (decorator pane))))))
+    (draw-rectangle* pane x0 y0 x1 y1 :filled t :ink (background-color pane))
+    (invoke-in-lc-space pane #'draw-logic-cube)
+    (when (decorator pane)
+      (funcall (decorator pane)))))
 
 ;;; Locating the face under the pointer:
 
