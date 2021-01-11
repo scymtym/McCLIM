@@ -152,7 +152,7 @@
                            stream (+ x1 final-x) 0 (+ x1 final-x) pane-height))))
             ((:text-bounding-rectangle)
              (multiple-value-bind (left top right bottom)
-                 (climi::text-bounding-rectangle* medium text :text-style style)
+                 (climb:text-bounding-rectangle* medium text :text-style style)
                (component "Bounding rectangle"
                           (lambda (stream)
                             (draw-rectangle* stream
