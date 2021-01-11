@@ -1331,20 +1331,17 @@ if INVOKE-CALLBACK is given."))
   (text-size (sheet-medium pane) (slot-value pane 'current-label)
              :text-style (pane-text-style pane)))
 
-(defun draw-vertical-arrow (sheet x0 y0 direction)
-  (assert (or (eq direction :up)
-              (eq direction :down)))
+(defun draw-vertical-arrow (sheet x0 y0 direction ink)
   (let* ((dx -4)
          (dy 4)
-         (shape
-           (if (eq direction :up)  ;; Hack-p?
-               (list x0 y0
-                     (+ x0 dx) (+ 1 y0 dy)
-                     (- x0 dx) (+ 1 y0 dy))
-               (list x0 y0
-                     (+ 1 x0 dx) (+ y0 (- dy))
-                     (- x0 dx)   (+ y0 (- dy))))))
-    (draw-polygon* sheet shape :ink +black+)))
+         (shape (ecase direction ; Hack-p?
+                  (:up (list x0 y0
+                             (+ x0 dx) (+ 1 y0 dy)
+                             (- x0 dx) (+ 1 y0 dy)))
+                  (:down (list x0 y0
+                               (+ 1 x0 dx) (+ y0 (- dy))
+                               (- x0 dx)   (+ y0 (- dy)))))))
+    (draw-polygon* sheet shape :ink ink)))
 
 (defun generic-option-pane-compute-max-label-width (pane)
   (max
@@ -1382,12 +1379,18 @@ if INVOKE-CALLBACK is given."))
     (declare (ignore x0))
     (multiple-value-bind (widget-width widget-height)
         (generic-option-pane-widget-size pane)
-      (let ((center (floor (/ (- y1 y0) 2)))
-            (height/2 (/ widget-height 2))
-            (highlight-color (compose-over (compose-in +white+ (make-opacity 0.85))
-                                           (pane-background pane)))
-            (shadow-color (compose-over (compose-in +black+ (make-opacity 0.3))
-                                        (pane-background pane))))
+      (let* ((activep (gadget-active-p pane))
+             (center (floor (/ (- y1 y0) 2)))
+             (height/2 (/ widget-height 2))
+             (foreground (pane-foreground pane))
+             (background (pane-background pane))
+             (highlight-color (compose-over (compose-in +white+ (make-opacity 0.85))
+                                            background))
+             (shadow-color (compose-over (compose-in +black+ (make-opacity 0.3))
+                                         background))
+             (widget-color (if activep
+                               foreground
+                               *3d-dark-color*)))
         (draw-engraved-vertical-separator pane
                                           (- x1 widget-width -1)
                                           (- center height/2)
@@ -1395,8 +1398,8 @@ if INVOKE-CALLBACK is given."))
                                           highlight-color shadow-color)
         (let* ((x (+ (- x1 widget-width) (/ widget-width 2)))
                (frob-x (+ (floor x) 0)))
-          (draw-vertical-arrow pane frob-x (- center 6) :up)
-          (draw-vertical-arrow pane frob-x (+ center 6) :down))))))
+          (draw-vertical-arrow pane frob-x (- center 6) :up widget-color)
+          (draw-vertical-arrow pane frob-x (+ center 6) :down widget-color))))))
 
 (defun rewrite-event-for-grab (grabber event)
   (multiple-value-bind (nx ny)
