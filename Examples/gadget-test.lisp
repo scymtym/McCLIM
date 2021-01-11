@@ -86,6 +86,8 @@
                             :label "Text Field")
    (tf4        :push-button :text-style (make-text-style :sans-serif '(:bold :italic) 24)
                             :label "Text Field")
+   (option     :option-pane :items '("Option 1" "Option 2")
+                            :value "Option 1")
    (text-edit  :text-editor :value "Text Editor")
    (slider-h   :slider :min-value 0
                        :max-value 100
@@ -148,14 +150,18 @@
       (horizontally ()
         (vertically ()
           (horizontally ()
-            (horizontally ()
-              (vertically ()
-                slider-v
-                slider-v2)
-              slider-v3)
             (vertically ()
-              tf1 tf2 tf3 tf4
-              slider-h))
+              (horizontally ()
+                (vertically ()
+                  slider-v
+                  slider-v2)
+                slider-v3)
+              slider-h)
+            (vertically (:y-spacing 8)
+              option
+              (vertically ()
+                tf1 tf2 tf3 tf4)
+              :fill))
           radar
           text-edit)
         (vertically ()
