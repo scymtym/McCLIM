@@ -13,26 +13,26 @@
 
 (in-package #:clim-internals)
 
-;;;; Notes
-
+;;; Notes
+;;;
 ;;; - Now what exactly are layout-graph-nodes and layout-graph-edges
 ;;;   supposed to do? If LAYOUT-GRAPH-NODES is only responsible for
 ;;;   laying out the node output records, why does it get the
 ;;;   arc-drawer? If it should also draw the edges why then is there
 ;;;   the other function? --GB 2002-08-13
-
+;;;
 ;;; - There is this hash table initarg to graph-output-records? Should
 ;;;   FORMAT-GRAPH-FROM-ROOTS pass a suitable hash table for the given
 ;;;   'duplicate-test', if so why it is passed down and why is it not
 ;;;   restricted to the set of hash test functions? --GB 2002-08-13
-
+;;;
 ;;; - What is the purpose of (SETF GRAPH-NODE-CHILDREN) and
 ;;;   (SETF GRAPH-NODE-PARENTS)? --GB 2002-08-14
-
+;;;
 ;;; - FORMAT-GRAPH-FROM-ROOTS passes the various options on to the
 ;;;   instantiation of the graph-output-record class, so that the
 ;;;   individual classes can choose appropriate defaults. --GB 2002-08-14
-
+;;;
 ;;; - In the same spirit, a non given ARC-DRAWER option is passed as it
 ;;;   is, that is being NIL, to LAYOUT-GRAPH-EDGES so that the concrete
 ;;;   graph-output-record can choose a default. --GB 2002-08-14
@@ -82,7 +82,7 @@
 (define-graph-type :directed-graph digraph-graph-output-record)
 (define-graph-type :digraph digraph-graph-output-record)
 
-;;;; Entry
+;;; Entry
 
 (defun format-graph-from-root (root-object &rest other-args)
   (apply #'format-graph-from-roots (list root-object) other-args))
@@ -142,37 +142,29 @@
                         (bounding-rectangle-max-y graph-output-record))))
         graph-output-record))))
 
-;;;; Graph Output Records
+;;; Graph Output Records
 
 (defclass standard-graph-output-record
     (graph-output-record standard-sequence-output-record)
-  ((orientation
-    :initarg :orientation)
-   (center-nodes
-    :initarg :center-nodes)
-   (cutoff-depth
-    :initarg :cutoff-depth)
-   (merge-duplicates
-    :initarg :merge-duplicates)
-   (generation-separation
-    :initarg :generation-separation)
-   (within-generation-separation
-    :initarg :within-generation-separation)
-   (maximize-generations
-    :initarg :maximize-generations)
-   (root-nodes
-    :accessor graph-root-nodes))
-  (:default-initargs :orientation :horizontal
-                     :center-nodes nil
-                     :cutoff-depth nil
-                     :merge-duplicates nil
-                     :maximize-generations nil))
+  ((orientation                  :initarg  :orientation)
+   (center-nodes                 :initarg  :center-nodes)
+   (cutoff-depth                 :initarg  :cutoff-depth)
+   (merge-duplicates             :initarg  :merge-duplicates)
+   (generation-separation        :initarg  :generation-separation)
+   (within-generation-separation :initarg  :within-generation-separation)
+   (maximize-generations         :initarg  :maximize-generations)
+   (root-nodes                   :accessor graph-root-nodes))
+  (:default-initargs
+   :orientation          :horizontal
+   :center-nodes         nil
+   :cutoff-depth         nil
+   :merge-duplicates     nil
+   :maximize-generations nil))
 
 (defmethod initialize-instance :after ((record standard-graph-output-record)
-                                       &key
-                                         orientation
-                                         generation-separation
-                                         within-generation-separation)
+                                       &key orientation
+                                            generation-separation
+                                            within-generation-separation)
   (unless generation-separation
     (setf (slot-value record 'generation-separation)
           (ecase orientation
@@ -193,30 +185,26 @@
 (defclass digraph-graph-output-record (standard-graph-output-record)
   ())
 
-;;;; Nodes
+;;; Nodes
 
 (defclass standard-graph-node-output-record (graph-node-output-record
                                              standard-sequence-output-record)
-  ((graph-parents
-    :initarg :graph-parents
-    :initform nil
-    :accessor graph-node-parents)
-   (graph-children
-    :initarg :graph-children
-    :initform nil
-    :accessor graph-node-children)
-   (edges-from :initform (make-hash-table))
-   (edges-to   :initform (make-hash-table))
-   (object
-    :initarg :object
-    :reader graph-node-object)
+  ((graph-parents  :initarg  :graph-parents
+                   :initform nil
+                   :accessor graph-node-parents)
+   (graph-children :initarg  :graph-children
+                   :initform nil
+                   :accessor graph-node-children)
+   (edges-from     :initform (make-hash-table))
+   (edges-to       :initform (make-hash-table))
+   (object         :initarg  :object
+                   :reader   graph-node-object)
    ;; internal slots for the graph layout algorithm
-   (minor-size
-    :initform nil
-    :accessor graph-node-minor-size
-    :documentation "Space requirement for this node and its children. Also used as a mark.") ))
-
-;;;;
+   (minor-size     :initform nil
+                   :accessor graph-node-minor-size
+                   :documentation
+                   "Space requirement for this node and its
+                    children. Also used as a mark.")))
 
 ;;; Modified to make this obey the spec better by using a hash-table
 ;;; for detecting previous nodes only when the duplicate-test argument
@@ -331,7 +319,6 @@
       (setf merge-duplicates t)))
   (call-next-method))
 
-
 ;;; The CLIM II specification gives a broad hint that what we are doing here
 ;;; is fine: "Typically, different graph types will use different output
 ;;; record classes and layout engines to lay out the graph. However, it is
@@ -341,10 +328,12 @@
 
 (defmethod layout-graph-nodes ((graph-output-record standard-graph-output-record)
                                stream arc-drawer arc-drawing-options)
-  "Layout for DAGs, digraphs and trees. There are three phases that traverse the
-graph topologically. The first assigns a depth to each node, the second
-computes minor and major dimensions, and the final one lays nodes out by depth.
-Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-depth."
+  ;; Layout for DAGs, digraphs and trees. There are three phases that
+  ;; traverse the graph topologically. The first assigns a depth to
+  ;; each node, the second computes minor and major dimensions, and
+  ;; the final one lays nodes out by depth.  Assumes that
+  ;; `generate-graph-nodes' has generated only nodes up to the
+  ;; cutoff depth.
   (declare (ignore arc-drawer arc-drawing-options))
   (with-slots (orientation center-nodes generation-separation
                within-generation-separation root-nodes maximize-generations)
@@ -481,14 +470,16 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
                   (setf v (compute-position elt majors u v))
                   (incf v within-generation-separation))))))))))
 
-;;;; Edges
+;;; Edges
 
 (defclass standard-edge-output-record (standard-sequence-output-record)
   ((stream)
    (arc-drawer)
    (arc-drawing-options)
-   (from-node :initarg :from-node :reader from-node)
-   (to-node :initarg :to-node :reader to-node)))
+   (from-node           :initarg :from-node
+                        :reader  from-node)
+   (to-node             :initarg :to-node
+                        :reader  to-node)))
 
 (defun layout-edges (graph node stream arc-drawer arc-drawing-options)
   (dolist (k (graph-node-children node))
@@ -512,7 +503,7 @@ Assumes that GENERATE-GRAPH-NODES has generated only nodes up to the cutoff-dept
     (with-slots (stream arc-drawer arc-drawing-options) edge-record
       (with-bounding-rectangle* (x1 y1 x2 y2) major-node
         (with-bounding-rectangle* (u1 v1 u2 v2) minor-node
-          (clear-output-record edge-record)  ;;; FIXME: repaint?
+          (clear-output-record edge-record)  ; FIXME: repaint?
           (letf (((stream-current-output-record stream) edge-record))
             (ecase (slot-value graph 'orientation)
               ((:horizontal)
