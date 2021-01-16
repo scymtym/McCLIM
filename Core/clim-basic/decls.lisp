@@ -9,7 +9,7 @@
 ;;;  (c) copyright 2006 Christophe Rhodes <crhodes@common-lisp.net>
 ;;;  (c) copyright 2008 Troels Henriksen <thenriksen@common-lisp.net>
 ;;;  (c) copyright 2016-2020 Daniel Kochmański <daniel@turtleware.eu>
-;;;  (c) copyright 2018,2019,2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2018,2019,2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -668,7 +668,7 @@ If there are multiple records that overlap the region and that overlap
 each other, MAP-OVER-OUTPUT-RECORDS-OVERLAPPING-REGION hits the least
 recently inserted record first and the most recently inserted record
 last. Otherwise, the order in which the records are traversed is
-unspecified. "))
+unspecified."))
 
 ;;; 16.2.3. Output Record Change Notification Protocol
 
@@ -726,6 +726,55 @@ unspecified. "))
     (stream continuation record-type &rest initargs))
 
 (defgeneric make-design-from-output-record (record))
+
+;;; 17.3.1 Table Formatting Protocol
+
+(defgeneric map-over-table-elements (function table-record type)
+  (:documentation "Apply FUNCTION to all the rows or columns of
+TABLE-RECORD that are of type TYPE. TYPE is one of :ROW, :COLUMN or
+:ROW-OR-COLUMN. FUNCTION is a function of one argument. The function
+skips intervening non-table output record structures."))
+
+(defgeneric adjust-table-cells (table-record stream))
+
+(defgeneric adjust-multiple-columns (table-record stream))
+
+;;; 17.3.2 Row and Column Formatting Protocol
+
+(defgeneric map-over-row-cells (function row-record)
+  (:documentation "Apply FUNCTION to all the cells in ROW-RECORD.
+Skip intervening non-table output record structures.FUNCTION is a
+function of one argument, an output record corresponding to a table
+cell within the row."))
+
+(defgeneric map-over-column-cells (function column-record)
+  (:documentation "Apply FUNCTION to all the cells in COLUMN-RECORD.
+Skip intervening non-table output record structures. FUNCTION is a
+function of one argument, an output record corresponding to a table
+cell within the column."))
+
+;;; 17.3.4 Item List Formatting Protocol
+
+(defgeneric map-over-item-list-cells (function item-list-record))
+
+(defgeneric adjust-item-list-cells (item-list-record stream))
+
+;;; 18.2 The Graph Formatting Protocols
+
+(defgeneric graph-root-nodes (graph-output-record))
+(defgeneric (setf graph-root-nodes) (new-value graph-output-record))
+(defgeneric generate-graph-nodes (graph-output-record stream root-objects
+                                  object-printer inferior-producer
+                                  &key duplicate-key duplicate-test))
+(defgeneric layout-graph-nodes (graph-output-record stream arc-drawer arc-drawing-options))
+(defgeneric layout-graph-edges (graph-output-record stream arc-drawer arc-drawing-options))
+;;; NOTE: Which calls which? --GB 2002-08-13
+
+(defgeneric graph-node-parents (graph-node-record))
+(defgeneric (setf graph-node-parents) (new-value graph-node-record))
+(defgeneric graph-node-children (graph-node-record))
+(defgeneric (setf graph-node-children) (new-value graph-node-record))
+(defgeneric graph-node-object (graph-node-record))
 
 
 ;;; 21.2

@@ -37,26 +37,7 @@
 ;;;   is, that is being NIL, to LAYOUT-GRAPH-EDGES so that the concrete
 ;;;   graph-output-record can choose a default. --GB 2002-08-14
 
-;;;; Declarations
-
-;;; format-graph-from-roots
-
-(defgeneric graph-root-nodes (graph-output-record))
-(defgeneric (setf graph-root-nodes) (new-value graph-output-record))
-(defgeneric generate-graph-nodes (graph-output-record stream root-objects
-                                  object-printer inferior-producer
-                                  &key duplicate-key duplicate-test))
-(defgeneric layout-graph-nodes (graph-output-record stream arc-drawer arc-drawing-options))
-(defgeneric layout-graph-edges (graph-output-record stream arc-drawer arc-drawing-options))
-;;; NOTE: Which calls which? --GB 2002-08-13
-
-(defgeneric graph-node-parents (graph-node-record))
-(defgeneric (setf graph-node-parents) (new-value graph-node-record))
-(defgeneric graph-node-children (graph-node-record))
-(defgeneric (setf graph-node-children) (new-value graph-node-record))
-(defgeneric graph-node-object (graph-node-record))
-
-;;;; Machinery for graph types
+;;; Machinery for graph types
 
 (defconstant +built-in-graph-types+
   '(:tree :directed-graph :digraph :directed-acyclic-graph :dag)

@@ -153,7 +153,6 @@
 
 ;;; Cell formatting
 
-;;; STANDARD-CELL-OUTPUT-RECORD class
 (defclass standard-cell-output-record (cell-output-record
                                        standard-sequence-output-record)
   ((align-x    :initarg :align-x    :reader cell-align-x)
@@ -199,7 +198,7 @@
             (nreverse other-records)))))
 
 (defgeneric map-over-block-cells (function block)
-  (:documentation "Applies the FUNCTION to all cells in the BLOCK."))
+  (:documentation "Apply FUNCTION to all cells in the BLOCK."))
 
 (defmethod map-over-block-cells (function (block block-output-record-mixin))
   ;; ### we need to do better -- yeah! how?
@@ -214,66 +213,8 @@
     (foo block)))
 
 
-;;; Row formatting
-
-(defgeneric map-over-row-cells (function row-record)
-  (:documentation "Applies FUNCTION to all the cells in the row
-ROW-RECORD, skipping intervening non-table output record structures.
-FUNCTION is a function of one argument, an output record corresponding
-to a table cell within the row."))
-
-;;; STANDARD-ROW-OUTPUT-RECORD class
-(defclass standard-row-output-record (row-output-record
-                                      block-output-record-mixin
-                                      standard-sequence-output-record)
-  ())
-
-(defmethod map-over-row-cells (function
-                               (row-record standard-row-output-record))
-  (map-over-block-cells function row-record))
-
-(define-formatting-macro (formatting-row standard-row-output-record)
-    ()
-  ((stream record)
-   (declare (ignore record))
-   (funcall continuation stream)))
-
-
-;;; Column formatting
-
-(defgeneric map-over-column-cells (function column-record)
-  (:documentation "Applies FUNCTION to all the cells in the column
-COLUMN-RECORD, skipping intervening non-table output record
-structures. FUNCTION is a function of one argument, an output record
-corresponding to a table cell within the column."))
-
-;;; STANDARD-COLUMN-OUTPUT-RECORD class
-(defclass standard-column-output-record (column-output-record
-                                         block-output-record-mixin
-                                         standard-sequence-output-record)
-  ())
-
-(defmethod map-over-column-cells (function (column-record standard-column-output-record))
-  (map-over-block-cells function column-record))
-
-(define-formatting-macro (formatting-column standard-column-output-record)
-    ()
-  ((stream record)
-   (declare (ignore record))
-   (funcall continuation stream)))
-
-
 ;;; Table formatting
 
-(defgeneric map-over-table-elements (function table-record type)
-  (:documentation "Applies FUNCTION to all the rows or columns of
-TABLE-RECORD that are of type TYPE. TYPE is one of :ROW, :COLUMN or
-:ROW-OR-COLUMN. FUNCTION is a function of one argument. The function
-skips intervening non-table output record structures."))
-(defgeneric adjust-table-cells (table-record stream))
-(defgeneric adjust-multiple-columns (table-record stream))
-
-;;; STANDARD-TABLE-OUTPUT-RECORD class
 (defclass standard-table-output-record (table-output-record
                                         standard-sequence-output-record)
   (;; standard slots
@@ -285,7 +226,7 @@ skips intervening non-table output record structures."))
    ;; book keeping -- communication from adjust-table-cells to
    ;; adjust-multiple-columns
    (widths)
-   (heights)                            ;needed?
+   (heights) ; needed?
    (rows))
   (:default-initargs
    :multiple-columns nil
@@ -388,11 +329,42 @@ skips intervening non-table output record structures."))
     (row-and-col-mapper table-record)))
 
 
-;;; Item list formatting
+;;; Row formatting
 
-(defgeneric map-over-item-cells (function item-list-record)
-  )
-(defgeneric adjust-item-list-cells (item-list-record stream))
+(defclass standard-row-output-record (row-output-record
+                                      block-output-record-mixin
+                                      standard-sequence-output-record)
+  ())
+
+(defmethod map-over-row-cells (function
+                               (row-record standard-row-output-record))
+  (map-over-block-cells function row-record))
+
+(define-formatting-macro (formatting-row standard-row-output-record)
+    ()
+  ((stream record)
+   (declare (ignore record))
+   (funcall continuation stream)))
+
+
+;;; Column formatting
+
+(defclass standard-column-output-record (column-output-record
+                                         block-output-record-mixin
+                                         standard-sequence-output-record)
+  ())
+
+(defmethod map-over-column-cells (function (column-record standard-column-output-record))
+  (map-over-block-cells function column-record))
+
+(define-formatting-macro (formatting-column standard-column-output-record)
+    ()
+  ((stream record)
+   (declare (ignore record))
+   (funcall continuation stream)))
+
+
+;;; Item list formatting
 
 (defclass standard-item-list-output-record (item-list-output-record
                                             block-output-record-mixin
@@ -409,8 +381,8 @@ skips intervening non-table output record structures."))
    :n-columns nil :n-rows nil :max-width nil :max-height nil
    :initial-spacing nil :row-wise t))
 
-(defmethod map-over-item-cells (function
-                                (item-list-record standard-item-list-output-record))
+(defmethod map-over-item-list-cells (function
+                                     (item-list-record standard-item-list-output-record))
   (map-over-block-cells function item-list-record))
 
 (define-formatting-macro (formatting-item-list standard-item-list-output-record)
@@ -643,9 +615,9 @@ skips intervening non-table output record structures."))
           (width 0)
           (heights nil))
       ;;
-      (map-over-item-cells (lambda (item)
-                             (push item items))
-                           item-list)
+      (map-over-item-list-cells (lambda (item)
+                                  (push item items))
+                                item-list)
       (setf items (reverse items))
       (setf heights (make-array (length items)))
       ;;
