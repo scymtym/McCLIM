@@ -1,29 +1,22 @@
-;;; -*- Mode: Lisp; Syntax: Common-Lisp; Package: CLIM-INTERNALS; -*-
 ;;; ---------------------------------------------------------------------------
-;;;     Title: DEFGENERICs and stuff
-;;;   Created: 2001-08-12
-;;;    Author: Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
-;;;   License: LGPL (See file COPYING for details).
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
 ;;; ---------------------------------------------------------------------------
-;;;  (c) copyright 2001,2002 by Gilbert Baumann
-;;;  (c) copyright 2014 by Robert Strandh (robert.strandh@gmail.com)
-
-;;; This library is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU Library General Public
-;;; License as published by the Free Software Foundation; either
-;;; version 2 of the License, or (at your option) any later version.
 ;;;
-;;; This library is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; Library General Public License for more details.
+;;;  (c) copyright 2001-2005 Gilbert Baumann <gbaumann@common-lisp.net>
+;;;  (c) copyright 2002 Alexey Dejneka
+;;;  (c) copyright 2004,2005 Timothy Moore <tmoore@common-lisp.net>
+;;;  (c) copyright 2004,2014 Robert Strandh <robert.strandh@gmail.com>
+;;;  (c) copyright 2006 Christophe Rhodes <crhodes@common-lisp.net>
+;;;  (c) copyright 2008 Troels Henriksen <thenriksen@common-lisp.net>
+;;;  (c) copyright 2016-2020 Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2018,2019,2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
-;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-;;; Boston, MA  02111-1307  USA.
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Generic function and ordinary function declarations. Mostly those
+;;; found in the CLIM specification, but also some McCLIM extensions.
 
-(in-package :clim-internals)
+(in-package #:clim-internals)
 
 ;;; This is just an ad hoc list. Would it be a good idea to include all
 ;;; (exported) generic functions here? --GB
@@ -34,9 +27,9 @@
 
 ;;; The numbers are section numbers from the spec. --GB
 
-;; Since the declaim form for functions looks clumsy and is
-;; syntax-wise different from defun, we define us a new declfun, which
-;; fixes this.
+;;; Since the declaim form for functions looks clumsy and is
+;;; syntax-wise different from defun, we define us a new declfun, which
+;;; fixes this.
 
 (defmacro declfun (name lambda-list)
   `(declaim (ftype (function
@@ -79,7 +72,7 @@
                     t)
              ,name)))
 
-;;;; Early special variables
+;;; Early special variables
 
 (defvar *application-frame* nil)
 (defvar *pointer-documentation-output* nil)
@@ -320,7 +313,7 @@ different icons for different purposes based on the icon sizes."))
 (defgeneric medium-merged-text-style (medium))
 
 
-;;;; 8.3.4 Associating a Medium with a Sheet
+;;; 8.3.4 Associating a Medium with a Sheet
 
 ;; with-sheet-medium (medium sheet) &body body [Macro]
 ;; with-sheet-medium-bound (sheet medium) &body body [Macro]
@@ -344,7 +337,7 @@ different icons for different purposes based on the icon sizes."))
 (defgeneric repaint-sheet (sheet region))
 
 
-;;;; 9 Ports, Grafts, and Mirrored Sheets
+;;; 9 Ports, Grafts, and Mirrored Sheets
 
 ;; (defgeneric portp (object))
 ;; find-port function
@@ -382,7 +375,7 @@ different icons for different purposes based on the icon sizes."))
 ;;; Not in the spec, clearly needed.
 (defgeneric make-graft (port &key orientation units))
 
-;; 9.4.1 Mirror Functions
+;;; 9.4.1 Mirror Functions
 
 (defgeneric sheet-direct-mirror (sheet))
 (defgeneric sheet-mirrored-ancestor (sheet))
@@ -392,7 +385,7 @@ different icons for different purposes based on the icon sizes."))
 (defgeneric raise-mirror (port sheet))
 (defgeneric bury-mirror (port sheet))
 
-;; 9.4.2 Internal Interfaces for Native Coordinates
+;;; 9.4.2 Internal Interfaces for Native Coordinates
 
 (defgeneric sheet-native-transformation (sheet))
 (defgeneric sheet-native-region (sheet))
@@ -410,13 +403,13 @@ different icons for different purposes based on the icon sizes."))
 (defgeneric medium-draw-polygon* (medium coord-seq closed filled))
 (defgeneric medium-draw-rectangle* (medium left top right bottom filled))
 (defgeneric medium-draw-ellipse* (medium center-x center-y
-				  radius-1-dx radius-1-dy radius-2-dx radius-2-dy
-				  start-angle end-angle filled))
+                                  radius-1-dx radius-1-dy radius-2-dx radius-2-dy
+                                  start-angle end-angle filled))
 (defgeneric medium-draw-circle* (medium center-x center-y radius start-angle end-angle filled))
 (defgeneric medium-draw-text* (medium string x y
-			       start end
-			       align-x align-y
-			       toward-x toward-y transform-glyphs))
+                               start end
+                               align-x align-y
+                               toward-x toward-y transform-glyphs))
 
 
 ;;; 10.1 Medium Components
@@ -426,20 +419,20 @@ different icons for different purposes based on the icon sizes."))
 
 (defgeneric medium-current-text-style (medium))
 
-;;;; 10.2
+;;; 10.2
 (defgeneric invoke-with-drawing-options
     (medium continuation &rest drawing-options &key &allow-other-keys))
 
-;;;; 10.2.1
+;;; 10.2.1
 (defgeneric invoke-with-identity-transformation (medium continuation))
 
-;;;; 10.2.2
+;;; 10.2.2
 (defgeneric invoke-with-local-coordinates (medium continuation x y))
 
 (defgeneric invoke-with-first-quadrant-coordinates (medium continuation x y))
 
 
-;;;; 10.3.2 Contrasting Dash Patterns
+;;; 10.3.2 Contrasting Dash Patterns
 
 (defgeneric contrasting-dash-pattern-limit (port))
 
@@ -502,12 +495,13 @@ different icons for different purposes based on the icon sizes."))
   (:documentation "Returns the array of designs associated with
 `pattern'."))
 
-;;;; 14.5
+;;; 14.5
+
 (defgeneric draw-design
     (medium design
-	    &key ink clipping-region transformation line-style line-thickness
-	    line-unit line-dashes line-joint-shape line-cap-shape text-style
-	    text-family text-face text-size))
+     &key ink clipping-region transformation line-style line-thickness
+          line-unit line-dashes line-joint-shape line-cap-shape text-style
+          text-family text-face text-size))
 
 
 ;;; 15.3 The Text Cursor [complete]
@@ -575,6 +569,7 @@ and right margin for text output."))
 
 
 ;;; 16.2.1. The Basic Output Record Protocol
+
 (defgeneric output-record-position (record)
   (:documentation
    "Returns the x and y position of RECORD. The position is the
@@ -708,6 +703,7 @@ unspecified. "))
 (defgeneric erase-output-record (record stream &optional errorp))
 
 ;;; 16.4.3. Text Output Recording
+
 (defgeneric stream-text-output-record (stream text-style))
 (defgeneric stream-close-text-output-record (stream))
 (defgeneric stream-add-character-output
@@ -732,10 +728,11 @@ unspecified. "))
 (defgeneric make-design-from-output-record (record))
 
 
-;;;; 21.2
+;;; 21.2
+
 (defgeneric invoke-updating-output
     (stream continuation record-type unique-id id-test cache-value cache-test
-            &key fixed-position all-new parent-cache))
+     &key fixed-position all-new parent-cache))
 
 
 ;;; 22.2.1 The Extended Stream Input Protocol
@@ -785,21 +782,22 @@ unspecified. "))
 (defgeneric stream-present
     (stream object type
      &key view modifier acceptably for-context-type single-box
-       allow-sensitive-inferiors sensitive record-type))
+          allow-sensitive-inferiors sensitive record-type))
 
 ;;; 23.5 Context-dependent (Typed) Input
 
 (defgeneric stream-accept
-    (stream
-     type &key view default default-type provide-default insert-default
-     replace-input history active-p prompt prompt-mode display-default
-     query-identifier activation-gestures additional-activation-gestures
-     delimiter-gestures additional-delimiter-gestures))
+    (stream type
+     &key view default default-type provide-default insert-default
+          replace-input history active-p prompt prompt-mode display-default
+          query-identifier activation-gestures additional-activation-gestures
+          delimiter-gestures additional-delimiter-gestures))
 (defgeneric prompt-for-accept (stream type view &rest accept-args &key))
 
 ;;; 23.7 Presentation Translators
+
 (declfun highlight-applicable-presentation
-    (frame stream input-context &optional prefer-pointer-window))
+         (frame stream input-context &optional prefer-pointer-window))
 
 
 ;;; 24.1 The Input Editor
@@ -917,7 +915,7 @@ The returned value is the position in the input buffer."))
 
 (defgeneric presentation-replace-input
     (stream object type view
-	    &key buffer-start rescan query-identifier for-context-type)
+     &key buffer-start rescan query-identifier for-context-type)
   (:documentation "Like `replace-input', except that the new
 input to insert into the input buffer is gotten by presenting
 `object' with the presentation type `type' and view
@@ -937,11 +935,13 @@ standardised form."))
 
 
 ;;; 26 Dialog Facilities
+
 (defgeneric display-exit-boxes (frame stream view))
 (defgeneric accept-values-resynchronize (stream))
 
 
 ;;; 27.2 Command Tables
+
 (defgeneric command-table-name (command-table))
 (defgeneric command-table-inherit-from (command-table))
 
@@ -952,9 +952,9 @@ standardised form."))
 
 (defgeneric display-command-table-menu (command-table stream
                                         &key max-width max-height
-                                          n-rows n-columns x-spacing
-                                          y-spacing initial-spacing row-wise
-                                          cell-align-x cell-align-y move-cursor)
+                                             n-rows n-columns x-spacing
+                                             y-spacing initial-spacing row-wise
+                                             cell-align-x cell-align-y move-cursor)
   (:documentation "Display a menu of the commands accessible in
 `command-table' to `stream'.
 
@@ -1053,7 +1053,8 @@ panes."))
 (defgeneric frame-drag-and-drop-highlighting
     (frame presentation stream state))
 
-;;;; 28.4
+;;; 28.4
+
 (defgeneric default-frame-top-level
     (frame &key command-parser command-unparser partial-command-parser prompt))
 (defgeneric read-frame-command (frame &key stream))
@@ -1061,10 +1062,11 @@ panes."))
 (defgeneric command-enabled (command-name frame))
 (defgeneric (setf command-enabled) (enabled command-name frame))
 (defgeneric (setf command-name) (enabled command-name frame))
-(defgeneric display-command-menu (frame stream &key command-table
-                                        initial-spacing row-wise max-width
-                                        max-height n-rows n-columns
-                                        cell-align-x cell-align-y)
+(defgeneric display-command-menu (frame stream
+                                  &key command-table
+                                       initial-spacing row-wise max-width
+                                       max-height n-rows n-columns
+                                       cell-align-x cell-align-y)
   (:documentation "Display the command table associated with
 `command-table' on `stream' by calling
 `display-command-table-menu'. If no command table is
@@ -1074,7 +1076,7 @@ The arguments `initial-spacing', `row-wise',
 `max-width', `max-height', `n-rows', `n-columns', `cell-align-x',
 and `cell-align-y' are as for `formatting-item-list'."))
 
-;;;; 28.5.2 Frame Manager Operations
+;;; 28.5.2 Frame Manager Operations
 
 (defgeneric frame-manager (frame))
 (defgeneric (setf frame-manager) (frame-manager frame))
@@ -1118,13 +1120,14 @@ the time of the change.")
 (defgeneric reset-frame (frame &rest client-settings))
 
 
-;;;; 29.2
-;;;;
-;;;; FIXME: should we have &key &allow-other-keys here, to cause
-;;;; initarg checking?  Probably.
+;;; 29.2
+;;;
+;;; FIXME: should we have &key &allow-other-keys here, to cause
+;;; initarg checking?  Probably.
+
 (defgeneric make-pane-1 (realizer frame abstract-class-name &rest initargs))
 
-;;;; 29.2.2 Pane Properties
+;;; 29.2.2 Pane Properties
 
 (defgeneric pane-frame (pane))
 (defgeneric pane-name (pane))
@@ -1132,7 +1135,7 @@ the time of the change.")
 (defgeneric pane-background (pane))
 (defgeneric pane-text-style (pane))
 
-;;;; 29.3.3 Scroller Pane Classes
+;;; 29.3.3 Scroller Pane Classes
 
 (defgeneric pane-viewport (pane))
 (defgeneric pane-viewport-region (pane))
@@ -1141,7 +1144,7 @@ the time of the change.")
 
 (deftype scroll-bar-spec () '(member t :both :vertical :horizontal nil))
 
-;;;; 29.3.4 The Layout Protocol
+;;; 29.3.4 The Layout Protocol
 
 ;; (define-protocol-class space-requirement ())
 
@@ -1177,7 +1180,7 @@ Returns a SPACE-REQUIREMENT object."))
 (defgeneric note-space-requirements-changed (sheet pane))
 ;; changing-space-requirements (&key resize-frame layout) &body body [Macro]
 
-;;;; 29.4.4 CLIM Stream Pane Functions
+;;; 29.4.4 CLIM Stream Pane Functions
 
 (defgeneric window-clear (window))
 (defgeneric window-refresh (window))
@@ -1193,42 +1196,49 @@ Returns a SPACE-REQUIREMENT object."))
 (defgeneric (setf gadget-id) (value gadget))
 (defgeneric gadget-client (gadget))
 (defgeneric (setf gadget-client) (value gadget))
+
 (defgeneric gadget-armed-callback (gadget))
 (defgeneric gadget-disarmed-callback (gadget))
 (defgeneric armed-callback (gadget client gadget-id)
   (:argument-precedence-order client gadget-id gadget))
 (defgeneric disarmed-callback (gadget client gadget-id)
   (:argument-precedence-order client gadget-id gadget))
+
 (defgeneric gadget-active-p (gadget))
 (defgeneric activate-gadget (gadget))
 (defgeneric deactivate-gadget (gadget))
 (defgeneric note-gadget-activated (client gadget))
 (defgeneric note-gadget-deactivated (client gadget))
+
 (defgeneric gadget-value (gadget))
 (defgeneric (setf gadget-value) (value value-gadget &key invoke-callback))
 (defgeneric gadget-value-changed-callback (gadget))
 (defgeneric value-changed-callback (gadget client gadget-id value)
   (:argument-precedence-order client gadget-id gadget value))
+
 (defgeneric gadget-activate-callback (gadget))
 (defgeneric activate-callback (gadget client gadget-id)
   (:argument-precedence-order client gadget-id gadget))
+
 (defgeneric gadget-orientation (gadget))
+
 (defgeneric gadget-label (gadget))
 (defgeneric (setf gadget-label) (value gadget))
 (defgeneric gadget-label-align-x (gadget))
 (defgeneric (setf gadget-label-align-x) (value gadget))
 (defgeneric gadget-label-align-y (gadget))
 (defgeneric (setf gadget-label-align-y) (value gadget))
-(defgeneric gadget-min-value (gadget))
-(defgeneric (setf gadget-min-value) (value gadget))
-(defgeneric gadget-max-value (gadget))
-(defgeneric (setf gadget-max-value) (value gadget))
-(defgeneric gadget-range (gadget)
+
+(defgeneric gadget-min-value (range-gadget))
+(defgeneric (setf gadget-min-value) (value range-gadget))
+(defgeneric gadget-max-value (range-gadget))
+(defgeneric (setf gadget-max-value) (value range-gadget))
+(defgeneric gadget-range (range-gadget)
   (:documentation
-   "Returns the difference of the maximum and minimum value of RANGE-GADGET."))
-(defgeneric gadget-range* (gadget)
+   "Return the difference of the maximum and minimum value of RANGE-GADGET."))
+(defgeneric gadget-range* (range-gadget)
   (:documentation
-   "Returns the minimum and maximum value of RANGE-GADGET as two values."))
+   "Return the minimum and maximum value of RANGE-GADGET as two values."))
 
 ;;; 30.4 Abstract gadgets
 
@@ -1271,7 +1281,7 @@ Returns a SPACE-REQUIREMENT object."))
 (defgeneric stream-pathname (stream))
 (defgeneric stream-truename (stream))
 
-;; E.1
+;;; E.1
 
 (defgeneric new-page (stream))
 
@@ -1285,7 +1295,7 @@ Returns a SPACE-REQUIREMENT object."))
 
 (defgeneric line-style-effective-thickness (line-style medium)
   (:documentation
-   "Returns the thickness in device units of a line,
+   "Return the thickness in device units of a line,
 rendered on MEDIUM with the style LINE-STYLE."))
 
 (defgeneric line-style-effective-dashes (line-style medium)
@@ -1296,16 +1306,16 @@ for a dashed line, rendered on MEDIUM with the style LINE-STYLE."))
 ;;;
 
 (declfun draw-rectangle (sheet point1 point2
-                               &rest args
-                               &key (filled t)
-                               ink clipping-region transformation line-style line-thickness
-                               line-unit line-dashes line-joint-shape))
+                         &rest args
+                         &key (filled t)
+                              ink clipping-region transformation line-style line-thickness
+                              line-unit line-dashes line-joint-shape))
 
 (declfun draw-rectangle* (sheet x1 y1 x2 y2
-                                &rest args
-                                &key (filled t)
-                                ink clipping-region transformation line-style line-thickness
-                                line-unit line-dashes line-joint-shape))
+                          &rest args
+                          &key (filled t)
+                               ink clipping-region transformation line-style line-thickness
+                               line-unit line-dashes line-joint-shape))
 
 ;;; "exported" from a port
 
@@ -1325,7 +1335,7 @@ and button states of the pointer."))
 
 ;;;
 
-;; Used in stream-input.lisp, defined in frames.lisp
+;;; Used in stream-input.lisp, defined in frames.lisp
 (defgeneric frame-event-queue (frame))
 
 ;;; Used in presentations.lisp, defined in commands.lisp
@@ -1334,11 +1344,11 @@ and button states of the pointer."))
 
 (defgeneric stream-default-view (stream))
 
-;;; ----------------------------------------------------------------------
+;;
 
 (defgeneric output-record-basline (record)
   (:documentation
-   "Returns two values: the baseline of an output record and a boolean
+   "Return two values: the baseline of an output record and a boolean
 indicating if this baseline is definitive. McCLIM addition."))
 
 (defgeneric encapsulating-stream-stream (encapsulating-stream)
