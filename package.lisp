@@ -307,77 +307,40 @@
 (defpackage #:clim
   (:use)
 
+  ;; Export color names. The contents of data/colors.sexp is
+  ;; automatically generated from X11 color definitions (usually
+  ;; /usr/share/X11/rgb.txt).
+  (:export
+   . #.(let* ((file-pathname (or *compile-file-pathname*
+                                 *load-pathname*))
+              (colors-pathname (merge-pathnames "data/colors.sexp"
+                                                file-pathname)))
+         (with-open-file (stream colors-pathname :direction :input)
+           (loop for (symbol-name) = (read stream nil nil)
+                 while symbol-name
+                 collect (make-symbol symbol-name)))))
+
   (:import-from #:clim-lisp
    #:and
    #:boolean
    #:character
-   #:close
    #:complex
    #:float
-   #:fundamental-binary-input-stream
-   #:fundamental-binary-output-stream
-   #:fundamental-binary-stream
-   #:fundamental-character-input-stream
-   #:fundamental-character-output-stream
-   #:fundamental-character-stream
-   #:fundamental-input-stream
-   #:fundamental-output-stream
-   #:fundamental-stream
-   #:input-stream-p
    #:integer
-   #:interactive-stream-p
    #:keyword
    #:member
    #:nil
    #:null
    #:number
-   #:open-stream-p
    #:or
-   #:output-stream-p
    #:pathname
    #:ratio
    #:rational
    #:real
    #:sequence
-   #:stream-advance-to-column
-   #:stream-clear-input
-   #:stream-clear-output
-   #:stream-element-type
-   #:stream-finish-output
-   #:stream-force-output
-   #:stream-fresh-line
-   #:stream-line-column
-   #:stream-listen
-   #:stream-peek-char
-   #:stream-read-byte
-   #:stream-read-char
-   #:stream-read-char-no-hang
-   #:stream-read-line
-   #:stream-start-line-p
-   #:stream-terpri
-   #:stream-unread-char
-   #:stream-write-byte
-   #:stream-write-char
-   #:stream-write-string
-   #:streamp
    #:string
    #:symbol
    #:t)
-
-  (:export
-   . #.(let* ((file-pathname (or *compile-file-pathname*
-                                 *load-pathname*))
-              (data-pathname (merge-pathnames
-                              #P"data/clim-symbols.sexp"
-                              file-pathname))
-              (data          (alexandria:with-input-from-file (stream data-pathname)
-                               (read stream))))
-         (loop :with seen = (make-hash-table :test #'eq)
-               :for (name kind) :in data
-               :unless (or (member kind '(:option :concept))
-                           (gethash name seen))
-               :do (setf (gethash name seen) t)
-               :and :collect (make-symbol (string-upcase name)))))
 
   ;; symbols, which were exported as of 2002-02-09, but no longer are.
 
@@ -414,18 +377,31 @@
   ;; pointer-port
   ;; push-button-show-as-default-p
 
-  ;; Export color names. The contents of data/colors.sexp is
-  ;; automatically generated from X11 color definitions (usually
-  ;; /usr/share/X11/rgb.txt).
-  (:export
-   . #.(let* ((file-pathname (or *compile-file-pathname*
-                                 *load-pathname*))
-              (colors-pathname (merge-pathnames "data/colors.sexp"
-                                                file-pathname)))
-         (with-open-file (stream colors-pathname :direction :input)
-           (loop for (symbol-name) = (read stream nil nil)
-                 while symbol-name
-                 collect (make-symbol symbol-name))))))
+  . #.(let* ((file-pathname (or *compile-file-pathname*
+                                *load-pathname*))
+             (data-pathname (merge-pathnames
+                             #P"data/clim-symbols.sexp"
+                             file-pathname))
+             (data          (alexandria:with-input-from-file (stream data-pathname)
+                              (read stream))))
+        `((:import-from #:clim-lisp
+           ,@(loop :with seen = (make-hash-table :test #'eq)
+                   :for (name kind references) :in data
+                   :when (and (not (member kind '(:option :concept)))
+                              (not (gethash name seen))
+                              (or (find "D" references :test #'equal :key #'first)
+                                  (string= name "interactive-stream-p"))
+                              (not (member name '("stream-pathname" "stream-truename")
+                                           :test #'string=)))
+                   :do (setf (gethash name seen) t)
+                   :and :collect (make-symbol (string-upcase name))))
+          (:export
+           ,@(loop :with seen = (make-hash-table :test #'eq)
+                   :for (name kind) :in data
+                   :unless (or (member kind '(:option :concept))
+                               (gethash name seen))
+                   :do (setf (gethash name seen) t)
+                   :and :collect (make-symbol (string-upcase name)))))))
 
 (defpackage #:clim-sys
   (:use)
