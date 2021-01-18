@@ -1,17 +1,32 @@
-;;; -*- Mode: Lisp; Package: CLIM-INTERNALS -*-
-
-(in-package :common-lisp-user)
-
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
 ;;;
-;;; CLIM-LISP
+;;;  (c) copyright 2001 Arnaud Rouanet
+;;;  (c) copyright 2001-2003 Mike McDonald
+;;;  (c) copyright 2001-2009 Gilbert Baumann <gbaumann@common-lisp.net>
+;;;  (c) copyright 2002-2006 Timothy Moore <tmoore@common-lisp.net>
+;;;  (c) copyright 2002 Brian Spilsbury
+;;;  (c) copyright 2002 Alexey Dejneka
+;;;  (c) copyright 2004-2008 Andy Hefner <ahefner@common-lisp.net>
+;;;  (c) copyright 2006-2007 David Lichteblau <dlichteblau@common-lisp.net>
+;;;  (c) copyright 2006-2008 Troels Henriksen <thenriksen@common-lisp.net>
+;;;  (c) copyright 2016-2020 Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Package definitions for McCLIM.
 
-;; Our CLIM-LISP also contains gray streams, as I consider them part
-;; of Common Lisp.
+(in-package #:common-lisp-user)
 
-;; If you want to patch a CL symbol, you define it in CLIM-LISP-PATCH
-;; and export it.
-
+;;; The CLIM-LISP package
+;;;
+;;; Our CLIM-LISP also contains gray streams, as I consider them part
+;;; of Common Lisp.
+;;;
+;;; If you want to patch a CL symbol, you define it in CLIM-LISP-PATCH
+;;; and export it.
 #.(let ((all-ansi-symbols
          '(#:&allow-other-keys #:&aux #:&body #:&environment #:&key #:&optional #:&rest #:&whole #:*
            #:** #:*** #:*break-on-signals* #:*compile-file-pathname* #:*compile-file-truename*
@@ -217,16 +232,17 @@
            #:stream-advance-to-column
            #:stream-clear-output
            #:stream-read-byte
-           #:stream-write-byte ))
+           #:stream-write-byte))
         (gray-packages '(#:trivial-gray-streams)))
     ;;
     (labels ((seek-symbol (name packages)
                ;; seek the a symbol named 'name' in `packages'
-               (or (some #'(lambda (p)
-                             (multiple-value-bind (sym res) (find-symbol (symbol-name name) p)
-                               (if (eql res :external)
-                                   (list sym)
-                                   nil)))
+               (or (some (lambda (p)
+                           (multiple-value-bind (sym res)
+                               (find-symbol (symbol-name name) p)
+                             (if (eql res :external)
+                                 (list sym)
+                                 nil)))
                          packages)
                    (progn (format t "~&there is no ~A." name)
                           (force-output)
@@ -245,13 +261,14 @@
                                 (when sym
                                   (push (car sym) res)
                                   (cond
-                                    ((and (find-package :clim-lisp-patch)
-                                          (multiple-value-bind (sym2 res) (find-symbol (symbol-name nam) :clim-lisp-patch)
+                                    ((and (find-package '#:clim-lisp-patch)
+                                          (multiple-value-bind (sym2 res)
+                                              (find-symbol (symbol-name nam) '#:clim-lisp-patch)
                                             (and sym2 (eq res :external))))
                                      ;;
                                      (format t "~&;; ~S is patched." sym)
                                      (force-output)
-                                     (push-import-from nam :clim-lisp-patch))
+                                     (push-import-from nam '#:clim-lisp-patch))
                                     (t
                                      (setf sym (car sym))
                                      ;; clisp has no (:import ..) arg!
@@ -265,28 +282,32 @@
                  ;; about objects you can't possibly gain though some
                  ;; portable implementation.
                  ;; --GB 2004-11-20
-                 (setf all-ansi-symbols (remove '#:describe all-ansi-symbols :test #'string-equal))
-                 (setf all-ansi-symbols (remove '#:describe-object all-ansi-symbols :test #'string-equal))
+                 (setf all-ansi-symbols (remove '#:describe all-ansi-symbols
+                                                :test #'string-equal)
+                       all-ansi-symbols (remove '#:describe-object all-ansi-symbols
+                                                :test #'string-equal))
                  ;;
-                 (setf export-ansi (grok all-ansi-symbols packages))
-                 (setf export-gray (grok gray-symbols gray-packages))
+                 (setf export-ansi (grok all-ansi-symbols packages)
+                       export-gray (grok gray-symbols gray-packages))
                  `(progn
-                   (defpackage :clim-lisp (:use)
-                     ,@(mapcar (lambda (spec)
-                                 (destructuring-bind (package . syms) spec
-                                   `(:import-from ,package ,@syms)))
-                               imports)
-                     (:shadow #:describe #:describe-object)
-                     (:export #:describe #:describe-object)
-                     (:export
-                      ,@(mapcar #'symbol-name export-ansi)
-                      ,@(mapcar #'symbol-name export-gray) )) ))))
-      (dump-defpackage) ))
+                    (defpackage #:clim-lisp
+                      (:use)
+                      ,@(mapcar (lambda (spec)
+                                  (destructuring-bind (package . syms) spec
+                                    `(:import-from ,package ,@syms)))
+                                imports)
+                      (:shadow #:describe #:describe-object)
+                      (:export #:describe #:describe-object)
+                      (:export
+                       ,@(mapcar #'symbol-name export-ansi)
+                       ,@(mapcar #'symbol-name export-gray)))))))
+      (dump-defpackage)))
 
-(defpackage :clim
+;;; The CLIM package
+(defpackage #:clim
   (:use)
 
-  (:import-from :clim-lisp
+  (:import-from #:clim-lisp
    #:and
    #:boolean
    #:character
@@ -406,7 +427,7 @@
                  while symbol-name
                  collect (make-symbol symbol-name))))))
 
-(defpackage :clim-sys
+(defpackage #:clim-sys
   (:use)
 
   (:export
@@ -424,9 +445,9 @@
                :do (setf (gethash name seen) t)
                :and :collect (make-symbol (string-upcase name))))))
 
-(defpackage :clim-extensions
+(defpackage #:clim-extensions
   (:use)
-  (:nicknames :clime)
+  (:nicknames #:clime)
   (:export
    ;; events
    #:event-read-with-timeout
@@ -546,10 +567,9 @@
 ;;;
 ;;; To start with, I grabbed the methods defined by the CLX backend
 ;;; whose symbol package is CLIM or CLIMI.
-
-(defpackage :clim-backend
-  (:nicknames :climb)
-  (:use :clim :clim-extensions)
+(defpackage #:clim-backend
+  (:nicknames #:climb)
+  (:use #:clim #:clim-extensions)
   (:export
    ;; CLIM-INTERNALS
    #:find-port-type
@@ -669,21 +689,21 @@
    #:destination-file
    #:destination-element-type))
 
-(defpackage :clim-internals
-  (:use :clim :clim-sys :clim-extensions :clim-backend :clim-lisp)
-  (:nicknames :climi)
+(defpackage #:clim-internals
+  (:use #:clim #:clim-sys #:clim-extensions #:clim-backend #:clim-lisp)
+  (:nicknames #:climi)
   #+excl
   (:import-from :excl compile-system load-system)
   (:import-from #:alexandria
-                #:clamp
-                #:make-keyword
-                #:ensure-gethash
-                #:last-elt
-                #:with-gensyms
-                #:if-let
-                #:when-let
-                #:when-let*)
+   #:clamp
+   #:make-keyword
+   #:ensure-gethash
+   #:last-elt
+   #:with-gensyms
+   #:if-let
+   #:when-let
+   #:when-let*)
   (:intern #:letf))
 
-(defpackage :clim-user
-  (:use :clim :clim-lisp))
+(defpackage #:clim-user
+  (:use #:clim #:clim-lisp))
