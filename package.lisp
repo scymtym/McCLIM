@@ -347,9 +347,6 @@
   ;; dispatch-repaint:
   ;; several mentions in silica.tex.
 
-  ;; invoke-accept-values-command-button
-  ;; mentioned in dialogs.tex.
-
   ;; labelled
 
   ;; labelled-gadget, though there is a labelled-gadget-mixin
