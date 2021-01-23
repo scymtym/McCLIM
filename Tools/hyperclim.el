@@ -18,13 +18,31 @@
 
 (defvar specification-symbols
   (cl-flet ((read-file (name)
-              (car (read-from-string
-                    (with-current-buffer (find-file-noselect name)
-                      (buffer-substring-no-properties (point-min) (point-max)))))))
+              (let* ((directory (file-name-directory load-file-name))
+                     (absolute-name (concat directory name)))
+                (message "Reading %s" absolute-name)
+                (car (read-from-string
+                      (with-current-buffer (find-file-noselect absolute-name)
+                        (buffer-substring-no-properties (point-min) (point-max))))))))
     (append (read-file "../data/clim-symbols.sexp")
             (read-file "../data/clim-sys-symbols.sexp"))))
 
-;;; Internal bits
+;;; Candidate representation and matching
+;;;
+;;; A candidate is a cons of the form
+;;;
+;;;   (SPECIFICATION-ENTRY . INDEX)
+;;;
+;;; where SPECIFICATION-ENTRY (as read from one of the data files) is
+;;; of the form
+;;;
+;;;   SPECIFICATION-ENTRY ::= (NAME KIND (REFERENCE*))
+;;;   REFERENCE           ::= (SECTION SUB-SECTION-ID)
+;;;
+;;; INDEX refers to a position in the list of references to identify a
+;;; particular occurrence of a given NAME + KIND combination (for
+;;; example, `gadget-value' as a `:generic-function' has many
+;;; occurrences.
 
 (defvar hyperclim--history nil)
 
@@ -59,8 +77,9 @@
             (cons entry i)))
         (cl-incf i)))))
 
-(defun hyperclim--matching-entries (name)
-  (cl-remove name specification-symbols :test-not #'string= :key #'first))
+(cl-defun hyperclim--matching-entries (name &optional partialp)
+  (let ((test (if partialp #'search #'string=)))
+    (cl-remove name specification-symbols :test-not test :key #'first)))
 
 (defun hyperclim--completion-collection (collection)
   (let ((result '()))
@@ -68,6 +87,14 @@
       (dolist (name (hyperclim--entry-pretty-names entry))
         (push name result)))
     (nreverse result)))
+
+(defun hyperclim--maybe-read-entry (candidates)
+  (if (and (= (length candidates) 1)
+           (= (length (third (first candidates))) 1))
+      (cons (first candidates) 0)
+    (let* ((collection (hyperclim--completion-collection candidates))
+           (name       (completing-read "Entry: " collection nil t)))
+      (hyperclim--matching-entry name specification-symbols))))
 
 (defun clim-lookup (p)
   "Look up the symbol P or symbol under point.
@@ -77,15 +104,16 @@ isn't over something resembling a symbol, it will prompt you.
 
 Also, you can use a prefix arg to force prompting."
   (interactive "p")
-  (let ((collection (hyperclim--completion-collection specification-symbols))
-        (symbol-name (thing-at-point 'symbol)))
+  (let ((symbol-name (thing-at-point 'symbol)))
     (unless (and (= 1 p) (stringp symbol-name))
-      (setq symbol-name (completing-read
-                         "Symbol name: " collection nil t symbol-name 'hyperclim--history)))
+      (setq symbol-name (let ((collection (hyperclim--completion-collection
+                                           specification-symbols)))
+                          (completing-read
+                           "Symbol name: " collection nil t symbol-name 'hyperclim--history))))
     (let ((entry (or (hyperclim--matching-entry symbol-name specification-symbols)
-                     (let* ((entries (hyperclim--matching-entries symbol-name))
-                            (entry   (completing-read "Entry: " (hyperclim--completion-collection entries) nil t)))
-                       (hyperclim--matching-entry entry specification-symbols)))))
+                     (let ((entries (or (hyperclim--matching-entries symbol-name t)
+                                        specification-symbols)))
+                       (hyperclim--maybe-read-entry entries)))))
       (if entry
           (browse-url (hyperclim--entry-url entry))
         (message "Symbol %s not found." symbol-name)))))
@@ -123,8 +151,9 @@ frequently used for other purposes.")
 
 (add-hook 'lisp-mode-hook
           (lambda ()
-            (when (string-match-p "/mcclim/" (buffer-file-name))
-              (hyperclim-add-specification-keywords))))
+            (let ((name (buffer-file-name)))
+              (when (and name (string-match-p "/mcclim/" name))
+                (hyperclim-add-specification-keywords)))))
 
 (provide 'hyperclim)
 ;;; hyperclim.el ends here
