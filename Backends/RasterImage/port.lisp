@@ -1,14 +1,24 @@
-(in-package :mcclim-raster-image)
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2016 Alessandro Serra <gas2serra@gmail.com>
+;;;  (c) copyright 2019,2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2020 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Basic port class for the raster image backend.
 
-;;;
+(in-package #:mcclim-raster-image)
+
 ;;; Port
-;;;
 
 (defclass raster-image-port (render-port-mixin basic-port)
   ((width :reader raster-image-port-width)
    (height :reader raster-image-port-height)))
 
-;;; Initialize and Destroy port
+;;; Initialize and destroy port
 
 (defmethod initialize-instance :after ((port raster-image-port)
                                        &rest initargs

@@ -1,4 +1,15 @@
-(in-package :mcclim-raster-image)
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2016 Alessandro Serra <gas2serra@gmail.com>
+;;;  (c) copyright 2018,2019 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Graft for the raster image backend.
+
+(in-package #:mcclim-raster-image)
 
 ;;; Units
 

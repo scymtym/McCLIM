@@ -1,8 +1,18 @@
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2016,2017 Alessandro Serra <gas2serra@gmail.com>
+;;;  (c) copyright 2019,2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2020 Daniel Kochmański <daniel@turtleware.eu>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Port class for RGB images for the raster image backend.
+
 (in-package :mcclim-raster-image)
 
-;;;
-;;; port
-;;;
+;;; Port
 
 (defclass rgb-image-port (raster-image-port)
   ())
@@ -16,9 +26,7 @@
     (port-register-mirror port sheet mirror)
     (%make-image mirror sheet)))
 
-;;;
 ;;; Pixmap
-;;;
 
 (defclass rgb-image-pixmap (image-pixmap-mixin basic-pane)
   ((region :initform +nowhere+)))

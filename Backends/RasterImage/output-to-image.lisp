@@ -1,8 +1,17 @@
-(in-package :mcclim-raster-image)
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2016,2017 Alessandro Serra <gas2serra@gmail.com>
+;;;  (c) copyright 2017 Cyrus Harmon <cyrus@bobobeach.com>
+;;;  (c) copyright 2018,2020 Daniel Kochmanski <daniel@turtleware.eu>
+;;;  (c) copyright 2018,2019,2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Various WITH-OUTPUT-TO-* macros provided by the raster image backend.
 
-;;;
-;;; with-output-to ...
-;;;
+(in-package #:mcclim-raster-image)
 
 (defmacro with-output-to-raster-image-stream ((stream-var stream format &rest options)
                                               &body body)
