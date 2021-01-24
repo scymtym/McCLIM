@@ -79,7 +79,8 @@ interface management system."
                               :depends-on ("package")
                               :components ((:file "medium")
                                            (:file "design")
-                                           (:file "bezier")))
+                                           (:file "bezier")
+                                           (:file "graphics")))
                              (:module "extended-streams"
                               :depends-on ("package")
                               :components ((:file "gestures")))
