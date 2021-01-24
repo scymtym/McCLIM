@@ -44,21 +44,22 @@
                (draw-pattern*
                 (funcall function stream pattern x y)))
              (draw-point* stream x y :ink +black+)))
-      (draw-it pattern-1 0 0)
-      (draw-it pattern-2 30 0)
-      (draw-it pattern-3 60 0)
-      (with-translation (stream 90 0)
+      (draw-rectangle* stream 1/2 1/2 (- 117 1/2) (- 52 1/2) :ink +red+ :filled nil)
+      (draw-it pattern-1 4 7)
+      (draw-it pattern-2 34 7)
+      (draw-it pattern-3 64 7)
+      (with-translation (stream 94 7)
         (with-rotation (stream (/ pi 4))
           (draw-it pattern-1 10 10))))))
 
 (test draw-design.transformed
   "Test drawing transformed patterns with `draw-design'."
 
-  (with-comparison-to-reference (stream "draw-design.transformed")
+  (with-comparison-to-reference* (stream "draw-design.transformed")
     (draw-patterns 'draw-design stream)))
 
 (test draw-pattern*.transformed
   "Test drawing transformed patterns with `draw-pattern*'."
 
-  (with-comparison-to-reference (stream "draw-pattern.transformed")
+  (with-comparison-to-reference* (stream "draw-pattern.transformed")
     (draw-patterns 'draw-pattern* stream)))

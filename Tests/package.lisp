@@ -15,7 +15,8 @@
    #:fails
    #:compilation-signals
 
-   #:with-comparison-to-reference)
+   #:with-comparison-to-reference
+   #:with-comparison-to-reference*)
 
   (:export #:run-tests))
 
