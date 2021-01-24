@@ -78,9 +78,26 @@
                   ~D but expected ~D."
                  description actual-height height))))
 
-(defun invoke-and-compare-to-reference (thunk reference &key description)
+(defun offset-pattern (pattern offset-x offset-y)
+  (let* ((old-width  (pattern-width pattern))
+         (old-height (pattern-height pattern))
+         (old-array  (pattern-array pattern))
+         (new-width  (- old-width offset-x))
+         (new-height (- old-height offset-y))
+         (new-array  (make-array (list new-height new-width) :element-type '(unsigned-byte 32))))
+    (loop :for y :below new-height
+          :do (loop :for x :below new-width
+                    :do (setf (aref new-array y x)
+                              (aref old-array (+ y offset-y) (+ x offset-x)))))
+    (make-instance 'climi::%rgba-pattern :array new-array)))
+
+(defun invoke-and-compare-to-reference (thunk reference
+                                        &key offset-x offset-y description)
   (let* ((output    (mcclim-raster-image:with-output-to-rgba-pattern (stream)
                       (funcall thunk stream)))
+         (output    (if (or offset-x offset-y)
+                        (offset-pattern output (or offset-x 0) (or offset-y 0))
+                        output))
          (directory #.(merge-pathnames "../reference-output/"
                                        (or *compile-file-pathname*
                                            *load-pathname*)))
@@ -97,7 +114,39 @@
                         output))))
     (is-same-bitmap reference output :description description)))
 
-(defmacro with-comparison-to-reference ((stream reference) &body body)
+(defmacro with-comparison-to-reference ((stream reference
+                                         &key offset-x offset-y description)
+                                        &body body)
   `(invoke-and-compare-to-reference
     (lambda (,stream) ,@body)
-    ,reference))
+    ,reference
+    ,@(when offset-x    `(:offset-x    ,offset-x))
+    ,@(when offset-y    `(:offset-y    ,offset-y))
+    ,@(when description `(:description ,description))))
+
+(defun invoke-with-and-without-recording (reference continuation)
+  ;; Just drawing to STREAM must reproduce the reference.
+  (with-comparison-to-reference
+      (stream reference :description "When just drawing")
+    (funcall continuation stream))
+  ;; Recording and then replaying to STREAM must reproduce the
+  ;; reference.
+  (with-comparison-to-reference
+      (stream reference :description "When recording")
+    (let ((record (with-output-to-output-record (stream)
+                    (funcall continuation stream))))
+      (stream-add-output-record stream record)
+      (replay record stream)))
+  ;; Recording, moving the output record and finally replaying must
+  ;; reproduce the reference but at an offset.
+  (with-comparison-to-reference
+      (stream reference :offset-x 10 :offset-y 7
+                        :description "When recording and moving the record")
+    (let ((record (with-output-to-output-record (stream)
+                    (funcall continuation stream))))
+      (setf (output-record-position record) (values 10 7))
+      (stream-add-output-record stream record)
+      (replay record stream))))
+
+(defmacro with-comparison-to-reference* ((stream reference) &body body)
+  `(invoke-with-and-without-recording ,reference (lambda (,stream) ,@body)))
