@@ -13,6 +13,18 @@
 (def-suite* :mcclim.drawing
   :in :mcclim)
 
+;;; `with-drawing-options'
+
+(test with-drawing-options.clipping
+  "Smoke test for establishing clipping regions using `with-drawing-options'."
+
+  (with-comparison-to-reference* (stream "with-drawing-options.clipping")
+    (draw-rectangle* stream 1/2 1/2 (- 16 1/2) (- 16 1/2) :filled nil)
+    (with-drawing-options (stream :clipping-region (make-rectangle* 3 3 8 8))
+      (draw-rectangle* stream 3 3 13 13 :ink +red+))))
+
+;;; `draw-design' and `draw-pattern'
+
 (defun %make-pattern ()
   (let ((array (make-array '(20 20))))
     (loop :for y :below 20
