@@ -5,6 +5,9 @@
    #:clime)
 
   (:export
+   #:with-comparison-to-reference)
+
+  (:export
    #:print-test-pages
 
    #:print-test-page-1

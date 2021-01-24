@@ -98,10 +98,12 @@ interface management system."
 
 (defsystem "mcclim/test-util"
   :depends-on ("mcclim"
+               "mcclim-raster-image"
                "fiveam")
   :components ((:module "Tests/util"
                 :serial t
                 :components ((:file "package")
+                             (:file "graphics-comparison")
                              (:file "test-page")))))
 
 ;;; The fact that our CLIM implementation is McCLIM is already true now.
