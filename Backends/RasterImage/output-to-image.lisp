@@ -102,19 +102,19 @@
       ;; computed width.
       (if (or (eq width :compute) (eq height :compute))
           (flet ((try ()
-                   (let ((record (with-output-to-output-record (stream)
-                                   (funcall continuation stream))))
-                     ;; FIXME Enlarging the space requirements a bit
-                     ;; is needed to prevent things from getting
-                     ;; clipped.
+                   (let* ((record (with-output-to-output-record (stream)
+                                    (funcall continuation stream)))
+                          ;; FIXME Enlarging the space requirements a bit
+                          ;; is needed to prevent things from getting
+                          ;; clipped.
+                          (width (if (eq width :compute)
+                                     (+ (bounding-rectangle-max-x record) 2)
+                                     width))
+                          (height (if (eq height :compute)
+                                      (+ (bounding-rectangle-max-y record) 2)
+                                      height)))
                      (change-space-requirements
-                      stream
-                      :width (if (eq width :compute)
-                                 (+ (bounding-rectangle-width record) 2)
-                                 width)
-                      :height (if (eq height :compute)
-                                  (+ (bounding-rectangle-height record) 2)
-                                  height)))))
+                      stream :width width :height height))))
             ;; Ensure STREAM's preferred width is set to something
             ;; reasonable, then call CONTINUATION and update STREAM's
             ;; space requirements.
