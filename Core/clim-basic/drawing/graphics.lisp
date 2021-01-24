@@ -15,7 +15,7 @@
 ;;;  (c) copyright 2016,2017,2018,2019 Daniel Kochmański <daniel@turtleware.eu>
 ;;;  (c) copyright 2016 Alessandro Serra <gas2serra@gmail.com>
 ;;;  (c) copyright 2018 Elias Mårtenson <lokedhs@gmail.com>
-;;;  (c) copyright 2019 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2019,2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -1038,25 +1038,31 @@
   ;; patterns without compromising the specification. -- jd 2018-09-08
   (let ((width (pattern-width pattern))
         (height (pattern-height pattern)))
-    (if (or clipping-region transformation)
-        (with-drawing-options (medium :clipping-region clipping-region :transformation transformation)
-          #1=(draw-rectangle* medium 0 0 width height
-                              :ink (transform-region (medium-transformation medium) pattern)))
-        #1#)))
+    (flet ((draw-it ()
+             (draw-rectangle* medium 0 0 width height
+                              :ink (transform-region (medium-transformation medium) pattern))))
+      (if (or clipping-region transformation)
+          (with-drawing-options (medium :clipping-region clipping-region
+                                        :transformation  transformation)
+            (draw-it))
+          (draw-it)))))
 
 (defmethod draw-design (medium (pattern transformed-pattern)
                         &key clipping-region transformation &allow-other-keys)
-  (if (or clipping-region transformation)
-      (with-drawing-options (medium :clipping-region clipping-region :transformation transformation)
-        #1=(let* ((effective-pattern (effective-transformed-design pattern))
+  (flet ((draw-it ()
+           (let* ((effective-pattern (effective-transformed-design pattern))
                   (pattern-tr (transformed-design-transformation effective-pattern))
                   (pattern-ds (transformed-design-design effective-pattern))
                   (ink-tr (compose-transformations (medium-transformation medium) pattern-tr))
                   (width (pattern-width pattern-ds))
                   (height (pattern-height pattern-ds))
                   (region (transform-region pattern-tr (make-rectangle* 0 0 width height))))
-             (draw-design medium region :ink (transform-region ink-tr pattern-ds))))
-      #1#))
+             (draw-design medium region :ink (transform-region ink-tr pattern-ds)))))
+    (if (or clipping-region transformation)
+        (with-drawing-options (medium :clipping-region clipping-region
+                                      :transformation  transformation)
+          (draw-it))
+        (draw-it))))
 
 (defun draw-pattern* (medium pattern x y &key clipping-region transformation)
   ;; Note: I believe the sample implementation in the spec is incorrect. --GB
@@ -1067,13 +1073,13 @@
   (let* ((width (pattern-width pattern))
          (height (pattern-height pattern))
          (region (make-rectangle* x y (+ x width) (+ y height))))
-    (if (or clipping-region transformation)
-        (with-drawing-options (medium :clipping-region clipping-region :transformation transformation)
-          ;; As I read the spec, the pattern itself is not transformed, so we
-          ;; should draw the full (untransformed) pattern at the tranformed x/y
-          ;; coordinates. This requires we revert to the identity transformation
-          ;; before drawing the rectangle. -Hefner
-          #1=(with-bounding-rectangle* (x1 y1 x2 y2)
+    (flet ((draw-it ()
+             ;; As I read the spec, the pattern itself is not
+             ;; transformed, so we should draw the full
+             ;; (untransformed) pattern at the transformed x/y
+             ;; coordinates. This requires we revert to the identity
+             ;; transformation before drawing the rectangle. -Hefner
+             (with-bounding-rectangle* (x1 y1 x2 y2)
                  (transform-region (medium-transformation medium) region)
                (declare (ignore x2 y2))
                (let* ((effective-pattern (effective-transformed-design pattern))
@@ -1083,8 +1089,12 @@
                       (pattern-ds (transformed-design-design effective-pattern))
                       (region (transform-region pattern-tr (make-rectangle* 0 0 width height))))
                  (with-identity-transformation (medium)
-                   (draw-design medium region :ink (transform-region pattern-tr pattern-ds))))))
-        #1#)))
+                   (draw-design medium region :ink (transform-region pattern-tr pattern-ds)))))))
+      (if (or clipping-region transformation)
+          (with-drawing-options (medium :clipping-region clipping-region
+                                        :transformation  transformation)
+            (draw-it))
+          (draw-it)))))
 
 (defun draw-rounded-rectangle* (sheet x1 y1 x2 y2
                                       &rest args &key
