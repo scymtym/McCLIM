@@ -19,9 +19,13 @@
   "Smoke test for establishing clipping regions using `with-drawing-options'."
 
   (with-comparison-to-reference* (stream "with-drawing-options.clipping")
-    (draw-rectangle* stream 1/2 1/2 (- 16 1/2) (- 16 1/2) :filled nil)
+    (draw-rectangle* stream 1/2 1/2 (- 28 1/2) (- 16 1/2) :filled nil)
     (with-drawing-options (stream :clipping-region (make-rectangle* 3 3 8 8))
-      (draw-rectangle* stream 3 3 13 13 :ink +red+))))
+      (draw-rectangle* stream 3 3 13 13 :ink +red+))
+    (with-drawing-options (stream :clipping-region (region-difference
+                                                    (make-rectangle* 15 3 25 13)
+                                                    (make-rectangle* 16 4 20 8)))
+      (clim:draw-rectangle* stream 15 3 25 13 :ink clim:+red+))))
 
 ;;; `draw-design' and `draw-pattern'
 
