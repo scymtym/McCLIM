@@ -1093,11 +1093,10 @@
                     ;; transformation.
                     (final-transform   (with-bounding-rectangle* (x1 y1 x2 y2)
                                            pattern-region
-                                         (compose-transformations
-                                          (make-translation-transformation
-                                           (- x x1 (if (minusp sx) (- x2 x1) 0))
-                                           (- y y1 (if (minusp sy) (- y2 y1) 0)))
-                                          pattern-transform)))
+                                         (compose-transformation-with-translation
+                                          pattern-transform
+                                          (- x x1 (if (minusp sx) (- x2 x1) 0))
+                                          (- y y1 (if (minusp sy) (- y2 y1) 0)))))
                     (final-region      (transform-region
                                         final-transform design-rectangle))
                     (final-ink         (transform-region final-transform effective-design)))
