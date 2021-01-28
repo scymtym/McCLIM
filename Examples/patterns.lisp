@@ -2,12 +2,12 @@
 ;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
 ;;; ---------------------------------------------------------------------------
 ;;;
-;;;  (c) copyright 2018 by Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2018 Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
 ;;; Pattern and design-related demos.
-;;;
 
 (defpackage #:clim-demo.patterns
   (:use #:clim-lisp #:clim)
@@ -30,12 +30,12 @@
          (4-designs* (list +purple+ +blue+ +red+ +grey+))
          (x-designs  (list (make-rectangular-tile (make-pattern array2 4-designs) 25 25)
                            (make-rectangular-tile (make-pattern array2 4-designs*) 25 25))))
-    ;; set array for 4x4 checkboard
+    ;; set array for 4x4 checkerboard
     (dotimes (i 25)
       (dotimes (j 25)
         (setf (aref array i j) 0
               (aref array (- 49 i) (- 49 j)) 0)))
-    ;; set array2 for 5x5 checkboard
+    ;; set array2 for 5x5 checkerboard
     (dotimes (i 20)
       (dotimes (j 20)
         (setf (aref array2 i j) (mod (+ (truncate i 5) (truncate j 5)) 4))))
@@ -63,23 +63,25 @@
        (make-stencil array3)))))
 
 (defparameter *general-description*
-  "In this demo we explore draw-pattern* and draw-design capabilities when used
-on patterns under various transformation and ink variations. We test these demos
-in various arrangaments (drawn as a recorded stream and moved, simply painted on
-a basic-sheet which is not a stream etc.). Under each test you will find a
-description what should be seen with a possible failure description.
-
-Images will be drawn on top of a rectangle which is transformed with normal
-current medium transformation as a set of square patterns. To allow easy
-function scanning draw-pattern* is drawn on top of a red dashed rectangle and
-draw-design is drawn on top of a blue dashed rectangle.
-
-Pattern 1: a blue-red 2x2 checkboard pattern (50x50)
-Pattern 2: a checkboard rectangular-tile (25x25, ink 20x20) pattern (50x50)
-Pattern 4: a checkboard pattern (20x20) rotated by pi/4 translated by [12.5, 12.5]
-Pattern 3: a rectangular tile bigger than its ink (40x40 vs 20x20)
-Pattern 4: a rectangular tile smaller than its ink (30x30 vs 5x50)
-Pattern 5: a stencil with opacity increasing with XY from 0->1 (50x50) [disabled]")
+  (format nil "In this demo we explore draw-pattern* and draw-design ~
+capabilities when used on patterns under various transformation and ~
+ink variations. We test these demos in various arrangaments (drawn as ~
+a recorded stream and moved, simply painted on a basic-sheet which is ~
+not a stream etc.). Under each test you will find a description what ~
+should be seen with a possible failure description.~@
+~@
+Images will be drawn on top of a rectangle which is transformed with ~
+normal current medium transformation as a set of square patterns. To ~
+allow easy function scanning draw-pattern* is drawn on top of a red ~
+dashed rectangle and draw-design is drawn on top of a blue dashed ~
+rectangle.~@
+~@
+Pattern 1: a blue-red 2x2 checkboard pattern (50x50)~@
+Pattern 2: a checkboard rectangular-tile (25x25, ink 20x20) pattern (50x50)~@
+Pattern 4: a checkboard pattern (20x20) rotated by pi/4 translated by [12.5, 12.5]~@
+Pattern 3: a rectangular tile bigger than its ink (40x40 vs 20x20)~@
+Pattern 4: a rectangular tile smaller than its ink (30x30 vs 5x50)~@
+Pattern 5: a stencil with opacity increasing with XY from 0->1 (50x50)"))
 
 (defparameter *options*
   "Keyboard shortcuts:
@@ -92,89 +94,64 @@ R: restart demo
 Q: quit application frame
 Space: redisplay application")
 
-(defvar *draw* :pattern)
-
-(defclass my-basic-pane (basic-pane clime:always-repaint-background-mixin) ())
+(defclass my-basic-pane (basic-pane clime:always-repaint-background-mixin) ()
+  (:default-initargs
+   :background +white+))
 
 (define-application-frame pattern-design-test ()
-  ()
+  ((%draw :accessor draw
+          :initform :pattern))
   (:menu-bar nil)
   (:geometry :width 1440 :height 635)
   (:panes (info1 :application
-                 :display-function #'(lambda (frame pane)
-                                       (declare (ignore frame))
-                                       (let ((*text-right-margin* 600))
-                                         (draw-string pane *general-description* 20 30))))
+                 :display-time nil
+                 :text-margin 40
+                 :end-of-line-action :wrap*
+                 :display-function (lambda (frame pane)
+                                     (declare (ignore frame))
+                                     (setf (stream-cursor-position pane) (values 20 30))
+                                     (write-string *general-description* pane)))
           (info2 :application
-                 :display-function #'(lambda (frame pane)
-                                       (declare (ignore frame))
-                                       (let ((*text-right-margin* 600))
-                                         (with-drawing-options (pane :text-family :fix)
-                                          (draw-string pane *options* 20 30)
-                                          (draw-string pane
-                                                       (format nil "Current draw is ~a." *draw*)
-                                                       20 220)))))
+                 :display-function (lambda (frame pane)
+                                     (let ((*text-right-margin* 600))
+                                       (with-drawing-options (pane :text-family :fix)
+                                         (draw-text* pane *options* 20 30)
+                                         (draw-text* pane
+                                                     (format nil "Current draw is ~a." (draw frame))
+                                                     20 220)))))
           (pane1 :application :display-function 'display :scroll-bars :vertical)
           (pane2 :application :display-function 'display :scroll-bars nil)
-          ;; Bug #7: clx-fb backend doesn't work with panes like this one.
-          (pane4 (make-pane 'my-basic-pane :height *total-height*)))
+          (pane3 (make-pane 'my-basic-pane :height *total-height*)))
   (:layouts (default (vertically ()
-                       (235
-                        (horizontally () info1 info2))
+                       (horizontally () info1 info2)
                        (horizontally ()
-                         (1/4 (labelling (:label "Application :SCROLL-BARS :BOTH")
+                         (1/3 (labelling (:label "Application :SCROLL-BARS :BOTH")
                                 pane1))
-                         (1/4 (labelling (:label "Application")
+                         (1/3 (labelling (:label "Application")
                                 (scrolling (:scroll-bars :vertical)
                                   pane2)))
                          ;; Bug #4: if basic-pane has its own scroll-bars, ink
                          ;; doesn't follow the scroll what gives a weird
                          ;; result. Fixing that for applicatioin pane broken
                          ;; basic-pane. WIP.
-                         (1/4 (labelling (:label "Basic pane (no output recording)")
-                                (scrolling (:scroll-bars :vertical) pane4))))))))
+                         (1/3 (labelling (:label "Basic pane (no output recording)")
+                                (scrolling (:scroll-bars :vertical) pane3))))))))
 
-(defun draw-patterns (pane)
+(defmethod (setf draw) :after (new-value (frame pattern-design-test))
+  (repaint-sheet (find-pane-named frame 'pane3) +everywhere+))
+
+(defun draw-things (pane box-ink drawer)
   (draw-rectangle* pane 5 5 (+ (* 60 (length *patterns*)) 5) 65
-                   :filled nil :line-dashes t :line-thickness 3 :ink +dark-red+
+                   :filled nil :line-dashes t :line-thickness 3 :ink box-ink
                    ;; Bug # medium-gcontext has no primary method for
                    ;; uniform-compositum on CLX
-                   :filled t :ink (climi::make-uniform-compositum +dark-red+ 0.5))
-  (do* ((i 0 (1+ i))
-        (x 10 (+ 60 x))
-        (p* *patterns* (cdr p*))
-        (pattern #1=(first p*) #1#))
-       ((endp p*))
-    (draw-pattern* pane pattern x 10)
-    (draw-rectangle* pane x 10 (+ x (pattern-width pattern)) (+ 10 (pattern-height pattern))
-                     :filled nil)))
-
-(defun draw-designs (pane)
-  (draw-rectangle* pane 5 5 (+ (* 60 (length *patterns*)) 5) 65
-                   :filled nil :line-dashes t :line-thickness 3 :ink +dark-blue+
-                   :filled t :ink (climi::make-uniform-compositum +dark-blue+ 0.5))
-  (do* ((i 0 (1+ i))
-        (x 10 (+ 60 x))
-        (p* *patterns* (cdr p*))
-        (pattern #1=(first p*) #1#))
-       ((endp p*))
-    (draw-design pane pattern :transformation (make-translation-transformation x 10))
-    (draw-rectangle* pane x 10 (+ x (pattern-width pattern)) (+ 10 (pattern-height pattern))
-                     :filled nil :line-dashes nil :line-thickness 2 :ink +grey42+)))
-
-(defun draw-rects (pane)
-  (draw-rectangle* pane 5 5 (+ (* 60 (length *patterns*)) 5) 65
-                   :filled nil :line-dashes t :line-thickness 3 :ink +dark-green+
-                   :filled t :ink (climi::make-uniform-compositum +dark-green+ 0.5))
-  (do* ((i 0 (1+ i))
-        (x 10 (+ 60 x))
-        (p* *patterns* (cdr p*))
-        (pattern #1=(first p*) #1#))
-       ((endp p*))
-    (draw-rectangle* pane x 10 (+ x (pattern-width pattern)) (+ 10 (pattern-height pattern))
-                     :ink pattern)
-    (draw-rectangle* pane x 10 (+ x (pattern-width pattern)) (+ 10 (pattern-height pattern))
-                     :filled nil :line-dashes nil :line-thickness 2 :ink +grey42+)))
+                   :filled t :ink (climi::make-uniform-compositum box-ink 0.5))
+  (loop :with y = 10
+        :for x :from 10 :by 60
+        :for pattern :in *patterns*
+        :do (funcall drawer pane pattern x y)
+            (draw-rectangle* pane x y (+ x (pattern-width pattern)) (+ 10 (pattern-height pattern))
+                             :filled nil :line-thickness 2 :ink +grey42+)))
 
 (defun %split-line (character string &key (count 1) from-end)
   (check-type count (integer 1))
@@ -256,7 +233,7 @@ right-trimmed for spaces."
       (apply #'draw-text* pane line x start-y args)
       (incf start-y text-ascent))))
 
-(defun test-example (pane &key first-quadrant transformation (description "") draw)
+(defun test-example (pane draw &key first-quadrant transformation (description ""))
   ;; Bug #5: draw-text* doesn't work with strings which start with a newline.
   #+ (or) (draw-text* pane (format nil "~%foo") 10 10)
   ;; Bug #6: draw-text* is not drawn at all in with-room-for-graphics for
@@ -269,25 +246,31 @@ right-trimmed for spaces."
   (with-room-for-graphics (pane :first-quadrant first-quadrant :move-cursor nil)
     (with-drawing-options (pane :transformation transformation)
       (ecase draw
-        (:design (draw-designs pane))
-        (:pattern (draw-patterns pane))
-        (:rectangle (draw-rects pane)))))
+        (:pattern (draw-things pane +dark-red+
+                               (lambda (stream pattern x y)
+                                 (draw-pattern* stream pattern x y))))
+        (:design (draw-things pane +dark-blue+
+                              (lambda (stream pattern x y)
+                                (let ((transform (make-translation-transformation x y)))
+                                  (draw-design stream pattern :transformation transform)))))
+        (:rectangle (draw-things pane +dark-green+
+                                 (lambda (stream pattern x y)
+                                   (let ((width (pattern-width pattern))
+                                         (height (pattern-height pattern)))
+                                     (draw-rectangle* stream x y (+ x width) (+ y height)
+                                                      :ink pattern))))))))
   (multiple-value-bind (x y)
       (if (extended-output-stream-p pane)
           (stream-cursor-position pane)
           (transform-position (medium-transformation (sheet-medium pane)) 0 0))
     (with-identity-transformation (pane)
       (draw-string pane (format nil description)
-                   (+ x 5)
-                   (+ y *block-height* -10)
+                   (+ x 5) (+ y *block-height* -10)
                    :align-y :bottom :align-x :left)
-      (if first-quadrant
-          (draw-arrow* pane
-                       (+ *text-right-margin* 16) (+ y 64)
-                       (+ *text-right-margin* 16) (+ y 16))
-          (draw-arrow* pane
-                       (+ *text-right-margin* 16) (+ y 16)
-                       (+ *text-right-margin* 16) (+ y 64))))))
+      (let ((x (+ *text-right-margin* 16)))
+        (if first-quadrant
+            (draw-arrow* pane x (+ y 64) x (+ y 16))
+            (draw-arrow* pane x (+ y 16) x (+ y 64)))))))
 
 (defun ssop (pane &key (x 0 x-p) (y 0 y-p))
   (multiple-value-bind (ox oy) (stream-cursor-position pane)
@@ -299,25 +282,23 @@ right-trimmed for spaces."
   (with-gensyms (eosp)
     `(let ((,eosp (extended-output-stream-p ,pane)))
        ,@(mapcar (let ((y 0))
-                   #'(lambda (ex)
-                       (prog1 `(progn
-                                 (if ,eosp
-                                     (progn (ssop ,pane :x 0 :y ,y) ,ex)
-                                     (with-translation (,pane 0 ,y) ,ex))
-                                 (draw-line* pane
-                                             0
-                                             ,(+ y *block-height* -10)
-                                             *text-right-margin*
-                                             ,(+ y *block-height* -10)
-                                             :ink +blue+
-                                             :line-dashes t))
-                         (incf y *block-height*))))
+                   (lambda (ex)
+                     (prog1 `(progn
+                               (if ,eosp
+                                   (progn (ssop ,pane :x 0 :y ,y) ,ex)
+                                   (with-translation (,pane 0 ,y) ,ex))
+                               (draw-line* pane
+                                           0
+                                           ,(+ y *block-height* -10)
+                                           *text-right-margin*
+                                           ,(+ y *block-height* -10)
+                                           :ink +blue+ :line-dashes t))
+                       (incf y *block-height*))))
                  examples))))
 
 (defmethod handle-repaint ((pane my-basic-pane) region)
   (declare (ignore region))
-  (draw-rectangle* pane 0 0 (+ *text-right-margin* 100) *total-height* :ink +white+)
-  (display *application-frame* pane)
+  (display (pane-frame pane) pane)
   ;; (layout-examples (pane)
   ;;   (test-example pane :description "hello world")
   ;;   (test-example pane :description "hello world2"))
@@ -325,8 +306,7 @@ right-trimmed for spaces."
   (with-translation (pane 5 5)
     (test-example pane)))
 
-(defun display (frame pane &aux (draw *draw*))
-  (declare (ignore frame))
+(defun display (frame pane &aux (draw (draw frame)))
   (do ((i 5 (+ i 16))
        (j 5 (+ j 16))
        (max-i *text-right-margin*)
@@ -339,32 +319,26 @@ right-trimmed for spaces."
       (draw-line* pane 0 j max-i j :ink +grey+)))
   ;; Bug #1: width/height is not translated correctly (if we have anything
   ;; before the pattern this height/width is substituted from the rest).
-  (draw-line* pane
-              *text-right-margin*
-              0
-              *text-right-margin*
-              *total-height*
-              :ink +red+
-              :line-dashes t )
+  (draw-line* pane *text-right-margin* 0 *text-right-margin* *total-height*
+              :ink +red+ :line-dashes t)
   (layout-examples (pane)
-    (test-example pane :first-quadrant nil
-                  :draw draw
+    (test-example pane draw
+                  :first-quadrant nil
                   :description "[1] Basic case. Patterns are drawn with current
                   transformation being just a translation. Ink should start at
                   top-left corner of the square (should be aligned with
                   it). Likely failures: ink has offset, ink not scrolling with a
                   square.")
     ;; Bug #2: if first-quadrant is t non-uniform design is not drawn.
-    (test-example pane :first-quadrant t
-                  :draw draw
+    (test-example pane draw
+                  :first-quadrant t
                   :description "[2] Y-axis is reverted (FIRST-QUADRANT=T). Since
                   it is draw-pattern only translation is applied. Should look
                   like the test [1]. Likely failures: inverted ink, squares not
                   visible, additional vertical offset, error in basic-pane, same
                   as test [1].")
-    (test-example pane
+    (test-example pane draw
                   :first-quadrant nil
-                  :draw draw
                   :transformation (make-rotation-transformation (/ pi 8))
                   :description "[5] Rotation by pi/4. Underlying rectangle is
                   rotated, squares are not rotated but their start position is
@@ -373,9 +347,8 @@ right-trimmed for spaces."
                   is not translated, ink is not translated (so in fact no
                   visible), ink is not scrolling with the square, on a
                   basic-pane rectangle itself may have wrong initial position.")
-    (test-example pane
+    (test-example pane draw
                   :first-quadrant t
-                  :draw draw
                   :transformation (make-rotation-transformation (/ pi 8))
                   :description "[6] Rotation by pi/4 with
                   FIRST-QUADRANT=T. Underlying rectangle is rotated with
@@ -387,18 +360,14 @@ right-trimmed for spaces."
 (define-pattern-design-test-command (refresh-pattern-design :keystroke #\space) ()
   (format *debug-io* "."))
 
-(progn (define-pattern-design-test-command (dpattern :keystroke #\1) ()
-         (setf *draw* :pattern)
-         #1=(map-over-sheets (lambda (sheet)
-                               (redisplay-frame-pane *application-frame* sheet :force-p t)
-                               (repaint-sheet sheet +everywhere+))
-                             (frame-top-level-sheet *application-frame*)))
-       (define-pattern-design-test-command (ddesign :keystroke #\2) ()
-         (setf *draw* :design)
-         #1#)
-       (define-pattern-design-test-command (drectangle :keystroke #\3) ()
-         (setf *draw* :rectangle)
-         #1#))
+(define-pattern-design-test-command (dpattern :keystroke #\1) ()
+  (setf (draw *application-frame*) :pattern))
+
+(define-pattern-design-test-command (ddesign :keystroke #\2) ()
+  (setf (draw *application-frame*) :design))
+
+(define-pattern-design-test-command (drectangle :keystroke #\3) ()
+  (setf (draw *application-frame*) :rectangle))
 
 (define-pattern-design-test-command (exit :keystroke #\q) ()
   (frame-exit *application-frame*))
