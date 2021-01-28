@@ -112,3 +112,72 @@
         (is (= yy1 (min (coordinate y) (coordinate y2))))
         (is (= xx2 (max (coordinate x) (coordinate x2))))
         (is (= yy2 (max (coordinate y) (coordinate y2))))))))
+
+(test transforms.order-of-composition.smoke
+  "Smoke test for the composition order of transform composition
+   functions."
+  (let ((x 10) (y 12))
+    (multiple-value-bind (x* y*)
+        (transform-position
+         (compose-transformations
+          (make-translation-transformation 5 6)
+          (make-scaling-transformation 1 -1))
+         x y)
+      (let ((expected-x (+ (*  1 x) 5))
+            (expected-y (+ (* -1 y) 6)))
+        (is (equal (list expected-x expected-y) (list x* y*)))))))
+
+(test transforms.order-of-composition.random
+  "Random test for the composition order of transform composition
+   functions."
+  ;; `compose-transformations' composes its arguments in right-to-left
+  ;; order. The `compose-T1-with-T2' compose their arguments in
+  ;; left-to-right order.
+  (for-all ((mxx  (gen-integer :min -10 :max 10))
+            (mxy  (gen-integer :min -10 :max 10))
+            (myy  (gen-integer :min -10 :max 10))
+            (myx  (gen-integer :min -10 :max 10))
+            (tx   (gen-integer :min -10 :max 10))
+            (ty   (gen-integer :min -10 :max 10))
+            (kind (gen-one-element :scaling :rotation :translation))
+            (x    (gen-integer :min -100 :max 100))
+            (y    (gen-integer :min -100 :max 100)))
+    (let ((position    (make-point x y))
+          (transform-1 (make-transformation mxx mxy myy myx tx ty)))
+      (multiple-value-bind (transform-2 composed-1-2/specific composed-2-1/specific)
+          (ecase kind
+            (:scaling
+             (let* ((p1     (- (random 20) 10))
+                    (p2     (- (random 20) 10))
+                    (ox     (- (random 20) 10))
+                    (oy     (- (random 20) 10))
+                    (origin (make-point ox oy)))
+               (values (make-scaling-transformation p1 p2 origin)
+                       (compose-scaling-with-transformation transform-1 p1 p2 origin)
+                       (compose-transformation-with-scaling transform-1 p1 p2 origin))))
+            (:rotation
+             (let* ((p1     (- (random 20) 10))
+                    (ox     (- (random 20) 10))
+                    (oy     (- (random 20) 10))
+                    (origin (make-point ox oy)))
+               (values (make-rotation-transformation p1 origin)
+                       (compose-rotation-with-transformation transform-1 p1 origin)
+                       (compose-transformation-with-rotation transform-1 p1 origin))))
+            (:translation
+             (let ((p1 (- (random 20) 10))
+                   (p2 (- (random 20) 10)))
+               (values (make-translation-transformation p1 p2)
+                       (compose-translation-with-transformation transform-1 p1 p2)
+                       (compose-transformation-with-translation transform-1 p1 p2)))))
+        (let ((composed-1-2/generic (compose-transformations transform-1 transform-2))
+              (composed-2-1/generic (compose-transformations transform-2 transform-1)))
+          ;; The transformations should `transformation-equal', no
+          ;; matter how the composition was done.
+          (is (transformation-equal composed-1-2/generic composed-1-2/specific))
+          (is (transformation-equal composed-2-1/generic composed-2-1/specific))
+          ;; The transformations should have the same effect, no
+          ;; matter how the composition was done.
+          (is (region-equal (transform-region composed-1-2/generic position)
+                            (transform-region composed-1-2/specific position)))
+          (is (region-equal (transform-region composed-2-1/generic position)
+                            (transform-region composed-2-1/specific position))))))))
