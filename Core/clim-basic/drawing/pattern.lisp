@@ -90,11 +90,6 @@ pattern, stencil, image etc)."))
 (defmethod pattern-height ((pattern %array-pattern))
   (array-dimension (pattern-array pattern) 0))
 
-(defmethod bounding-rectangle* ((pattern %array-pattern))
-  (let ((width (pattern-width pattern))
-        (height (pattern-height pattern)))
-    (values 0 0 width height)))
-
 (defmethod bounding-rectangle ((pattern %array-pattern))
   (destructuring-bind (height width) (array-dimensions (pattern-array pattern))
     (make-bounding-rectangle 0 0 width height)))

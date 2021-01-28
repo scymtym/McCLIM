@@ -39,14 +39,21 @@
                     :do (setf (aref array y x) 2)))
     (make-pattern array (list +red+ +blue+ +green+))))
 
-(defun draw-patterns (function stream)
+(defun %make-tile ()
+  (let ((array (make-array '(20 20) :initial-element 0)))
+    (loop :for y :from 0 :below 10
+          :do (loop :for x :from 0 :below 10
+                    :do (setf (aref array y        x)        1
+                              (aref array (+ y 10) (+ x 10)) 1)))
+    (make-rectangular-tile (make-pattern array (list +red+ +blue+)) 20 20)))
+
+(defun draw-patterns (pattern-1 function stream)
   ;; Draw the pattern PATTERN-1 in four ways:
   ;; - just PATTERN-1
   ;; - result of TRANSFORM-REGION with a scaling transformation
   ;; - result of TRANSFORM-REGION with a rotation transformation
   ;; - PATTERN-1 but with a non-identity medium transformation
-  (let* ((pattern-1 (%make-pattern))
-         (pattern-2 (transform-region
+  (let* ((pattern-2 (transform-region
                      (make-scaling-transformation* 1/2 1/2)
                      pattern-1))
          (pattern-3 (transform-region
@@ -71,11 +78,17 @@
 (test draw-design.transformed
   "Test drawing transformed patterns with `draw-design'."
 
-  (with-comparison-to-reference* (stream "draw-design.transformed")
-    (draw-patterns 'draw-design stream)))
+  (with-comparison-to-reference* (stream "draw-design.transformed.array")
+    (draw-patterns (%make-pattern) 'draw-design stream))
+
+  (with-comparison-to-reference* (stream "draw-design.transformed.tile")
+    (draw-patterns (%make-tile) 'draw-design stream)))
 
 (test draw-pattern*.transformed
   "Test drawing transformed patterns with `draw-pattern*'."
 
-  (with-comparison-to-reference* (stream "draw-pattern.transformed")
-    (draw-patterns 'draw-pattern* stream)))
+  (with-comparison-to-reference* (stream "draw-pattern.transformed.array")
+    (draw-patterns (%make-pattern) 'draw-pattern* stream))
+
+  (with-comparison-to-reference* (stream "draw-pattern.transformed.tile")
+    (draw-patterns (%make-tile) 'draw-pattern* stream)))
