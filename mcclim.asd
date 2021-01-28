@@ -8,7 +8,7 @@
 ;;;  (c) copyright 2006,2007,2008 David Lichteblau <dlichteblau@common-lisp.net>
 ;;;  (c) copyright 2006,2007,2008 Troels Henriksen <thenriksen@common-lisp.net>
 ;;;  (c) copyright 2016-2020 Daniel Kochmański <daniel@turtleware.eu>
-;;;  (c) copyright 2019,2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2019,2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -83,7 +83,8 @@ interface management system."
                                            (:file "graphics")))
                              (:module "extended-streams"
                               :depends-on ("package")
-                              :components ((:file "gestures")))
+                              :components ((:file "recording")
+                                           (:file "gestures")))
                              (:module "presentations"
                               :depends-on ("package")
                               :components ((:file "presentation-types")
