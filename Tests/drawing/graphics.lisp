@@ -19,13 +19,31 @@
   "Smoke test for establishing clipping regions using `with-drawing-options'."
 
   (with-comparison-to-reference* (stream "with-drawing-options.clipping")
-    (draw-rectangle* stream 1/2 1/2 (- 28 1/2) (- 16 1/2) :filled nil)
+    (draw-rectangle* stream 1/2 1/2 (- 28 1/2) (- 16 1/2) :ink +red+ :filled nil)
     (with-drawing-options (stream :clipping-region (make-rectangle* 3 3 8 8))
-      (draw-rectangle* stream 3 3 13 13 :ink +red+))
+      (draw-rectangle* stream 3 3 13 13 :ink +blue+))
     (with-drawing-options (stream :clipping-region (region-difference
                                                     (make-rectangle* 15 3 25 13)
                                                     (make-rectangle* 16 4 20 8)))
-      (clim:draw-rectangle* stream 15 3 25 13 :ink clim:+red+))))
+      (draw-rectangle* stream 15 3 25 13 :ink +blue+))))
+
+(test with-drawing-options.line-style
+  "Smoke test for establishing a line style using `with-drawing-options'."
+
+  (with-comparison-to-reference* (stream "with-drawing-options.line-style")
+    (draw-rectangle* stream 1/2 1/2 (- 78 1/2) (- 28 1/2) :ink +red+ :filled nil)
+    (with-drawing-options (stream :line-thickness 3)
+      (draw-line* stream 4 4 14 4 :ink +blue+)
+      (draw-rectangle* stream 4 14 14 24 :filled nil :ink +blue+))
+    (with-drawing-options (stream :line-dashes t)
+      (draw-line* stream 24 4 34 4 :ink +blue+)
+      (draw-rectangle* stream 24 14 34 24 :filled nil :ink +blue+))
+    (with-drawing-options (stream :line-dashes '(6 2))
+      (draw-line* stream 44 4 54 4 :ink +blue+)
+      (draw-rectangle* stream 44 14 54 24 :filled nil :ink +blue+))
+    (with-drawing-options (stream :line-dashes #(6 2))
+      (draw-line* stream 64 4 74 4 :ink +blue+)
+      (draw-rectangle* stream 64 14 74 24 :filled nil :ink +blue+))))
 
 ;;; `draw-design' and `draw-pattern'
 
