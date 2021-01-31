@@ -92,6 +92,9 @@ interface management system."
                                            (:file "presentation-inheritance")
                                            (:file "translators")
                                            (:file "standard-presentations")))
+                             (:module "formatting"
+                              :depends-on ("package")
+                              :components ((:file "misc-formatting")))
                              (:module "frames"
                               :depends-on ("package")
                               :components ((:file "define-application-frame"))))))

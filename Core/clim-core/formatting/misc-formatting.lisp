@@ -96,55 +96,81 @@
 
 ;;; Drawing pointer states
 
-(defun draw-pointer (stream &key (buttons       '())
+(defun draw-pointer (stream &key (buttons       0)
                                  (radius        10)
                                  (length        5)
                                  (middle-width  (* 1/7 (* 2 radius)))
                                  (middle-height 8)
                                  (scroll-height 4)
                                  (y             (- (sqrt (- (expt radius 2)
-                                                            (expt middle-width 2))))))
+                                                            (expt middle-width 2)))))
+                                 background)
   (flet ((draw-button (drawn-button thunk)
-           (if (member drawn-button buttons :test #'=)
-               (let ((ink (make-contrasting-inks 8 (integer-length drawn-button))))
-                 (funcall thunk :filled t :ink ink)
-                 (funcall thunk :filled nil))
-               (funcall thunk :filled t :ink +background-ink+))
-           (funcall thunk :filled nil)))
-    ;; Right button
-    (draw-button +pointer-right-button+
-                 (lambda (&rest options)
-                   (apply #'draw-circle* stream 0 0 radius :start-angle 0 :end-angle (/ pi 2)
-                          options)
-                   (draw-line* stream middle-width 0 radius 0)))
-    ;; Left button
-    (draw-button +pointer-left-button+
-                 (lambda (&rest options)
-                   (apply #'draw-circle* stream 0 0 radius :start-angle (/ pi 2) :end-angle pi
-                          options)
-                   (draw-line* stream (- middle-width) 0 (- radius) 0)))
-    ;; Middle button
-    (draw-button +pointer-middle-button+
-                 (curry #'draw-rectangle* stream (- middle-width) y middle-width (+ y middle-height)))
+           (when (logtest drawn-button buttons)
+             (let ((ink (make-contrasting-inks
+                         8 (1- (integer-length drawn-button)))))
+               (funcall thunk :filled t :ink ink)))
+           (funcall thunk :filled nil))
+         (draw-body (&key filled)
+           (cond (filled
+                  (draw-circle* stream 0 0 radius :filled      filled
+                                                  :start-angle 0
+                                                  :end-angle   pi)
+                  (draw-rectangle* stream (- radius) 0 radius length))
+                 (t
+                  (draw-line* stream (- radius) 0 (- radius) length)
+                  (draw-line* stream radius     0 radius     length)))
+           (draw-circle* stream 0 length radius :filled      filled
+                                                :start-angle pi
+                                                :end-angle   (* 2 pi))))
+    (when background
+      (with-drawing-options (stream :ink background)
+        (draw-body :filled t)))
+    (let* ((radius1/2     (+ radius 1/2))
+           (middle-region (make-rectangle*
+                           (- 0 middle-width 1/2) (- radius1/2) (+ middle-width 1/2) 1/2))
+           (side-clip     (region-difference
+                           (make-rectangle*
+                            (- radius1/2) (- radius1/2) radius1/2 (+ length radius1/2))
+                           middle-region)))
+      ;; Right button
+      (draw-button +pointer-right-button+
+                   (lambda (&rest options)
+                     (with-drawing-options (stream :clipping-region side-clip)
+                       (apply #'draw-circle* stream 0 0 radius :start-angle 0
+                                                               :end-angle   (/ pi 2)
+                                                               options)
+                       (draw-line* stream middle-width 0 radius 0))))
+      ;; Left button
+      (draw-button +pointer-left-button+
+                   (lambda (&rest options)
+                     (with-drawing-options (stream :clipping-region side-clip)
+                       (apply #'draw-circle* stream 0 0 radius :start-angle (/ pi 2)
+                                                               :end-angle   pi
+                                                               options))
+                     (draw-line* stream (- middle-width) 0 (- radius) 0)))
+      ;; Middle button
+      (draw-button +pointer-middle-button+
+                   (curry #'draw-rectangle* stream
+                          (- middle-width) y middle-width (+ y middle-height))))
     (incf y (+ middle-height 1))
     ;; Scroll up
     (draw-button +pointer-wheel-up+
-                 (curry #'draw-rectangle* stream (- middle-width) y middle-width (+ y scroll-height)))
+                 (curry #'draw-rectangle* stream
+                        (- middle-width) y middle-width (+ y scroll-height)))
     (incf y scroll-height)
     ;; Scroll down
     (draw-button +pointer-wheel-down+
-                 (curry #'draw-rectangle* stream (- middle-width) y middle-width (+ y scroll-height)))
+                 (curry #'draw-rectangle* stream
+                        (- middle-width) y middle-width (+ y scroll-height)))
     ;; Body
-    (draw-circle* stream 0 0 radius :filled nil :start-angle 0 :end-angle pi)
-    (draw-line* stream (- radius) 0 (- radius) length)
-    (draw-line* stream radius     0 radius     length)
-    (draw-circle* stream 0 length radius :filled nil :start-angle pi :end-angle (* 2 pi))))
+    (draw-body)))
 
 (defun format-pointer-button (button &key (stream *standard-output*)
                                           (radius 10)
                                           (length 5))
   (with-room-for-graphics (stream :first-quadrant nil :move-cursor nil)
-    (draw-pointer stream :buttons (list button) :radius radius :length length))
+    (draw-pointer stream :buttons button :radius radius :length length))
   (stream-increment-cursor-position stream (+ (* 2 radius) 2) 0))
 
 (defun format-pointer-gesture (gesture &key (stream *standard-output*))
