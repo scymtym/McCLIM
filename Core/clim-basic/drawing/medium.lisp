@@ -57,14 +57,15 @@
     (setf (slot-value obj 'ink) (graphics-state-ink medium))))
 
 (defclass gs-clip-mixin (graphics-state)
-  ((clipping-region :initarg :clipping-region :accessor graphics-state-clip
+  ((clipping-region :initarg :clipping-region
+                    :type region
+                    :accessor graphics-state-clip
                     :documentation "Clipping region in stream coordinates.")))
 
 (defmethod initialize-instance :after ((obj gs-clip-mixin)
-                                       &key
-                                         (stream nil)
-                                         (medium (when stream
-                                                   (sheet-medium stream))))
+                                       &key (stream nil)
+                                            (medium (when stream
+                                                      (sheet-medium stream))))
   (when (and medium (not (slot-boundp obj 'clipping-region)))
     (setf (slot-value obj 'clipping-region) (graphics-state-clip medium))))
 
@@ -136,26 +137,21 @@
                :initform +white+
                :accessor medium-background
                :reader background)
-   (ink :initarg :ink
-        :initform +foreground-ink+
+   (ink :initform +foreground-ink+
         :accessor medium-ink)
    (transformation :type transformation
                    :initarg :transformation
                    :initform +identity-transformation+
                    :accessor medium-transformation)
-   (clipping-region :type region
-                    :initarg :clipping-region
-                    :initform +everywhere+
+   (clipping-region :initform +everywhere+
                     :documentation "Clipping region in the SHEET coordinates.")
    ;; always use this slot through its accessor, since there may
    ;; be secondary methods on it -RS 2001-08-23
-   (line-style :initarg :line-style
-               :initform (make-line-style)
+   (line-style :initform (make-line-style)
                :accessor medium-line-style)
    ;; always use this slot through its accessor, since there may
    ;; be secondary methods on it -RS 2001-08-23
-   (text-style :initarg :text-style
-               :initform *default-text-style*
+   (text-style :initform *default-text-style*
                :accessor medium-text-style)
    (default-text-style :initarg :default-text-style
                        :initform *default-text-style*
@@ -163,7 +159,7 @@
    (sheet :initarg :sheet
           :initform nil                 ; this means that medium is not linked to a sheet
           :reader medium-sheet
-          :writer (setf %medium-sheet) ))
+          :writer (setf %medium-sheet)))
   (:documentation "The basic class, on which all CLIM mediums are built."))
 
 (defmethod medium-drawable ((medium basic-medium))
@@ -172,8 +168,7 @@
 
 (defclass ungrafted-medium (basic-medium) ())
 
-(defmethod initialize-instance :after ((medium basic-medium) &rest args)
-  (declare (ignore args))
+(defmethod initialize-instance :after ((medium basic-medium) &key)
   ;; Initial CLIPPING-REGION is in coordinates, given by initial
   ;; TRANSFORMATION, but we store it in SHEET's coords.
   (with-slots (clipping-region) medium
@@ -191,15 +186,13 @@
 
 (defmethod (setf medium-clipping-region) :after (region (medium medium))
   (declare (ignore region))
-  (let ((sheet (medium-sheet medium)))
-    (when sheet
-      (%invalidate-cached-device-regions sheet))))
+  (when-let ((sheet (medium-sheet medium)))
+    (%invalidate-cached-device-regions sheet)))
 
 (defmethod (setf medium-transformation) :after (transformation (medium medium))
   (declare (ignore transformation))
-  (let ((sheet (medium-sheet medium)))
-    (when sheet
-      (%invalidate-cached-device-transformations sheet))))
+  (when-let ((sheet (medium-sheet medium)))
+    (%invalidate-cached-device-transformations sheet)))
 
 (defmethod medium-merged-text-style ((medium medium))
   (merge-text-styles (medium-text-style medium) (medium-default-text-style medium)))
