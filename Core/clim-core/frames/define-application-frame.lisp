@@ -2,17 +2,16 @@
 ;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
 ;;; ---------------------------------------------------------------------------
 ;;;
-;;;  (c) copyright 1998,1999,2000 by Michael McDonald (mikemac@mikemac.com)
-;;;  (c) copyright 2000 by Iban Hatchondo (hatchond@emi.u-bordeaux.fr)
-;;;  (c) copyright 2000 by Julien Boninfante (boninfan@emi.u-bordeaux.fr)
-;;;  (c) copyright 2000, 2014 by Robert Strandh (robert.strandh@gmail.com)
-;;;  (c) copyright 2004 by Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
-;;;  (c) copyright 2019, 2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 1998,1999,2000 Michael McDonald (mikemac@mikemac.com)
+;;;  (c) copyright 2000 Iban Hatchondo (hatchond@emi.u-bordeaux.fr)
+;;;  (c) copyright 2000 Julien Boninfante (boninfan@emi.u-bordeaux.fr)
+;;;  (c) copyright 2000,2014 by Robert Strandh (robert.strandh@gmail.com)
+;;;  (c) copyright 2004 Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
+;;;  (c) copyright 2019,2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
 ;;; The DEFINE-APPLICATION-FRAME macro and supporting code.
-;;;
 
 (in-package #:clim-internals)
 
@@ -43,7 +42,7 @@
       (apply #'wrap-stream-pane pane nil wrapper-initargs))))
 
 (defun %generic-make-or-reinitialize-pane
-    (panes-for-layout constructor type name &rest initargs)
+    (panes-for-layout constructor type name stream-pane-p &rest initargs)
   ;; If PANES-FOR-LAYOUT contains a pane for NAME, try to reinitialize
   ;; it. Otherwise, make a new pane using CONSTRUCTOR.
   (let ((pane-or-parent (alexandria:assoc-value
@@ -57,7 +56,7 @@
       (progn
         (when-let ((parent (sheet-parent pane-or-parent)))
           (sheet-disown-child parent pane-or-parent))
-        (if (typep pane 'clim-stream-pane)
+        (if stream-pane-p
             (%reinitialize-stream-pane pane pane-or-parent initargs)
             (progn
               (apply #'reinitialize-instance pane initargs)
@@ -70,10 +69,11 @@
     (error "~@<~S is not a valid pane name. It must be a symbol.~@:>"
            name))
   (destructuring-bind (pane &rest options) form
-    (flet ((generate (constructor type)
+    (flet ((generate (constructor type &optional stream-pane-p)
              (if panes-for-layout-var
                  `(%generic-make-or-reinitialize-pane
-                   ,panes-for-layout-var ,constructor ,type ',name ,@options)
+                   ,panes-for-layout-var
+                   ,constructor ,type ',name ,stream-pane-p ,@options)
                  `(funcall ,constructor :name ',name ,@options))))
       (cond ((and (null options) (listp pane)) ; Single form which is a function call
              `(coerce-pane-name ,pane ',name))
@@ -82,13 +82,13 @@
                      must be a symbol.~@:>"
                     pane))
             ((eq pane :application) ; Standard pane (i.e `:application')
-             (generate ''make-clim-application-pane ''application-pane))
+             (generate ''make-clim-application-pane ''application-pane t))
             ((eq pane :interactor)
-             (generate ''make-clim-interactor-pane ''interactor-pane))
+             (generate ''make-clim-interactor-pane ''interactor-pane t))
             ((eq pane :pointer-documentation)
-             (generate ''make-clim-pointer-documentation-pane ''pointer-documentation-pane))
+             (generate ''make-clim-pointer-documentation-pane ''pointer-documentation-pane t))
             ((eq pane :command-menu)
-             (generate ''make-clim-command-menu-pane ''command-menu-pane))
+             (generate ''make-clim-command-menu-pane ''command-menu-pane t))
             ;; Non-standard pane designator fed to `make-pane'
             (t
              (alexandria:with-unique-names (pane-class-var)
