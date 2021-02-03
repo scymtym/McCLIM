@@ -14,7 +14,7 @@
   :in :mcclim)
 
 (test draw-pointer.smoke
-  "Smoke test for establishing clipping regions using `with-drawing-options'."
+  "Smoke test the `draw-pointer' function."
 
   (flet ((do-it (args reference)
            (with-comparison-to-reference* (stream reference)
