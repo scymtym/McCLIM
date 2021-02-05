@@ -20,13 +20,29 @@
   ;; `compose-translation-with-transformation' works in the expected
   ;; way, in particular with respect to the transformation composition
   ;; order.
-  (with-comparison-to-reference* (stream "setf-output-record-position")
+  (with-comparison-to-reference* (stream "output-record.setf-output-record-position")
     (draw-rectangle* stream 1/2 1/2 (- 30 1/2) (- 54 1/2) :ink +red+ :filled nil)
     (with-translation (stream 20 10)
       (with-drawing-options (stream :transformation (make-rotation-transformation (/ pi 2)))
         (draw-point* stream 0 0 :line-thickness 2 :ink +red+)
         (draw-text* stream "hi" 0 0 :align-y :top :transform-glyphs t :ink +green+)
         (draw-polygon* stream #(20 0 40 5 20 10) :ink +blue+)))))
+
+(test (output-record.transformed-clipping-region
+       :depends-on (or))
+  "Test interaction between transformation and clipping region."
+  ;; If an output record is replayed by applying a stored
+  ;; transformation to the medium (`gs-transformation-mixin' does
+  ;; this), the clipping region, which is stored in stream
+  ;; coordinates, must be transformed according to the stored
+  ;; transformation before it can be installed.
+  (with-comparison-to-reference* (stream "output-record.transformed-clipping-region")
+    (draw-rectangle* stream 1/2 1/2 (- 30 1/2) (- 30 1/2) :ink +red+ :filled nil)
+    (with-translation (stream 20 10)
+      (with-drawing-options (stream :transformation (make-rotation-transformation (/ pi 2)))
+        (draw-point* stream 0 0 :line-thickness 2 :ink +red+)
+        (with-drawing-options (stream :clipping-region (make-rectangle* 0 0 8 10))
+          (draw-text* stream "hi" 0 0 :align-y :top :transform-glyphs t :ink +green+))))))
 
 (test with-room-for-graphics.clipping
   "Test interaction of `with-room-for-graphics' with clipping."

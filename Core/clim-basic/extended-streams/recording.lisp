@@ -954,21 +954,25 @@ were added."
 (defmethod replay-output-record :around
     ((record gs-clip-mixin) stream &optional region x-offset y-offset)
   (declare (ignore region x-offset y-offset))
-  (let ((clipping-region (graphics-state-clip record)))
-    (if (or (eq clipping-region +everywhere+) ; !!!
-            (region-contains-region-p clipping-region (medium-clipping-region stream)))
+  (let ((record-clip (graphics-state-clip record))) ; in stream coordinates
+    (if (eq record-clip +everywhere+)
         (call-next-method)
-        (with-drawing-options (stream :clipping-region clipping-region)
-          (call-next-method)))))
+        (let ((stream-clip (medium-clipping-region stream)))
+          (if (region-contains-region-p record-clip stream-clip)
+              (call-next-method)
+              (with-drawing-options (stream :clipping-region record-clip)
+                (call-next-method)))))))
 
 (defmethod* (setf output-record-position) :before
-  (new-x new-y (record gs-clip-mixin))
-  (with-standard-rectangle* (:x1 old-x :y1 old-y) record
-    (let* ((dx          (- new-x old-x))
-           (dy          (- new-y old-y))
-           (translation (make-translation-transformation dx dy)))
-      (setf (graphics-state-clip record)
-            (transform-region translation (graphics-state-clip record))))))
+    (new-x new-y (record gs-clip-mixin))
+  (let ((clip-region (graphics-state-clip record)))
+    (unless (eq clip-region +everywhere+)
+      (with-standard-rectangle* (:x1 old-x :y1 old-y) record
+        (let* ((dx          (- new-x old-x))
+               (dy          (- new-y old-y))
+               (translation (make-translation-transformation dx dy)))
+          (setf (graphics-state-clip record)
+                (transform-region translation (graphics-state-clip record))))))))
 
 (defrecord-predicate gs-clip-mixin (clipping-region)
   (if-supplied (clipping-region)
@@ -1003,11 +1007,14 @@ were added."
   (if-supplied (text-style)
     (text-style-equalp (slot-value record 'text-style) text-style)))
 
-(defmethod replay-output-record :around
-    ((record gs-transformation-mixin) stream &optional region x-offset y-offset)
-  (declare (ignore region x-offset y-offset))
-  (with-drawing-options (stream :transformation (graphics-state-transformation record))
-    (call-next-method)))
+(defmethod* (setf output-record-position) :before
+  (new-x new-y (record gs-transformation-mixin))
+  (with-standard-rectangle* (:x1 old-x :y1 old-y) record
+    (let ((dx (- new-x old-x))
+          (dy (- new-y old-y)))
+      (setf (graphics-state-transformation record)
+            (compose-transformation-with-translation
+             (graphics-state-transformation record) dx dy)))))
 
 (defrecord-predicate gs-transformation-mixin (transformation)
   (if-supplied (transformation)
@@ -1602,25 +1609,15 @@ were added."
             (values (+ point-x left) (+ point-y top)
                     (+ point-x right) (+ point-y bottom)))))))
 
-(defmethod* (setf output-record-position) :around
-  (nx ny (record draw-text-output-record))
-  (with-standard-rectangle* (:x1 x1 :y1 y1)
-      record
-    (let ((dx (- nx x1))
-          (dy (- ny y1)))
-      (multiple-value-prog1 (call-next-method)
-        (setf #1=(graphics-state-transformation record)
-              (compose-transformation-with-translation #1# dx dy))))))
-
 (defmethod replay-output-record
     ((record draw-text-output-record) stream
      &optional (region +everywhere+) (x-offset 0) (y-offset 0))
   (declare (ignore x-offset y-offset region))
-  (with-slots (string point-x point-y align-x align-y toward-x
-               toward-y transform-glyphs transformation)
+  (with-slots (string point-x point-y align-x align-y toward-x toward-y
+               transform-glyphs transformation)
       record
-    (let ((medium (sheet-medium stream)))
-      (medium-draw-text* medium string point-x point-y 0 nil align-x
+    (with-drawing-options (stream :transformation transformation)
+      (medium-draw-text* (sheet-medium stream) string point-x point-y 0 nil align-x
                          align-y toward-x toward-y transform-glyphs))))
 
 (defrecord-predicate draw-text-output-record
