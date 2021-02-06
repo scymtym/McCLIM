@@ -28,8 +28,7 @@
         (draw-text* stream "hi" 0 0 :align-y :top :transform-glyphs t :ink +green+)
         (draw-polygon* stream #(20 0 40 5 20 10) :ink +blue+)))))
 
-(test (output-record.transformed-clipping-region
-       :depends-on (or))
+(test output-record.transformed-clipping-region
   "Test interaction between transformation and clipping region."
   ;; If an output record is replayed by applying a stored
   ;; transformation to the medium (`gs-transformation-mixin' does

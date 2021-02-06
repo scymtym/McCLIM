@@ -15,10 +15,10 @@
 
 ;;; `with-drawing-options'
 
-(test with-drawing-options.clipping
+(test with-drawing-options.clipping.smoke
   "Smoke test for establishing clipping regions using `with-drawing-options'."
 
-  (with-comparison-to-reference* (stream "with-drawing-options.clipping")
+  (with-comparison-to-reference* (stream "with-drawing-options.clipping.smoke")
     (draw-rectangle* stream 1/2 1/2 (- 28 1/2) (- 16 1/2) :ink +red+ :filled nil)
     (with-drawing-options (stream :clipping-region (make-rectangle* 3 3 8 8))
       (draw-rectangle* stream 3 3 13 13 :ink +blue+))
@@ -26,6 +26,33 @@
                                                     (make-rectangle* 15 3 25 13)
                                                     (make-rectangle* 16 4 20 8)))
       (draw-rectangle* stream 15 3 25 13 :ink +blue+))))
+
+(test with-drawing-options.clipping.stress
+  "Test `with-drawing-options' for many combinations of transformation
+   and clipping region."
+
+  (with-comparison-to-reference* (stream "with-drawing-options.clipping.stress")
+    (draw-rectangle* stream 1/2 1/2 (- 450 1/2) (- 110 1/2) :ink +red+ :filled nil)
+    (loop :for x :from 20 :by 16
+          :with y = 10
+          :for p :from 15 :downto 0 :by 1/2
+          :do (with-translation (stream x y)
+                (with-drawing-options (stream :transformation (make-rotation-transformation (/ pi 2)))
+                  (with-drawing-options (stream :clipping-region (make-rectangle* 0 0 p 13))
+                    (draw-text* stream "hi" 0 0 :align-y :top :transform-glyphs t :ink +green+))))
+
+              (with-translation (stream x (* 3 y))
+                (with-drawing-options (stream :transformation (make-rotation-transformation (/ pi 2)))
+                  (with-drawing-options (stream :clipping-region (make-rectangle* 0 0 13 p))
+                    (draw-text* stream "hi" 0 0 :align-y :top :transform-glyphs t :ink +blue+))))
+
+              (with-translation (stream x (* 6 y))
+                (with-drawing-options (stream :clipping-region (make-rectangle* 0 0 p 13))
+                  (draw-text* stream "hi" 0 0 :align-y :top :transform-glyphs t :ink +green+)))
+
+              (with-translation (stream x (* 9 y))
+                (with-drawing-options (stream :clipping-region (make-rectangle* 0 0 13 p))
+                  (draw-text* stream "hi" 0 0 :align-y :top :transform-glyphs t :ink +blue+))))))
 
 (test with-drawing-options.line-style
   "Smoke test for establishing a line style using `with-drawing-options'."
