@@ -23,40 +23,39 @@
                         (incf y middle)))
              (:baseline*)
              (:bottom (decf y (climb:font-descent font))))))
-    (if transform-glyphs
-        (progn (adjust-positions)
-               (multiple-value-setq (x y)
-                 (clim:transform-position transformation x y)))
-        (progn (multiple-value-setq (x y)
-                 (clim:transform-position transformation x y))
-               (adjust-positions))))
-  (loop
-    with glyph-transformation = (multiple-value-bind (x0 y0)
-                                    (transform-position transformation 0 0)
-                                  (compose-transformation-with-translation
-                                   transformation (- x0) (- y0)))
-    for code across (climb:font-string-glyph-codes font string)
-    for origin-x fixnum = (round x) then (+ origin-x (glyph-info-advance-width info))
-    for origin-y fixnum = (round y) then (+ origin-y (glyph-info-advance-height info))
-    for info = (if (null transform-glyphs)
-                   (font-glyph-info font code)
-                   (font-generate-glyph font code glyph-transformation))
-    for dx fixnum = (glyph-info-left info)
-    for dy fixnum = (glyph-info-top info)
-    for opacity-image = (glyph-info-pixarray info)
-    do (let ((msheet (sheet-mirrored-ancestor (medium-sheet medium)))
-             (opacity-image (make-instance 'climi::%ub8-stencil :array opacity-image))
-             (transformation (make-translation-transformation origin-x origin-y)))
-         (when (and msheet (sheet-mirror msheet))
-           (multiple-value-bind (x1 y1)
-               (transform-position transformation dx (- dy))
-             (clim:with-bounding-rectangle* (min-x min-y max-x max-y)
-                 (region-intersection
-                  (climi::medium-device-region medium)
-                  (make-rectangle* x1 y1
-                                   (+ x1 (pattern-width opacity-image))
-                                   (+ y1 (pattern-height opacity-image))))
-               (%medium-fill-image-mask medium opacity-image
-                                        min-x min-y
-                                        (- max-x min-x) (- max-y min-y)
-                                        (- (round x1)) (- (round y1)))))))))
+    (cond (transform-glyphs
+           (adjust-positions)
+           (setf (values x y) (transform-position transformation x y)))
+          (t
+           (setf (values x y) (transform-position transformation x y))
+           (adjust-positions))))
+  (let ((msheet (sheet-mirrored-ancestor (medium-sheet medium))))
+    (when (and msheet (sheet-mirror msheet))
+      (loop with device-region = (climi::medium-device-region medium)
+            with glyph-transformation = (multiple-value-bind (x0 y0)
+                                            (transform-position transformation 0 0)
+                                          (compose-transformation-with-translation
+                                           transformation (- x0) (- y0)))
+            for code across (climb:font-string-glyph-codes font string)
+            for origin-x fixnum = (round x) then (+ origin-x (glyph-info-advance-width info))
+            for origin-y fixnum = (round y) then (+ origin-y (glyph-info-advance-height info))
+            for info = (if (null transform-glyphs)
+                           (font-glyph-info font code)
+                           (font-generate-glyph font code glyph-transformation))
+            for dx fixnum = (glyph-info-left info)
+            for dy fixnum = (glyph-info-top info)
+            for opacity-pixels = (glyph-info-pixarray info)
+            for opacity-image = (make-instance 'climi::%ub8-stencil :array opacity-pixels)
+            for width = (pattern-width opacity-image)
+            for height = (pattern-height opacity-image)
+            for transformation = (make-translation-transformation origin-x origin-y)
+            do (multiple-value-bind (x1 y1)
+                   (transform-position transformation dx (- dy))
+                 (with-bounding-rectangle* (min-x min-y max-x max-y)
+                     (region-intersection
+                      device-region
+                      (make-rectangle* x1 y1 (+ x1 width) (+ y1 height)))
+                   (%medium-fill-image-mask medium opacity-image
+                                            min-x min-y
+                                            (- max-x min-x) (- max-y min-y)
+                                            (- (round x1)) (- (round y1)))))))))
