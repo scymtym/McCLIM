@@ -1,7 +1,69 @@
-(cl:in-package #:clim-tests)
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2020 Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Tests for presentation translators.
+
+(in-package #:clim-tests)
 
 (def-suite* :mcclim.presentation-translators
   :in :mcclim)
+
+(define-gesture-name test-gesture
+  :pointer-button (:left))
+
+(test %test-presentation-translator.smoke
+  (define-command-table %test-presentation-translator.smoke)
+  (let ((translator (define-presentation-translator %test-presentation-translator.smoke
+                        (real string %test-presentation-translator.smoke
+                         :gesture test-gesture)
+                        (object))))
+    (mapcar
+     (lambda (case)
+       (destructuring-bind (presentation-type context-type
+                            (event-class &rest event-initargs
+                                         &key (button         +pointer-left-button+)
+                                              (modifier-state 0))
+                            override expected)
+           case
+         (let* ((presentation (make-instance 'standard-presentation
+                                             :object 1
+                                             :type   presentation-type))
+                (event        (apply #'make-instance event-class
+                                     :sheet          nil
+                                     :modifier-state modifier-state
+                                     :button         button
+                                     (alexandria:remove-from-plist
+                                      event-initargs :button :modifier-state)))
+                (result       (climi::%test-presentation-translator
+                               translator presentation context-type nil nil 0 0 event
+                               :override override)))
+           (is (eq expected result)
+               "Testing translator ~A with presentation ~A, context ~
+                type ~S, event ~A and override ~S returned ~A, but ~
+                expected ~A"
+               translator presentation context-type event override
+               result expected))))
+     `(;; Presentation mismatch
+       (complex string  (pointer-button-press-event)                                 ()                               nil)
+       ;; Context mismatch
+       (integer command (pointer-button-press-event)                                 ()                               nil)
+       ;; Gesture mismatches
+       (integer string  (pointer-button-press-event :button ,+pointer-right-button+) ()                               nil)
+       (integer string  (pointer-button-press-event :modifier-state ,+meta-key+)     ()                               nil)
+       ;; Matches
+       (integer string  (pointer-button-press-event)                                 ()                               t)
+       (ratio   string  (pointer-button-press-event)                                 ()                               t)
+       ;; Override
+       (integer string  (pointer-button-press-event :button ,+pointer-right-button+) (:button ,+pointer-left-button+) t)
+       (integer string  (pointer-button-press-event :button ,+pointer-right-button+) (:button nil)                    t)
+       (integer string  (pointer-button-press-event :modifier-state ,+meta-key+)     (:modifier-state 0)              t)
+       (integer string  (pointer-button-press-event :modifier-state ,+meta-key+)     (:modifier-state nil)            t)))))
 
 (test presentation-translators.smoke
   (define-command-table pt.smoke-ct)
