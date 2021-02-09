@@ -75,6 +75,9 @@ interface management system."
                               :components ((:file "transforms")
                                            (:file "regions")
                                            (:file "bounding-rectangles")))
+                             (:module "windowing"
+                              :depends-on ("package")
+                              :components ((:file "ports")))
                              (:module "drawing"
                               :depends-on ("package")
                               :components ((:file "medium")

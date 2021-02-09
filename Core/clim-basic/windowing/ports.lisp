@@ -155,6 +155,64 @@ is a McCLIM extension.")
     (destroy-process (port-event-process port))
     (setf (port-event-process port) nil)))
 
+;;; `click-events-mixin'
+;;;
+;;; This class can be mixed into port classes that generate
+;;; `pointer-[double-]click-event' events based on the timing of
+;;; `pointer-button-{press,release}' events.
+
+(defclass click-events-mixin ()
+  (;; Stores for each pointer button the time in internal time units
+   ;; at which a press event for that button has been distributed
+   ;; without a subsequent release event or `nil'.
+   (%last-press-times :reader   last-press-times
+                      :initform (make-array (length *pointer-buttons*)
+                                            :initial-element nil))
+   ;; Like `%last-press-times' but for click events.
+   (%last-click-times :reader   last-click-times
+                      :initform (make-array (length *pointer-buttons*)
+                                            :initial-element nil))))
+
+(flet ((button-index (button)
+         (case button
+           (#.+pointer-left-button+   0)
+           (#.+pointer-middle-button+ 1)
+           (#.+pointer-right-button+  2))))
+
+  (defmethod distribute-event :after ((port  click-events-mixin)
+                                      (event pointer-button-press-event))
+    (when-let ((index (button-index (pointer-event-button event))))
+      (setf (aref (last-press-times port) index) (get-internal-real-time))))
+
+  (defmethod distribute-event :after ((port  click-events-mixin)
+                                      (event pointer-button-release-event))
+    (when-let ((index (button-index (pointer-event-button event))))
+      (let ((press-times (last-press-times port)))
+        (when-let ((press-time (aref press-times index)))
+          (let ((now (get-internal-real-time)))
+            (when (< (/ (- now press-time) internal-time-units-per-second)
+                     .2)
+              (distribute-event
+               port (make-event-copy
+                     (event-sheet event) event 'pointer-click-event))
+              (setf (aref press-times index) nil)))))))
+
+  (defmethod distribute-event :after ((port  click-events-mixin)
+                                      (event pointer-click-event))
+    (when-let ((index (button-index (pointer-event-button event))))
+      (let* ((click-times (last-click-times port))
+             (click-time  (aref click-times index))
+             (now         (get-internal-real-time)))
+        (cond ((and click-time
+                    (< (/ (- now click-time) internal-time-units-per-second)
+                       .2))
+               (distribute-event
+                port (make-event-copy
+                      (event-sheet event) event 'pointer-double-click-event))
+               (setf (aref click-times index) nil))
+              (t
+               (setf (aref click-times index) now)))))))
+
 
 ;;; Mirrors
 
@@ -245,22 +303,27 @@ is a McCLIM extension.")
 ;;; Function is responsible for making a copy of an immutable event
 ;;; and adjusting its coordinates to be in the target-sheet
 ;;; coordinates. Optionally it may change event's class.
-(defun dispatch-event-copy (target-sheet event &optional new-class
-                            &aux (sheet (event-sheet event)))
-  (if (and (eql target-sheet sheet)
-           (or (null new-class)
-               (eql new-class (class-of event))))
-      (dispatch-event sheet event)
-      (let* ((event-class (if (null new-class)
-                              (class-of event)
-                              (find-class new-class)))
-             (new-event (shallow-copy-object event event-class)))
-        (when (typep new-event 'pointer-event)
-          (get-pointer-position (target-sheet new-event)
-            (setf (slot-value new-event 'sheet-x) x
-                  (slot-value new-event 'sheet-y) y)))
-        (setf (slot-value new-event 'sheet) target-sheet)
-        (dispatch-event target-sheet new-event))))
+(defun make-event-copy (target-sheet event &optional new-class)
+  (let ((sheet (event-sheet event)))
+    (if (and (eql target-sheet sheet)
+             (or (null new-class)
+                 (eql new-class (class-of event))))
+        (values event sheet)
+        (let* ((event-class (if (null new-class)
+                                (class-of event)
+                                (find-class new-class)))
+               (new-event (shallow-copy-object event event-class)))
+          (when (typep new-event 'pointer-event)
+            (get-pointer-position (target-sheet new-event)
+              (setf (slot-value new-event 'sheet-x) x
+                    (slot-value new-event 'sheet-y) y)))
+          (setf (slot-value new-event 'sheet) target-sheet)
+          (values new-event target-sheet)))))
+
+(defun dispatch-event-copy (target-sheet event &optional new-class)
+  (multiple-value-bind (new-event new-sheet)
+      (make-event-copy target-sheet event new-class)
+    (dispatch-event new-sheet new-event)))
 
 ;;; Synthesizing and dispatching boundary events
 ;;;
