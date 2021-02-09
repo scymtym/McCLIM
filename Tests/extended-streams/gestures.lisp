@@ -2,7 +2,7 @@
 ;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
 ;;; ---------------------------------------------------------------------------
 ;;;
-;;;  (c) copyright 2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 
@@ -42,6 +42,8 @@
           (:foo :pointer-button         (:left))                         ; ok
           (:foo :pointer-button-press   (:middle))                       ; ok
           (:foo :pointer-button-release (:right))                        ; ok
+          (:foo :pointer-click          (:left))                         ; ok
+          (:foo :pointer-double-click   (:right))                        ; ok
           (:foo :pointer-scroll         (:wheel-up))                     ; ok
           (:foo :pointer-button         :left)                           ; extension
           (:foo :pointer-button         (t))                             ; extension

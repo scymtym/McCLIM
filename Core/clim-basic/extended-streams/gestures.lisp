@@ -6,13 +6,12 @@
 ;;;  (c) copyright 2000,2014 Robert Strandh <robert.strandh@gmail.com>
 ;;;  (c) copyright 2001,2002 Tim Moore <moore@bricoworks.com>
 ;;;  (c) copyright 2019,2020 Daniel Kochmański <daniel@turtleware.eu>
-;;;  (c) copyright 2020, 2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
 ;;; Parsing and definition of gestures and matching of events against
 ;;; gestures.
-;;;
 
 (in-package #:clim-internals)
 
@@ -29,6 +28,8 @@
   '(member :pointer-button         ; standard
            :pointer-button-press   ; standard
            :pointer-button-release ; standard
+           :pointer-click          ; extension
+           :pointer-double-click   ; extension
            :pointer-scroll))       ; extension
 
 (deftype gesture-type ()
@@ -179,7 +180,7 @@
         (when (and (eq type :keyboard) (eql modifier-state 0))
           device-name)))))
 
-;;; GESTURE is T or a list of normalized physical gestures.
+;;; PHYSICAL-GESTURE is T or a list of normalized physical gestures.
 (defun event-data-matches-gesture-p (type device-name modifier-state
                                      physical-gestures)
   (labels ((matches-with-wildcards-p (value gesture-value)
