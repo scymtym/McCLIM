@@ -150,9 +150,9 @@
              (when (eq event-key :button-press)
                (make-instance 'climi::pointer-scroll-event
                               :pointer 0
-                              :button button :x x :y y
-                              :graft-x root-x
-                              :graft-y root-y
+                              :button button
+                              :x x :y y
+                              :graft-x root-x :graft-y root-y
                               :sheet sheet
                               :modifier-state modifier-state
                               :delta-x (case button
@@ -168,9 +168,9 @@
                                 'pointer-button-press-event
                                 'pointer-button-release-event)
                             :pointer 0
-                            :button button :x x :y y
-                            :graft-x root-x
-                            :graft-y root-y
+                            :button button
+                            :x x :y y
+                            :graft-x root-x :graft-y root-y
                             :sheet sheet :modifier-state modifier-state
                             :timestamp time))))
       ((:leave-notify :enter-notify)
@@ -199,10 +199,9 @@
                                            (:grab 'pointer-grab-enter-event)
                                            (:ungrab 'pointer-ungrab-enter-event)
                                            (t 'pointer-enter-event))))
-                        :pointer 0 :button code
+                        :pointer 0
                         :x x :y y
-                        :graft-x root-x
-                        :graft-y root-y
+                        :graft-x root-x :graft-y root-y
                         :sheet sheet
                         :modifier-state (clim-xcommon:x-event-state-modifiers
                                          *clx-port* state)
@@ -239,14 +238,12 @@
       (:motion-notify
        (let ((modifier-state (clim-xcommon:x-event-state-modifiers *clx-port*
                                                                    state)))
-         (make-instance 'pointer-motion-event
-                        :pointer 0 :button code
-                        :x x :y y
-                        :graft-x root-x
-                        :graft-y root-y
-                        :sheet sheet
-                        :modifier-state modifier-state
-                        :timestamp time)))
+         (make-instance 'pointer-motion-event :pointer 0
+                                              :x x :y y
+                                              :graft-x root-x :graft-y root-y
+                                              :sheet sheet
+                                              :modifier-state modifier-state
+                                              :timestamp time)))
       ((:exposure :display :graphics-exposure)
        ;; Notes:
        ;; . Do not compare count with 0 here, last rectangle in an
@@ -398,7 +395,7 @@
                 (values x y)
                 (untransform-position (sheet-native-transformation sheet) x y))
           (make-instance 'pointer-motion-event
-                         :pointer 0 :button (button-from-state mask)
+                         :pointer 0
                          :x x :y y :graft-x root-x :graft-y root-y
                          :sheet sheet
                          :modifier-state (clim-xcommon:x-event-state-modifiers
