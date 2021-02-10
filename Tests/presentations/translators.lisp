@@ -15,7 +15,7 @@
   :in :mcclim)
 
 (define-gesture-name test-gesture
-  :pointer-button (:left))
+  :pointer-button-release (:left))
 
 (test %test-presentation-translator.smoke
   (define-command-table %test-presentation-translator.smoke)
@@ -50,20 +50,23 @@
                translator presentation context-type event override
                result expected))))
      `(;; Presentation mismatch
-       (complex string  (pointer-button-press-event)                                 ()                               nil)
+       (complex string  (pointer-button-release-event)                                 ()                               nil)
        ;; Context mismatch
-       (integer command (pointer-button-press-event)                                 ()                               nil)
+       (integer command (pointer-button-release-event)                                 ()                               nil)
        ;; Gesture mismatches
-       (integer string  (pointer-button-press-event :button ,+pointer-right-button+) ()                               nil)
-       (integer string  (pointer-button-press-event :modifier-state ,+meta-key+)     ()                               nil)
+       (integer string  (pointer-button-press-event)                                   ()                               nil)
+       (integer string  (pointer-button-release-event :button ,+pointer-right-button+) ()                               nil)
+       (integer string  (pointer-button-release-event :modifier-state ,+meta-key+)     ()                               nil)
        ;; Matches
-       (integer string  (pointer-button-press-event)                                 ()                               t)
-       (ratio   string  (pointer-button-press-event)                                 ()                               t)
+       (integer string  (pointer-button-release-event)                                 ()                               t)
+       (ratio   string  (pointer-button-release-event)                                 ()                               t)
        ;; Override
-       (integer string  (pointer-button-press-event :button ,+pointer-right-button+) (:button ,+pointer-left-button+) t)
-       (integer string  (pointer-button-press-event :button ,+pointer-right-button+) (:button nil)                    t)
-       (integer string  (pointer-button-press-event :modifier-state ,+meta-key+)     (:modifier-state 0)              t)
-       (integer string  (pointer-button-press-event :modifier-state ,+meta-key+)     (:modifier-state nil)            t)))))
+       (integer string  (pointer-button-press-event)                                   (:type :pointer-button-release)  t)
+       (integer string  (pointer-button-press-event)                                   (:type nil)                      t)
+       (integer string  (pointer-button-release-event :button ,+pointer-right-button+) (:button ,+pointer-left-button+) t)
+       (integer string  (pointer-button-release-event :button ,+pointer-right-button+) (:button nil)                    t)
+       (integer string  (pointer-button-release-event :modifier-state ,+meta-key+)     (:modifier-state 0)              t)
+       (integer string  (pointer-button-release-event :modifier-state ,+meta-key+)     (:modifier-state nil)            t)))))
 
 (test presentation-translators.smoke
   (define-command-table pt.smoke-ct)

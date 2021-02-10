@@ -349,11 +349,15 @@ and used to ensure that presentation-translators-caches are up to date.")
 
 (defun %test-presentation-translator
     (translator presentation context-type frame window x y event &key override)
-  (destructuring-bind (&key (button         nil buttonp)
+  (destructuring-bind (&key (type           nil typep)
+                            (button         nil buttonp)
                             (modifier-state nil modifier-state-p))
       override
     (when (event-data-matches-gesture-p
-           nil ; ignore type
+           (cond (typep
+                  type)
+                 (event
+                  (event-type event)))
            (cond (buttonp
                   button)
                  ((typep event 'pointer-button-event)
@@ -413,7 +417,8 @@ and used to ensure that presentation-translators-caches are up to date.")
                         (t
                          for-menu))))
     (%test-presentation-translator
-     translator presentation context-type frame window x y event :override override)))
+     translator presentation context-type frame window x y event
+     :override (list* :type nil override))))
 
 (defun map-applicable-translators (func presentation input-context frame window x y event
                                    &key menu override)
@@ -469,9 +474,9 @@ and used to ensure that presentation-translators-caches are up to date.")
        presentation input-context frame window x y event
        :menu for-menu
        :override (cond (for-menu
-                        '(:modifier-state nil :button nil))
+                        '(:type nil :modifier-state nil :button nil))
                        (modifier-state-p
-                        `(:modifier-state ,modifier-state))))
+                        `(:type nil :modifier-state ,modifier-state))))
       (nreverse results))))
 
 (defun presentation-matches-context-type
@@ -486,8 +491,8 @@ and used to ensure that presentation-translators-caches are up to date.")
                   translator presentation ctype
                   frame window x y event
                   :override (if modifier-state-p
-                                (list :modifier-state modifier-state)
-                                '())))
+                                (list :type nil :modifier-state modifier-state)
+                                '(:type nil))))
                (find-presentation-translators ptype ctype table))
          t)))
 
@@ -560,8 +565,8 @@ and used to ensure that presentation-translators-caches are up to date.")
    presentation input-context frame window x y nil
    :menu for-menu ; possibly restrict to translators with :menu t
    :override (if for-menu ; ignore button and modifiers for gesture matching
-                 '(:modifier-state nil :button nil)
-                 nil))
+                 '(:type nil :modifier-state nil :button nil)
+                 '(:type nil)))
   (unless items
     (return-from call-presentation-menu))
   (setq items (nreverse items))
@@ -644,11 +649,12 @@ and used to ensure that presentation-translators-caches are up to date.")
            x y
            event
            :override (cond (eventp
-                            '())
+                            '(:type nil))
                            (modifier-state-p
-                            (list :modifier-state modifier-state))
+                            (list :type nil :modifier-state modifier-state))
                            (t
-                            (list :modifier-state (window-modifier-state window)))))))
+                            (list :type           nil
+                                  :modifier-state (window-modifier-state window)))))))
 
 (defun throw-highlighted-presentation (presentation input-context event)
   (let ((x (pointer-event-x event))

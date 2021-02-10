@@ -104,7 +104,7 @@ documentation."))
            (let ((size (* (- max-x min-x) (- max-y min-y))))
              (consider-translator translator presentation context size))))
        (stream-output-history stream) input-context frame stream x y event
-       :override '(:modifier-state nil :button nil))
+       :override '(:type nil :modifier-state nil :button nil))
       ;; Look for applicable translators using the blank area
       ;; presentation.
       (map-applicable-translators
@@ -112,7 +112,7 @@ documentation."))
          (consider-translator translator presentation context most-positive-fixnum))
        (make-blank-area-presentation stream event)
        input-context frame stream x y event
-       :override '(:modifier-state nil :button nil)))
+       :override '(:type nil :modifier-state nil :button nil)))
     (list current-modifiers (sort result #'< :key #'car) other-modifiers)))
 
 (defmethod frame-compare-pointer-documentation-state

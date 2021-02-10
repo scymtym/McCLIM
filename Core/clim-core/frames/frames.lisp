@@ -945,13 +945,13 @@ frames and will not have focus.
     ((frame standard-application-frame)
      (stream output-recording-stream)
      event)
-  (when-let ((presentation (find-innermost-applicable-presentation
+  (when-let ((presentation (find-innermost-presentation-match
                             *input-context*
-                            stream
+                            (stream-output-history stream)
+                            frame stream
                             (pointer-event-x event)
                             (pointer-event-y event)
-                            :frame frame
-                            :event event)))
+                            event)))
     (throw-highlighted-presentation presentation *input-context* event)))
 
 (defmethod frame-input-context-button-press-handler
@@ -990,7 +990,8 @@ frames and will not have focus.
                               input-context top-record frame stream
                               (device-event-x event)
                               (device-event-y event)
-                              event)))
+                              event
+                              :override '(:type nil))))
           (maybe-unhighlight presentation)
           (when (and presentation
                      highlight
