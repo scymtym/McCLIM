@@ -1,25 +1,19 @@
-;;; -*- Mode: Lisp; Package: CLIM-INTERNALS -*-
-
-;;;  (c) copyright 1998,1999,2000 by Michael McDonald (mikemac@mikemac.com)
-;;;  (c) copyright 2000,2014 by Robert Strandh (robert.strandh@gmail.com)
-;;;  (c) copyright 2001,2002 by Tim Moore (moore@bricoworks.com)
-;;;  (c) copyright 2019,2020 by Daniel Kochmański (daniel@turtleware.eu)
-
-;;; This library is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU Library General Public
-;;; License as published by the Free Software Foundation; either
-;;; version 2 of the License, or (at your option) any later version.
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
 ;;;
-;;; This library is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; Library General Public License for more details.
+;;;  (c) copyright 1998,1999,2000,2003 Michael McDonald <mikemac@mikemac.com>
+;;;  (c) copyright 2000,2002,2014 Robert Strandh <robert.strandh@gmail.com>
+;;;  (c) copyright 2001-2005 Tim Moore <moore@bricoworks.com>
+;;;  (c) copyright 2003 Andy Hefner <ahefner@common-lisp.net>
+;;;  (c) copyright 2005-2009 Christophe Rhodes <crhodes@common-lisp.net>
+;;;  (c) copyright 2006,2008 Troels Henriksen <thenriksen@common-lisp.net>
+;;;  (c) copyright 2016-2020 Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2018,2019 admich <andrea.demichele@gmail.com>
+;;;  (c) copyright 2018-2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
-;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-;;; Boston, MA  02111-1307  USA.
-
+;;; ---------------------------------------------------------------------------
+;;;
 ;;; Part VI: Extended Stream Input Facilities
 ;;; Chapter 22: Extended Stream Input
 
@@ -78,24 +72,24 @@
 
 ;;; The input buffer is expected to be filled from HANDLE-EVENT methods. All
 ;;; tests operate on the stream's input buffer. -- jd 2020-07-28
-(defmethod stream-input-wait ((stream input-stream-kernel) &key timeout input-wait-test)
-  (loop
-    with wait-fun = (and input-wait-test (curry input-wait-test stream))
-    with timeout-time = (and timeout (+ timeout (now)))
-    when (stream-gesture-available-p stream)
-      do (return-from stream-input-wait t)
-    do (multiple-value-bind (available reason)
-           (event-listen-or-wait stream :timeout timeout
-                                        :wait-function wait-fun)
-         (when (and (null available) (eq reason :timeout))
-           (return-from stream-input-wait (values nil :timeout)))
-         (when-let ((event (event-read-no-hang stream)))
-           (handle-event (event-sheet event) event))
-         (when timeout
-           (setf timeout (compute-decay timeout-time nil)))
-         (when (funcall input-wait-test stream)
-           (return-from stream-input-wait
-             (values nil :input-wait-test))))))
+(defmethod stream-input-wait ((stream input-stream-kernel)
+                              &key timeout input-wait-test)
+  (loop with wait-fun = (and input-wait-test (curry input-wait-test stream))
+        with timeout-time = (and timeout (+ timeout (now)))
+        when (stream-gesture-available-p stream)
+        do (return-from stream-input-wait t)
+        do (multiple-value-bind (available reason)
+               (event-listen-or-wait stream :timeout timeout
+                                            :wait-function wait-fun)
+             (when (and (null available) (eq reason :timeout))
+               (return-from stream-input-wait (values nil :timeout)))
+             (when-let ((event (event-read-no-hang stream)))
+               (handle-event (event-sheet event) event))
+             (when timeout
+               (setf timeout (compute-decay timeout-time nil)))
+             (when (funcall input-wait-test stream)
+               (return-from stream-input-wait
+                 (values nil :input-wait-test))))))
 
 (defmethod stream-listen ((stream input-stream-kernel))
   (stream-input-wait stream))
@@ -106,10 +100,10 @@
 
 (defmethod stream-read-gesture ((stream input-stream-kernel)
                                 &key timeout peek-p
-                                  (input-wait-test *input-wait-test*)
-                                  (input-wait-handler *input-wait-handler*)
-                                  (pointer-button-press-handler
-                                   *pointer-button-press-handler*))
+                                     (input-wait-test *input-wait-test*)
+                                     (input-wait-handler *input-wait-handler*)
+                                     (pointer-button-press-handler
+                                      *pointer-button-press-handler*))
   (when peek-p
     (return-from stream-read-gesture
       (stream-gesture-available-p stream)))
@@ -279,7 +273,6 @@
                      :initarg :numeric-argument
                      :initform 1)))
 
-;;;
 (defclass dead-key-merging-mixin ()
   ((state :initform *dead-key-table*)
    ;; Avoid name clash with standard-extended-input-stream.
