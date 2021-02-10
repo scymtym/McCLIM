@@ -63,7 +63,6 @@ interface management system."
                 :components ((:file "package")
                              (:file "utils")
                              (:file "input-editing")
-                             (:file "input-streams")
                              (:file "commands")
                              (:file "text-selection")
                              (:file "text-formatting")
@@ -87,6 +86,7 @@ interface management system."
                              (:module "extended-streams"
                               :depends-on ("package")
                               :components ((:file "recording")
+                                           (:file "stream-input")
                                            (:file "gestures")))
                              (:module "presentations"
                               :depends-on ("package")
