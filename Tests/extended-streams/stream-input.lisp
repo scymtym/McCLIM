@@ -41,3 +41,25 @@
     ;; Nothing available.
     (is (null (climi::stream-gesture-available-p sis)))
     (is (null (climi::stream-gesture-available-p seis)))))
+
+(test stream-read-gesture.pointer-button-press-handler
+  "Test `stream-read-gesture' pointer button press handler invocation."
+
+  (let ((seis (make-instance 'standard-extended-input-stream))
+        last-event)
+    (labels ((handle (stream event)
+               (declare (ignore stream))
+               (setf last-event event))
+             (check (class)
+               (let ((event (make-instance
+                             class :sheet          nil
+                                   :modifier-state 0
+                                   :button         +pointer-left-button+)))
+                 (climi::stream-append-gesture seis event)
+                 (stream-read-gesture seis :pointer-button-press-handler #'handle)
+                 (is (eq event last-event)))))
+      (check 'pointer-button-press-event)
+      (check 'pointer-button-release-event)
+      (check 'pointer-click-event)
+      (check 'pointer-double-click-event)
+      (check 'climi::pointer-scroll-event))))

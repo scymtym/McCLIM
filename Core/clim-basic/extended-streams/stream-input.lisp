@@ -113,8 +113,7 @@
         (input-buffer (stream-input-buffer stream)))
     (flet ((process-gesture (raw-gesture)
              (when (and pointer-button-press-handler
-                        (typep raw-gesture '(or pointer-button-press-event
-                                                pointer-scroll-event)))
+                        (typep raw-gesture 'pointer-button-event))
                (funcall pointer-button-press-handler stream raw-gesture))
              (when-let ((gesture (stream-process-gesture stream raw-gesture t)))
                (return-from stream-read-gesture gesture))))
