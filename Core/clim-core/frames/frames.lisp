@@ -78,159 +78,156 @@
 
 (defclass standard-application-frame (application-frame
                                       presentation-history-mixin)
-  ((port :initform nil
-         :initarg :port
-         :accessor port)
-   (graft :initform nil
-          :initarg :graft
-          :accessor graft)
-   (name :initarg :name
-         :reader frame-name)
-   (pretty-name :initarg :pretty-name
-                :accessor frame-pretty-name)
-   (icon :accessor frame-icon
-         :documentation "If non-NIL, an array pattern or a sequence
-                         of array patterns that should be used by the
-                         host's window manager to represent the
-                         frame, for example when it is iconified.")
-   (command-table :initarg :command-table
-                  :initform nil
-                  :accessor frame-command-table)
-   (panes :initform nil :accessor frame-panes
-          :documentation "The tree of panes in the current layout.")
-   (current-panes :initform nil :accessor frame-current-panes)
-   (layouts :initform nil
-            :initarg :layouts
-            :reader frame-layouts
-            :writer (setf %frame-layouts))
-   (current-layout :initform nil
-                   :initarg :current-layout
-                   :accessor frame-current-layout)
-   (panes-for-layout :initform nil :accessor frame-panes-for-layout
-                     :documentation "alist of names and panes
-                                     (as returned by make-pane)")
-   (resize-frame :initarg :resize-frame
-                 :initform nil
-                 :accessor frame-resize-frame)
-   (output-pane :initform nil
-                :accessor frame-standard-output
-                :accessor frame-error-output)
-   (input-pane :initform nil
-               :accessor frame-standard-input)
-   (documentation-pane :initform nil
-                       :accessor frame-pointer-documentation-output)
+  (;; Windowing
+   (port                   :initarg  :port
+                           :accessor port
+                           :initform nil)
+   (graft                  :initarg  :graft
+                           :accessor graft
+                           :initform nil)
+   (manager                :reader   frame-manager
+                           :accessor %frame-manager
+                           :initform nil)
+   ;; Name and properties
+   (state                  :initarg  :state
+                           :type     (member :disowned :enabled :disabled :shrunk)
+                           :reader   frame-state
+                           :initform :disowned)
+   (name                   :initarg  :name
+                           :reader   frame-name)
+   (pretty-name            :initarg  :pretty-name
+                           :accessor frame-pretty-name)
+   (icon                   :accessor frame-icon
+                           :documentation
+                           "If non-NIL, an array pattern or a sequence
+                            of array patterns that should be used by
+                            the host's window manager to represent the
+                            frame, for example when it is iconified.")
+   (properties             :initarg  :properties
+                           :type     list ; plist
+                           :accessor %frame-properties
+                           :initform '())
+   (client-settings        :accessor client-settings
+                           :initform nil)
+   ;; Geometry
+   (geometry-left          :initarg :left
+                           :accessor geometry-left
+                           :initform nil)
+   (geometry-right         :initarg :right
+                           :accessor geometry-right
+                           :initform nil)
+   (geometry-top           :initarg :top
+                           :accessor geometry-top
+                           :initform nil)
+   (geometry-bottom        :initarg :bottom
+                           :accessor geometry-bottom
+                           :initform nil)
+   (geometry-width         :initarg :width
+                           :accessor geometry-width
+                           :initform nil)
+   (geometry-height        :initarg :height
+                           :accessor geometry-height
+                           :initform nil)
+   (resize-frame           :initarg  :resize-frame
+                           :initform nil
+                           :accessor frame-resize-frame)
+   ;; Panes and layouts
+   (top-level-sheet        :reader   frame-top-level-sheet
+                           :initform nil)
+   (panes                  :accessor frame-panes
+                           :initform nil
+                           :documentation
+                           "The root of the tree of panes in the current layout.")
+   (current-panes          :type     list
+                           :accessor frame-current-panes
+                           :initform nil)
+   (panes-for-layout       :type     list ; alist
+                           :accessor frame-panes-for-layout
+                           :initform nil
+                           :documentation
+                           "An alist of names and panes (as returned by
+                            `make-pane') that can be referenced in
+                            layouts.")
+   (output-pane            :accessor frame-standard-output
+                           :accessor frame-error-output
+                           :initform nil)
+   (input-pane             :accessor frame-standard-input
+                           :initform nil)
+   (documentation-pane     :accessor frame-pointer-documentation-output
+                           :initform nil)
+   (menu-bar               :initarg  :menu-bar
+                           :initform nil)
+   (menu-bar-pane          :accessor frame-menu-bar-pane
+                           :initform nil)
+   (layouts                :initarg  :layouts
+                           :type     list
+                           :reader   frame-layouts
+                           :writer   (setf %frame-layouts)
+                           :initform '())
+   (current-layout         :initarg  :current-layout
+                           :accessor frame-current-layout
+                           :initform nil)
+   ;; Command processing
+   (command-table          :initarg  :command-table
+                           :accessor frame-command-table
+                           :initform nil)
+   (disabled-commands      :initarg  :disabled-commands
+                           :type     list
+                           :accessor disabled-commands
+                           :accessor frame-disabled-commands
+                           :initform nil
+                           :documentation
+                           "A list of command names that have been
+                            disabled in this frame.")
+   (top-level              :initarg  :top-level
+                           :reader   frame-top-level
+                           :initform '(default-frame-top-level))
+   (top-level-lambda       :initarg  :top-level-lambda
+                           :reader   frame-top-level-lambda)
+   (calling-frame          :initarg  :calling-frame
+                           :reader   frame-calling-frame
+                           :initform nil
+                           :documentation
+                           "The frame that is the parent of this
+                            frame, if any.")
+   ;; Event processing
+   (process                :accessor frame-process
+                           :initform nil)
+   (event-queue            :initarg  :frame-event-queue
+                           :accessor frame-event-queue
+                           :initform nil
+                           :documentation
+                           "The event queue that, by default, will be
+                            shared by all panes in the frame.")
+   (input-buffer           :initarg  :frame-input-buffer
+                           :accessor frame-input-buffer
+                           :initform (make-instance 'concurrent-event-queue :port nil)
+                           :documentation
+                           "The input buffer queue that, by default,
+                            will be shared by all input streams in the
+                            frame.")
+   ;; Presentations
+   (highlited-presentation :initarg  :highlited-presentation
+                           :accessor frame-highlited-presentation
+                           :initform nil)
+   (documentation-state    :accessor frame-documentation-state
+                           :initform nil
+                           :documentation
+                           "Used to keep of track of what needs to be
+                            rendered in the pointer documentation
+                            frame.")
+   (documentation-record   :initform nil
+                           :accessor documentation-record
+                           :documentation
+                           "Updating output record for pointer
+                            documentation produced by
+                            presentations.")))
 
-   (top-level-sheet :initform nil
-                    :reader frame-top-level-sheet)
-   (menu-bar :initarg :menu-bar
-             :initform nil)
-   (menu-bar-pane :initform nil
-                  :accessor frame-menu-bar-pane)
-   (state :initarg :state
-          :initform :disowned
-          :reader frame-state)
-   (manager :initform nil
-            :reader frame-manager
-            :accessor %frame-manager)
-   (properties :accessor %frame-properties
-               :initarg :properties
-               :initform nil)
-   (top-level :initform '(default-frame-top-level)
-              :initarg :top-level
-              :reader frame-top-level)
-   (top-level-lambda :initarg :top-level-lambda
-                     :reader frame-top-level-lambda)
-   (highlited-presentation :initform nil
-                           :initarg :highlited-presentation
-                           :accessor frame-highlited-presentation)
-   (process :accessor frame-process :initform nil)
-   (client-settings :accessor client-settings :initform nil)
-   (event-queue :initarg :frame-event-queue
-                :initform nil
-                :accessor frame-event-queue
-                :documentation "The event queue that, by default, will be
-                                shared by all panes in the frame")
-   (input-buffer :initarg :frame-input-buffer
-                 :initform (make-instance 'concurrent-event-queue :port nil)
-                 :accessor frame-input-buffer
-                 :documentation "The input buffer queue that, by default, will
-                                 be shared by all input streams in the frame")
-   (documentation-state :accessor frame-documentation-state
-                        :initform nil
-                        :documentation "Used to keep of track of what
-  needs to be rendered in the pointer documentation frame.")
-   (calling-frame :reader frame-calling-frame
-                  :initarg :calling-frame
-                  :initform nil
-                  :documentation "The frame that is the parent of this
-frame, if any")
-   (disabled-commands :accessor disabled-commands
-                      :accessor frame-disabled-commands
-                      :initarg :disabled-commands
-                      :initform nil
-                      :documentation "A list of command names that have been
-                                      disabled in this frame")
-   (documentation-record :accessor documentation-record
-                         :initform nil
-                         :documentation "updating output record for pointer
-documentation produced by presentations.")
-   (geometry-left :accessor geometry-left
-                  :initarg :left
-                  :initform nil)
-   (geometry-right :accessor geometry-right
-                   :initarg :right
-                   :initform nil)
-   (geometry-top :accessor geometry-top
-                 :initarg :top
-                 :initform nil)
-   (geometry-bottom :accessor geometry-bottom
-                    :initarg :bottom
-                    :initform nil)
-   (geometry-width :accessor geometry-width
-                   :initarg :width
-                   :initform nil)
-   (geometry-height :accessor geometry-height
-                    :initarg :height
-                    :initform nil)))
-
-(defmethod frame-parent ((frame standard-application-frame))
-  (or (frame-calling-frame frame)
-      (frame-manager frame)))
-
-(defmethod frame-query-io ((frame standard-application-frame))
-  (or (frame-standard-input frame)
-      (frame-standard-output frame)))
-
-(defgeneric frame-geometry* (frame))
-
-(defmethod frame-geometry* ((frame standard-application-frame))
-  "-> width height &optional top left"
-  (let ((pane (frame-top-level-sheet frame)))
-    ;(destructuring-bind (&key left top right bottom width height) (frame-geometry frame)
-    (with-slots (geometry-left geometry-top geometry-right
-                               geometry-bottom geometry-width
-                               geometry-height) frame
-      ;; Find width and height from looking at the respective options
-      ;; first, then at left/right and top/bottom and finally at what
-      ;; compose-space says.
-      (let* ((width (or geometry-width
-                        (and geometry-left geometry-right
-                             (- geometry-right geometry-left))
-                        (space-requirement-width (compose-space pane))))
-             (height (or geometry-height
-                         (and geometry-top geometry-bottom (- geometry-bottom geometry-top))
-                         (space-requirement-height (compose-space pane))))
-             ;; See if a position is wanted and return left, top.
-             (left (or geometry-left
-                       (and geometry-right (- geometry-right geometry-width))))
-             (top (or geometry-top
-                      (and geometry-bottom (- geometry-bottom geometry-height)))))
-      (values width height left top)))))
-
-;;; This method causes related frames share the same queue by default (on both
-;;; SMP and non-SMP systems). Thanks to that we have a single loop processing
-;;; events. Alternative approach is executed with window-stream frames which
-;;; have a standalone-event-loop (see panes.lisp). -- jd 2018-12-27
+;;; This method causes related frames to share the same queue by
+;;; default (on both SMP and non-SMP systems). Thanks to that we have
+;;; a single loop processing events. Alternative approach is executed
+;;; with window-stream frames which have a standalone-event-loop (see
+;;; panes.lisp). -- jd 2018-12-27
 (defmethod initialize-instance :after ((obj standard-application-frame)
                                        &key (icon nil icon-supplied-p)
                                        &allow-other-keys)
@@ -268,6 +265,10 @@ documentation produced by presentations.")
       (setf (slot-value frame 'layouts) nil))
     (setf (%frame-manager frame) fm)))
 
+(defmethod frame-parent ((frame standard-application-frame))
+  (or (frame-calling-frame frame)
+      (frame-manager frame)))
+
 (defmethod (setf frame-pretty-name) :after (new-value frame)
   ;; If there is a top-level sheet, set its pretty name. The port can
   ;; reflect this change in the window title.
@@ -285,56 +286,83 @@ documentation produced by presentations.")
   ;; Let client code know.
   (note-frame-icon-changed (frame-manager frame) frame new-value))
 
-(defmethod frame-all-layouts ((frame application-frame))
-  (mapcar #'car (frame-layouts frame)))
+(defmethod frame-properties ((frame application-frame) property)
+  (getf (%frame-properties frame) property))
 
-(define-condition frame-layout-changed (condition)
-  ((frame :initarg :frame :reader frame-layout-changed-frame)))
+(defmethod (setf frame-properties) (value (frame application-frame) property)
+  (setf (getf (%frame-properties frame) property) value))
 
-(defmethod (setf frame-current-layout) :around (name (frame application-frame))
-  (unless (eql name (frame-current-layout frame))
-    (call-next-method)
-    (when-let ((fm (frame-manager frame)))
-      (if-let ((tls (and (frame-resize-frame frame)
-                         (frame-top-level-sheet frame))))
-        (multiple-value-bind (width height)
-            (bounding-rectangle-size tls)
-          (generate-panes fm frame)
-          (layout-frame frame width height))
-        (progn
-          (generate-panes fm frame)
-          (layout-frame frame)))
-      (signal 'frame-layout-changed :frame frame))))
+(defgeneric frame-geometry* (frame))
 
-(defmethod (setf frame-command-table) :around (new-command-table frame)
-  (flet ((get-menu (x) (slot-value x 'menu)))
-    (if (and (get-menu (frame-command-table frame))
-             (get-menu new-command-table))
-        (prog1 (call-next-method)
-          (when-let ((menu-bar-pane (frame-menu-bar-pane frame)))
-            (update-menu-bar menu-bar-pane new-command-table)))
-        (call-next-method))))
+(defmethod frame-geometry* ((frame standard-application-frame))
+  "-> width height &optional top left"
+  (let ((pane (frame-top-level-sheet frame)))
+    ;(destructuring-bind (&key left top right bottom width height) (frame-geometry frame)
+    (with-slots (geometry-left geometry-top geometry-right
+                               geometry-bottom geometry-width
+                               geometry-height) frame
+      ;; Find width and height from looking at the respective options
+      ;; first, then at left/right and top/bottom and finally at what
+      ;; compose-space says.
+      (let* ((width (or geometry-width
+                        (and geometry-left geometry-right
+                             (- geometry-right geometry-left))
+                        (space-requirement-width (compose-space pane))))
+             (height (or geometry-height
+                         (and geometry-top geometry-bottom (- geometry-bottom geometry-top))
+                         (space-requirement-height (compose-space pane))))
+             ;; See if a position is wanted and return left, top.
+             (left (or geometry-left
+                       (and geometry-right (- geometry-right geometry-width))))
+             (top (or geometry-top
+                      (and geometry-bottom (- geometry-bottom geometry-height)))))
+      (values width height left top)))))
 
-(defun update-frame-pane-lists (frame)
-  (let ((all-panes     (frame-panes frame))
-        (named-panes   (mapcar #'cdr (frame-panes-for-layout frame)))
-        (current-panes '()))
-    ;; Find intersection of named panes and current layout panes.
-    (map-over-sheets (lambda (sheet)
-                       (when-let ((index (position sheet named-panes)))
-                         (push (cons sheet index) current-panes)))
-                     all-panes)
-    (setf current-panes (mapcar #'car (sort current-panes #'< :key #'cdr)))
-    ;; Populate current-pane list and special pane slots.
-    (let ((interactor            (find-pane-of-type current-panes 'interactor-pane))
-          (application           (find-pane-of-type current-panes 'application-pane))
-          (pointer-documentation (find-pane-of-type all-panes 'pointer-documentation-pane)))
-      (setf (frame-current-panes frame) current-panes
-            (frame-standard-output frame) (or application interactor)
-            (frame-standard-input frame) (or interactor (frame-standard-output frame))
-            (frame-pointer-documentation-output frame) pointer-documentation))))
+(defun find-pane-of-type (parent type)
+  "Returns a pane of `type' in the forest growing from `parent'."
+  (map-over-sheets (lambda (pane)
+                     (when (typep pane type)
+                       (return-from find-pane-of-type pane)))
+                   parent)
+  nil)
 
-(defmethod generate-panes :before (fm  (frame application-frame))
+(defmethod get-frame-pane ((frame application-frame) pane-name)
+  (let ((pane (find-pane-named frame pane-name)))
+    (if (typep pane 'clim-stream-pane)
+        pane
+        nil)))
+
+(defmethod find-pane-named ((frame application-frame) pane-name)
+  (map-over-sheets (lambda (pane)
+                     (when (eql pane-name (pane-name pane))
+                       (return-from find-pane-named pane)))
+                   (frame-panes frame))
+  nil)
+
+#+nil
+(defmethod redisplay-frame-panes ((frame application-frame) &key force-p)
+  (map-over-sheets
+   (lambda (sheet)
+     (when (typep sheet 'pane)
+       (when (and (typep sheet 'clim-stream-pane)
+                  (not (eq :no-clear (pane-redisplay-needed sheet))))
+         (window-clear sheet))
+       (redisplay-frame-pane frame sheet :force-p force-p)))
+   (frame-top-level-sheet frame)))
+
+(defmethod redisplay-frame-panes ((frame application-frame) &key force-p)
+  (map-over-sheets (lambda (sheet)
+                     (when (sheet-viewable-p sheet)
+                       (redisplay-frame-pane frame sheet :force-p force-p)))
+                   (frame-top-level-sheet frame)))
+
+(defmethod frame-replay (frame stream &optional region)
+  (declare (ignore frame))
+  (stream-replay stream region))
+
+;;; Panes an layouts
+
+(defmethod generate-panes :before (fm (frame application-frame))
   (declare (ignore fm))
   (when (and (frame-panes frame)
              (eq (sheet-parent (frame-panes frame))
@@ -345,6 +373,9 @@ documentation produced by presentations.")
         if  parent
         do (sheet-disown-child parent pane)))
 
+;;; This default is used when `define-application-frame' does not
+;;; generate a specialized `generate-panes' method for an application
+;;; frame class.
 (defmethod generate-panes (fm (frame application-frame))
   (with-look-and-feel-realization (fm frame)
     (unless (frame-panes-for-layout frame)
@@ -375,6 +406,50 @@ documentation produced by presentations.")
       (setf (sheet-region top-level-sheet) (make-bounding-rectangle 0 0 w h))
       (allocate-space top-level-sheet w h))))
 
+(defun update-frame-pane-lists (frame)
+  (let ((all-panes     (frame-panes frame))
+        (named-panes   (mapcar #'cdr (frame-panes-for-layout frame)))
+        (current-panes '()))
+    ;; Find intersection of named panes and current layout panes.
+    (map-over-sheets (lambda (sheet)
+                       (when-let ((index (position sheet named-panes)))
+                         (push (cons sheet index) current-panes)))
+                     all-panes)
+    (setf current-panes (mapcar #'car (sort current-panes #'< :key #'cdr)))
+    ;; Populate current-pane list and special pane slots.
+    (let ((interactor            (find-pane-of-type current-panes 'interactor-pane))
+          (application           (find-pane-of-type current-panes 'application-pane))
+          (pointer-documentation (find-pane-of-type all-panes 'pointer-documentation-pane)))
+      (setf (frame-current-panes frame) current-panes
+            (frame-standard-output frame) (or application interactor)
+            (frame-standard-input frame) (or interactor (frame-standard-output frame))
+            (frame-pointer-documentation-output frame) pointer-documentation))))
+
+(defmethod frame-query-io ((frame standard-application-frame))
+  (or (frame-standard-input frame)
+      (frame-standard-output frame)))
+
+(defmethod frame-all-layouts ((frame application-frame))
+  (mapcar #'car (frame-layouts frame)))
+
+(define-condition frame-layout-changed (condition)
+  ((frame :initarg :frame :reader frame-layout-changed-frame)))
+
+(defmethod (setf frame-current-layout) :around (name (frame application-frame))
+  (unless (eql name (frame-current-layout frame))
+    (call-next-method)
+    (when-let ((fm (frame-manager frame)))
+      (if-let ((tls (and (frame-resize-frame frame)
+                         (frame-top-level-sheet frame))))
+        (multiple-value-bind (width height)
+            (bounding-rectangle-size tls)
+          (generate-panes fm frame)
+          (layout-frame frame width height))
+        (progn
+          (generate-panes fm frame)
+          (layout-frame frame)))
+      (signal 'frame-layout-changed :frame frame))))
+
 (defmethod layout-frame ((frame application-frame) &optional width height)
   (when (and (or width height)
              (not (and width height)))
@@ -392,56 +467,16 @@ documentation produced by presentations.")
           (resize-sheet tpl-sheet width height)))
       (allocate-space pane width height))))
 
-(defun find-pane-of-type (parent type)
-  "Returns a pane of `type' in the forest growing from `parent'."
-  (map-over-sheets #'(lambda (p)
-                       (when (typep p type)
-                         (return-from find-pane-of-type p)))
-                   parent)
-  nil)
-
-(defmethod get-frame-pane ((frame application-frame) pane-name)
-  (let ((pane (find-pane-named frame pane-name)))
-    (if (typep pane 'clim-stream-pane)
-        pane
-        nil)))
-
-(defmethod find-pane-named ((frame application-frame) pane-name)
-  (map-over-sheets #'(lambda (p)
-                       (when (eql pane-name (pane-name p))
-                         (return-from find-pane-named p)))
-                   (frame-panes frame))
-  nil)
-
-
-#+nil
-(defmethod redisplay-frame-panes ((frame application-frame) &key force-p)
-  (map-over-sheets
-   (lambda (sheet)
-     (when (typep sheet 'pane)
-       (when (and (typep sheet 'clim-stream-pane)
-                  (not (eq :no-clear (pane-redisplay-needed sheet))))
-         (window-clear sheet))
-       (redisplay-frame-pane frame sheet :force-p force-p)))
-   (frame-top-level-sheet frame)))
-
-(defmethod redisplay-frame-panes ((frame application-frame) &key force-p)
-  (map-over-sheets (lambda (sheet)
-                     (when (sheet-viewable-p sheet)
-                       (redisplay-frame-pane frame sheet :force-p force-p)))
-                   (frame-top-level-sheet frame)))
-
-(defmethod frame-replay (frame stream &optional region)
-  (declare (ignore frame))
-  (stream-replay stream region))
-
-(defmethod frame-properties ((frame application-frame) property)
-  (getf (%frame-properties frame) property))
-
-(defmethod (setf frame-properties) (value (frame application-frame) property)
-  (setf (getf (%frame-properties frame) property) value))
-
 ;;; Command loop interface
+
+(defmethod (setf frame-command-table) :around (new-command-table frame)
+  (flet ((get-menu (x) (slot-value x 'menu)))
+    (if (and (get-menu (frame-command-table frame))
+             (get-menu new-command-table))
+        (prog1 (call-next-method)
+          (when-let ((menu-bar-pane (frame-menu-bar-pane frame)))
+            (update-menu-bar menu-bar-pane new-command-table)))
+        (call-next-method))))
 
 (define-condition frame-exit (condition)
   ((frame :initarg :frame :reader frame-exit-frame)
