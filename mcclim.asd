@@ -100,7 +100,9 @@ interface management system."
                               :components ((:file "misc-formatting")))
                              (:module "frames"
                               :depends-on ("package")
-                              :components ((:file "define-application-frame"))))))
+                              :serial t
+                              :components ((:file "frames")
+                                           (:file "define-application-frame"))))))
   :perform (test-op (operation component)
              (uiop:symbol-call '#:clim-tests '#:run-tests)))
 

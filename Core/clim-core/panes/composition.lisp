@@ -290,13 +290,16 @@
 
 (defmethod compose-space ((pane top-level-sheet-pane) &key width height)
   (declare (ignore width height))
-  (compose-space (sheet-child pane)))
+  ;; Child can be NIL for frames with neither :PANE nor :PANES.
+  (when-let ((child (sheet-child pane)))
+    (compose-space child)))
 
 (defmethod allocate-space ((pane top-level-sheet-pane) width height)
   (unless (pane-space-requirement pane)
     (setf (pane-space-requirement pane)
           (compose-space pane)))
-  (alexandria:when-let ((child (sheet-child pane)))
+  ;; Child can be NIL for frames with neither :PANE nor :PANES.
+  (when-let ((child (sheet-child pane)))
     (allocate-space child
                     (clamp width  (sr-min-width pane)  (sr-max-width pane))
                     (clamp height (sr-min-height pane) (sr-max-height pane)))))
