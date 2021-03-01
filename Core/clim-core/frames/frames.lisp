@@ -137,17 +137,34 @@
    (panes                  :accessor frame-panes
                            :initform nil
                            :documentation
-                           "The root of the tree of panes in the current layout.")
+                           "The root of the tree of panes in the current layout.
+
+                            The value of this slot changes when the
+                            current layout changes and potentially
+                            changes when the frame class is
+                            redefined.")
    (current-panes          :type     list
                            :accessor frame-current-panes
-                           :initform nil)
+                           :initform nil
+                           :documentation
+                           "
+
+                            The value of this slot changes when the
+                            current layout changes and potentially
+                            changes when the frame class is
+                            redefined.")
    (panes-for-layout       :type     list ; alist
                            :accessor frame-panes-for-layout
                            :initform nil
                            :documentation
                            "An alist of names and panes (as returned by
                             `make-pane') that can be referenced in
-                            layouts.")
+                            layouts.
+
+                            The value of this slot does not change
+                            when the current layout changes. The value
+                            of this slot potentially changes when the
+                            frame class is redefined.")
    (output-pane            :accessor frame-standard-output
                            :accessor frame-error-output
                            :initform nil)
@@ -362,49 +379,28 @@
 
 ;;; Panes an layouts
 
-(defmethod generate-panes :before (fm (frame application-frame))
-  (declare (ignore fm))
-  (when (and (frame-panes frame)
-             (eq (sheet-parent (frame-panes frame))
-                 (frame-top-level-sheet frame)))
-    (sheet-disown-child (frame-top-level-sheet frame) (frame-panes frame)))
-  (loop for (nil . pane) in (frame-panes-for-layout frame)
-        for parent = (sheet-parent pane)
-        if  parent
-        do (sheet-disown-child parent pane)))
-
-;;; This default is used when `define-application-frame' does not
-;;; generate a specialized `generate-panes' method for an application
-;;; frame class.
-(defmethod generate-panes (fm (frame application-frame))
-  (with-look-and-feel-realization (fm frame)
-    (unless (frame-panes-for-layout frame)
-      (setf (frame-panes-for-layout frame)
-            `((single-pane . ,(make-clim-interactor-pane :name 'single-pane)))))
-    (let ((single-pane
-            (alexandria:assoc-value (frame-panes-for-layout frame)
-                                    'single-pane :test #'eq)))
-      (setf (frame-panes frame) single-pane)))
-  (update-frame-pane-lists frame))
-
-(defmethod generate-panes :after (fm (frame application-frame))
-  (declare (ignore fm))
-  (let ((top-level-sheet (frame-top-level-sheet frame)))
-    (sheet-adopt-child top-level-sheet (frame-panes frame))
-    (unless (sheet-parent top-level-sheet)
-      (sheet-adopt-child (graft frame) top-level-sheet))
-    ;; Find the size of the new frame
-    (multiple-value-bind (w h) (frame-geometry* frame)
-      ;; automatically generates a window-configuation-event
-      ;; which then calls allocate-space
-      ;;
-      ;; Not any longer, we turn off CONFIGURE-NOTIFY events until the
-      ;; window is mapped and do the space allocation now, so that all
-      ;; sheets will have their correct geometry at once. --GB
-      (change-space-requirements top-level-sheet :width w :height h
-                                                 :resize-frame t)
-      (setf (sheet-region top-level-sheet) (make-bounding-rectangle 0 0 w h))
-      (allocate-space top-level-sheet w h))))
+(defun disown-named-panes (frame &key (allp nil))
+  ;; Maybe disown the "layout root" sheet from the top level sheet of
+  ;; FRAME.
+  (when-let* ((root (frame-panes frame))
+              (tls  (frame-top-level-sheet frame)))
+    (when (eq (sheet-parent root) tls)
+      (sheet-disown-child tls root)))
+  ;; In order to build a new layout including the named sheets in
+  ;; FRAME, disown all of those from their respective parents if
+  ;; necessary. Unless ALLP is true, do not disown panes that a
+  ;; ancestor which is a named pane since that situation implies that
+  ;; the descendant will not be referenced in the layout. This doesn't
+  ;; do anything for the initial layout.
+  (let ((panes-for-layout (frame-panes-for-layout frame)))
+    (labels ((named-ancestor-p (pane)
+               (or (rassoc pane panes-for-layout)
+                   (when-let ((parent (sheet-parent pane)))
+                     (named-ancestor-p parent)))))
+      (loop for (nil . pane) in panes-for-layout
+            do (when-let ((parent (sheet-parent pane)))
+                 (when (or allp (not (named-ancestor-p parent)))
+                   (sheet-disown-child parent pane)))))))
 
 (defun update-frame-pane-lists (frame)
   (let ((all-panes     (frame-panes frame))
@@ -425,6 +421,48 @@
             (frame-standard-input frame) (or interactor (frame-standard-output frame))
             (frame-pointer-documentation-output frame) pointer-documentation))))
 
+(defmethod generate-panes :around (frame-manager (frame application-frame))
+  (with-look-and-feel-realization (frame-manager frame)
+    (call-next-method)))
+
+(defmethod generate-panes :before (frame-manager (frame application-frame))
+  (disown-named-panes frame :allp t))
+
+(defmethod apply-layout :after ((frame application-frame))
+  (let ((top-level-sheet (frame-top-level-sheet frame)))
+    (sheet-adopt-child top-level-sheet (frame-panes frame))
+    (unless (sheet-parent top-level-sheet)
+      (sheet-adopt-child (graft frame) top-level-sheet))
+    ;; Update frame-current-panes and the special pane slots.
+    (update-frame-pane-lists frame)
+    ;; Find the size of the new frame
+    (multiple-value-bind (w h) (frame-geometry* frame)
+      ;; automatically generates a window-configuation-event
+      ;; which then calls allocate-space
+      ;;
+      ;; Not any longer, we turn off CONFIGURE-NOTIFY events until the
+      ;; window is mapped and do the space allocation now, so that all
+      ;; sheets will have their correct geometry at once. --GB
+      (change-space-requirements top-level-sheet :width w :height h
+                                                 :resize-frame t)
+      (setf (sheet-region top-level-sheet) (make-bounding-rectangle 0 0 w h))
+      (allocate-space top-level-sheet w h))))
+
+;;; These defaults are used when `define-application-frame' does not
+;;; generate a specialized `generate-panes' method for an application
+;;; frame class.
+(defmethod generate-panes (frame-manager (frame application-frame))
+  (unless (frame-panes-for-layout frame)
+    (setf (frame-panes-for-layout frame)
+          `((single-pane . ,(make-clim-interactor-pane :name 'single-pane)))))
+  (let ((single-pane
+          (alexandria:assoc-value (frame-panes-for-layout frame)
+                                  'single-pane :test #'eq)))
+    (setf (frame-panes frame) single-pane))
+  (apply-layout frame))
+
+(defmethod apply-layout ((frame application-frame)))
+
 (defmethod frame-query-io ((frame standard-application-frame))
   (or (frame-standard-input frame)
       (frame-standard-output frame)))
@@ -437,17 +475,18 @@
 
 (defmethod (setf frame-current-layout) :around (name (frame application-frame))
   (unless (eql name (frame-current-layout frame))
+    (disown-named-panes frame)
     (call-next-method)
-    (when-let ((fm (frame-manager frame)))
-      (if-let ((tls (and (frame-resize-frame frame)
-                         (frame-top-level-sheet frame))))
-        (multiple-value-bind (width height)
-            (bounding-rectangle-size tls)
-          (generate-panes fm frame)
-          (layout-frame frame width height))
-        (progn
-          (generate-panes fm frame)
-          (layout-frame frame)))
+    (when-let ((frame-manager (frame-manager frame)))
+      (with-look-and-feel-realization (frame-manager frame)
+        (if-let ((tls (and (frame-resize-frame frame)
+                           (frame-top-level-sheet frame))))
+          (multiple-value-bind (width height) (bounding-rectangle-size tls)
+            (apply-layout frame)
+            (layout-frame frame width height))
+          (progn
+            (apply-layout frame)
+            (layout-frame frame))))
       (signal 'frame-layout-changed :frame frame))))
 
 (defmethod layout-frame ((frame application-frame) &optional width height)

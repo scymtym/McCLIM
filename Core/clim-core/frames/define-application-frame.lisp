@@ -53,14 +53,11 @@
     ;; to find the descendant.
     (if-let ((pane (when pane-or-parent
                      (find-pane-of-type pane-or-parent type))))
-      (progn
-        (when-let ((parent (sheet-parent pane-or-parent)))
-          (sheet-disown-child parent pane-or-parent))
-        (if stream-pane-p
-            (%reinitialize-stream-pane pane pane-or-parent initargs)
-            (progn
-              (apply #'reinitialize-instance pane initargs)
-              pane-or-parent)))
+      (if stream-pane-p
+          (%reinitialize-stream-pane pane pane-or-parent initargs)
+          (progn
+            (apply #'reinitialize-instance pane initargs)
+            pane-or-parent))
       (apply constructor :name name initargs))))
 
 (defun generate-ensure-pane-form (name form realizer-var frame-var
@@ -104,56 +101,86 @@
 ;;;
 ;;; This hack slaps a menu-bar into the start of the application-frame,
 ;;; in such a way that it is hard to find.
-(defun generate-generate-panes-form (class-name menu-bar panes layouts
-                                     pointer-documentation reinitializep)
-  (when pointer-documentation
-    (setf panes (list* '(%pointer-documentation% pointer-documentation-pane)
-                       panes)))
-  `(defmethod generate-panes ((fm frame-manager) (frame ,class-name))
-     (with-look-and-feel-realization (fm frame)
-       ;; Make (or reinitialize) pane instances and establish
-       ;; lexical variables so layout forms can use them.
-       (let* ,(flet ((pane-bindings (&optional old-panes-var)
-                       (loop for spec in panes
-                             for (name . form) = spec
-                             collect `(,name ,(with-current-source-form (spec)
-                                                (generate-ensure-pane-form
-                                                 name form 'fm 'frame old-panes-var))))))
-                (if (and (not (null panes)) reinitializep)
-                    (alexandria:with-gensyms (old-panes-var)
-                      `((,old-panes-var (frame-panes-for-layout frame))
-                        ,@(pane-bindings old-panes-var)))
-                    (pane-bindings)))
-         (setf (frame-panes-for-layout frame)
-               (list ,@(loop for (name) in panes
-                             collect `(cons ',name ,name))))
-         ;; [BTS] added this, but is not sure that this is correct for
-         ;; adding a menu-bar transparently, should also only be done
-         ;; where the exterior window system does not support menus
-         (setf (frame-panes frame)
-               (ecase (frame-current-layout frame)
-                 ,@(if (or menu-bar pointer-documentation)
-                       (mapcar (lambda (layout)
-                                 `(,(first layout)
-                                   (vertically ()
-                                     ,@(cond
-                                         ((eq menu-bar t)
-                                          `((setf (frame-menu-bar-pane frame)
-                                                  (make-menu-bar ',class-name))))
-                                         ((consp menu-bar)
-                                          `((make-menu-bar
-                                             (make-command-table
-                                              nil :menu ',menu-bar))))
-                                         (menu-bar
-                                          `((make-menu-bar ',menu-bar)))
-                                         (t nil))
-                                     ,@(rest layout)
-                                     ,@(when pointer-documentation
-                                         '(%pointer-documentation%)))))
-                               layouts)
-                       layouts)))))
-     ;; Update frame-current-panes and the special pane slots.
-     (update-frame-pane-lists frame)))
+(defun generate-generate-panes (class-name menu-bar panes layouts
+                                pointer-documentation reinitializep)
+  (let ((panes (append panes
+                       (when pointer-documentation
+                         '((%pointer-documentation% pointer-documentation-pane)))
+                       (when menu-bar
+                         '((%menu-bar% nil)))))) ; just a marker, form is ignored
+    (labels ((pane-form (name form old-panes-var)
+               (cond ((not (eq name '%menu-bar%))
+                      (generate-ensure-pane-form
+                       name form 'fm 'frame old-panes-var))
+                     ((eq menu-bar t)
+                      `(make-menu-bar ',class-name))
+                     ((consp menu-bar)
+                      `(make-menu-bar (make-command-table
+                                       nil :menu ',menu-bar)))
+                     (menu-bar
+                      `(make-menu-bar ',menu-bar))))
+             (pane-bindings (&optional old-panes-var)
+               (loop for spec in panes
+                     for (name . form) = spec
+                     collect `(,name ,(with-current-source-form (spec)
+                                        (pane-form name form old-panes-var)))))
+             (pane-entries ()
+               (loop for spec in panes
+                     for (name . form) = spec
+                     collect `(cons ',name ,name)))
+             (pane-lookups (panes-alist-var)
+               (loop for (name) in panes
+                     collect `(,name (alexandria:assoc-value
+                                      ,panes-alist-var ',name))))
+             (layout-case ()
+               `(ecase (frame-current-layout frame)
+                  ,@(mapcar (lambda (layout)
+                              (destructuring-bind (name . body) layout
+                                `(,name ,@body)))
+                     layouts))))
+      `(progn
+         (defmethod generate-panes ((fm frame-manager) (frame ,class-name))
+           ;; Make (or reinitialize) pane instances and establish
+           ;; lexical variables so forms can refer to panes defined
+           ;; earlier. Then make the alist of pane names and pane
+           ;; instances for the frame.
+           (setf (frame-panes-for-layout frame)
+                 ,(if (and (not (null panes)) reinitializep)
+                      (alexandria:with-gensyms (old-panes-var)
+                        `(let* ((,old-panes-var (frame-panes-for-layout frame))
+                                ,@(pane-bindings old-panes-var))
+                           (list ,@(pane-entries))))
+                      `(let* (,@(pane-bindings))
+                         (list ,@(pane-entries)))))
+           ;; Apply the current layout by looking up named panes in
+           ;; the computed alist.
+           (apply-layout frame))
+
+         (defmethod apply-layout ((frame ,class-name))
+           ;; [BTS] added this, but is not sure that this is correct
+           ;; for adding a menu-bar transparently, should also only be
+           ;; done where the exterior window system does not support
+           ;; menus
+           (setf (frame-panes frame)
+                 ;; Establish lexical bindings for the defined named
+                 ;; panes.
+                 (let* (,@(when panes
+                            `((panes (frame-panes-for-layout frame))))
+                        ,@(pane-lookups 'panes))
+                   (declare (ignorable ,@(mapcar #'first panes)))
+                   ;; Then determine the current layout and execute
+                   ;; its body.
+                   ,(if (or menu-bar pointer-documentation)
+                        `(vertically ()
+                           ,@(cond ((eq menu-bar t)
+                                    `((setf (frame-menu-bar-pane frame)
+                                            %menu-bar%)))
+                                   (menu-bar
+                                    `(%menu-bar%)))
+                           ,(layout-case)
+                           ,@(when pointer-documentation
+                               '(%pointer-documentation%)))
+                        (layout-case)))))))))
 
 (defun geometry-specification-p (thing)
   (and (alexandria:proper-list-p thing)
@@ -354,7 +381,7 @@
           ,@other-options)
 
         ,@(when (or panes layouts)
-            `(,(generate-generate-panes-form
+            `(,(generate-generate-panes
                 name menu-bar panes layouts pointer-documentation
                 update-instances-on-redefinition)))
 

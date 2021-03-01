@@ -1,7 +1,16 @@
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
+;;;
+;;;  (c) copyright 2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Tests for the `define-application-frame' macro.
+
 (cl:in-package #:clim-tests)
 
-(def-suite* :mcclim.frames
-  :in :mcclim)
+(in-suite :mcclim.frames)
 
 (test parse-define-application.smoke
   "Test errors signaled by `define-application-frame' at

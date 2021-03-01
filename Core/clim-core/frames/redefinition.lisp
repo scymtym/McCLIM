@@ -2,7 +2,7 @@
 ;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
 ;;; ---------------------------------------------------------------------------
 ;;;
-;;;  (c) copyright 2019, 2020 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
+;;;  (c) copyright 2019,2020,2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -86,17 +86,17 @@
           (frame-icon client) (new-icon event)
           (frame-command-table client) (new-command-table event)
           (%frame-layouts client) (new-layouts event))
-    (let ((new-layout (first (frame-all-layouts client))))
+    (let ((current-layout (frame-current-layout client))
+          (new-layout     (first (frame-all-layouts client))))
       ;; Changing the layout involves signaling FRAME-LAYOUT-CHANGED
       ;; which performs a non-local exit out of this method.
-      (if (eq (frame-current-layout client) new-layout)
-          (when-let ((frame-manager (frame-manager client)))
-            (generate-panes frame-manager client)
-            (layout-frame client width height)
-            (signal 'frame-layout-changed :frame client))
-          (unwind-protect ; Call LAYOUT-FRAME despite non-local exit.
-               (setf (frame-current-layout client) new-layout)
-            (layout-frame client width height))))))
+      (changing-space-requirements ()
+        (when-let ((frame-manager (frame-manager client)))
+          (setf (slot-value client 'current-layout) new-layout)
+          (generate-panes frame-manager client)
+          (layout-frame client width height)
+          (unless (eq current-layout new-layout)
+            (signal 'frame-layout-changed :frame client)))))))
 
 ;;; `redefinition-updates-instances-class'
 ;;;

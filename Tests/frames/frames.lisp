@@ -79,3 +79,69 @@
      (enable-frame frame)
      (is (equal '(:disable :enable) (reverse (events frame)))))
    'enable-disable-frame))
+
+;;; Changing layouts
+
+(define-application-frame setf-frame-current-layout ()
+  ()
+  (:panes
+   (pane1  :label :label "a")
+   (pane2  :label :label "b")
+   (child1 :label :label "c")
+   (child2 :label :label "d")
+   (parent (vertically () child1 child2)))
+  (:layouts
+   (first  pane1)
+   (second (horizontally () pane2 parent)))
+  (:menu-bar nil))
+
+(defun make-layout-event ()
+  (let ((state nil)
+        (lock  (bt:make-lock))
+        (var   (bt:make-condition-variable)))
+    (values (lambda ()
+              (bt:with-lock-held (lock)
+                (setf state t)
+                (bt:condition-notify var)))
+            (lambda ()
+              (bt:with-lock-held (lock)
+                (loop :until state
+                      :do (bt:condition-wait var lock)))))))
+
+(defun set-layout (frame layout notify)
+  (unwind-protect
+       (setf (frame-current-layout frame) layout)
+    (funcall notify)))
+
+(test setf-frame-current-layout.smoke
+  "Smoke test for changing frame layouts."
+  (invoke-with-frame-instance
+   (lambda (frame)
+     (let* ((all-panes (climi::frame-panes-for-layout frame))
+            (pane1     (alexandria:assoc-value all-panes 'pane1))
+            (pane2     (alexandria:assoc-value all-panes 'pane2))
+            (child1    (alexandria:assoc-value all-panes 'child1))
+            (child2    (alexandria:assoc-value all-panes 'child2))
+            (parent    (alexandria:assoc-value all-panes 'parent)))
+       ;; Default layout should be `first'.
+       (is (equal all-panes (climi::frame-panes-for-layout frame)))
+       (is (equal (list pane1) (frame-current-panes frame)))
+       (is (eq 'first (frame-current-layout frame)))
+
+       ;; Change to `second' layout.
+       (multiple-value-bind (notify wait) (make-layout-event)
+         (execute-frame-command frame (list 'set-layout frame 'second notify))
+         (funcall wait))
+       (is (equal all-panes (climi::frame-panes-for-layout frame)))
+       (is (alexandria:set-equal (list pane2 parent child1 child2)
+                                 (frame-current-panes frame)))
+       (is (eq 'second (frame-current-layout frame)))
+
+       ;; Change back to `first' layout.
+       (multiple-value-bind (notify wait) (make-layout-event)
+         (execute-frame-command frame (list 'set-layout frame 'first notify))
+         (funcall wait))
+       (is (equal all-panes (climi::frame-panes-for-layout frame)))
+       (is (equal (list pane1) (frame-current-panes frame)))
+       (is (eq 'first (frame-current-layout frame)))))
+   'setf-frame-current-layout))
