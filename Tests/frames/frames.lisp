@@ -49,3 +49,33 @@
   (invoke-with-frame-instance (lambda (frame)
                                 (is (eq :enabled (frame-state frame))))
                               'single-pane))
+
+;;; Enabling and disabling
+
+(define-application-frame enable-disable-frame ()
+  ((%events :accessor events
+            :initform '()))
+  (:pane :application))
+
+(defmethod note-frame-enabled ((frame-manager frame-manager)
+                               (frame         enable-disable-frame))
+  (push :enable (events frame)))
+
+(defmethod note-frame-disabled ((frame-manager frame-manager)
+                                (frame         enable-disable-frame))
+  (push :disable (events frame)))
+
+(test enable-disable-frame.smoke
+  "Smoke test for enabling and disabling frames."
+  (invoke-with-frame-instance
+   (lambda (frame)
+     ;; Clear event buffer.
+     (loop :until (equal (events frame) '(:enable)))
+     (setf (events frame) '())
+     ;; Disable.
+     (disable-frame frame)
+     (is (equal '(:disable) (reverse (events frame))))
+     ;; Enable again.
+     (enable-frame frame)
+     (is (equal '(:disable :enable) (reverse (events frame)))))
+   'enable-disable-frame))

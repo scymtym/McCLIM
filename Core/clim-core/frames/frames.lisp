@@ -790,15 +790,18 @@
   frame)
 
 (defmethod enable-frame ((frame application-frame))
-  (setf (sheet-enabled-p (frame-top-level-sheet frame)) t)
+  (let ((t-l-s (frame-top-level-sheet frame)))
+    (setf (sheet-enabled-p t-l-s) t)
+    (when-let ((port (port t-l-s)))
+      (port-force-output port)))
   (setf (slot-value frame 'state) :enabled)
   (note-frame-enabled (frame-manager frame) frame))
 
 (defmethod disable-frame ((frame application-frame))
   (let ((t-l-s (frame-top-level-sheet frame)))
     (setf (sheet-enabled-p t-l-s) nil)
-    (when (port t-l-s)
-      (port-force-output (port t-l-s))))
+    (when-let ((port (port t-l-s)))
+      (port-force-output port)))
   (setf (slot-value frame 'state) :disabled)
   (note-frame-disabled (frame-manager frame) frame))
 
