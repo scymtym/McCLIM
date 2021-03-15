@@ -28,10 +28,6 @@
 ;;;
 ;;; Problems/todo:
 ;;;
-;;; - Elliott Johnson is to be thanked for the nice scroll-bars, but
-;;;   for some reason they don't remember their position when clicking
-;;;   on a stack-frame or "more".
-;;;
 ;;; - Goto source location is not supported, but I think this could be
 ;;;   done through slime.
 ;;;
@@ -94,9 +90,25 @@
 ;;; CLIM stuff
 
 (defclass debugger-pane (clouseau:inspector-pane)
-  ((condition-info :reader  condition-info :initarg :condition-info)
+  ((condition-info :accessor condition-info :initarg :condition-info)
    (active-frame :accessor active-frame :initform 0)
-   (shown-frames :accessor shown-frames :initform 5)))
+   (shown-frames :accessor shown-frames :initform 20)))
+
+(flet ((maybe-more (sheet)
+         (when (and (< (abs (- (bounding-rectangle-max-y (pane-viewport-region sheet))
+                               (bounding-rectangle-max-y (sheet-region sheet))))
+                       1)
+                    (< (shown-frames sheet)
+                       (length (backtrace (condition-info sheet)))))
+           (let ((frame (pane-frame sheet)))
+             (execute-frame-command frame '(com-more))
+             (redisplay-frame-pane frame sheet)))))
+
+  (defmethod note-sheet-region-changed ((sheet debugger-pane))
+    (maybe-more sheet))
+
+  (defmethod note-sheet-transformation-changed ((sheet debugger-pane))
+    (maybe-more sheet)))
 
 (define-application-frame clim-debugger ()
   ((condition        :initform nil :accessor the-condition)
@@ -122,6 +134,10 @@
   (:geometry :height 480 :width #.(* 480 slim:+golden-ratio+))
   (:command-table (clim-debugger :inherit-from (clouseau:inspector-command-table))))
 
+(defmethod (setf the-condition) :after ((new-value t) (object clim-debugger))
+  (when-let ((pane (find-pane-named object 'debugger-pane)))
+    (setf (condition-info pane) new-value)))
+
 (defmethod frame-standard-output ((frame clim-debugger))
   (or (find-pane-named frame 'interactor)
       (call-next-method)))
@@ -130,14 +146,12 @@
 
 (define-presentation-type stack-frame () :inherit-from 't)
 (define-presentation-type restart     ())
-(define-presentation-type more-type   ())
 (define-presentation-type inspectable ())
 
 ;;; Gestures
 
 (define-gesture-name :prev    :keyboard (#\p :meta))
 (define-gesture-name :next    :keyboard (#\n :meta))
-(define-gesture-name :more    :keyboard (#\m))
 (define-gesture-name :exit    :keyboard (#\q))
 (define-gesture-name :eval    :keyboard (#\e))
 (define-gesture-name :toggle  :keyboard #\tab)
@@ -159,9 +173,7 @@
 
 ;;; Commands
 
-(define-clim-debugger-command (com-more :name "More backtraces"
-                                        :keystroke :more)
-    ()
+(define-clim-debugger-command (com-more) ()
   (let ((pane (find-pane-named *application-frame* 'debugger-pane)))
     (setf #1=(shown-frames pane)
           (min (+ #1# 10) (length (backtrace (condition-info pane)))))))
@@ -240,13 +252,6 @@
             (without-interactor 'with-interactor)
             (with-interactor    'without-interactor)))))
 
-;;; Command translators
-
-(define-presentation-to-command-translator more-backtraces
-    (more-type com-more clim-debugger :gesture :select)
-    (object)
-  (list))
-
 ;;; Display debugging info
 
 (defmethod redisplay-frame-pane ((frame application-frame)
@@ -255,13 +260,14 @@
   (declare (ignore force-p))
   (clouseau:call-with-root-place
    (lambda ()
-     (let ((info (condition-info pane))
-           (thread (bt:current-thread)))
+     (when-let ((info (condition-info pane))
+                (thread (bt:current-thread)))
        (formatting-table (pane)
          (formatting-row (pane)
            (formatting-cell (pane)
              (with-text-face (pane :bold) (write-string "Description" pane)))
-           (formatting-cell (pane) (princ (condition-message info) pane)))
+           (formatting-cell (pane)
+             (princ (condition-message info) pane)))
          (with-output-as-presentation
              (pane thread 'inspectable :single-box t)
            (formatting-row (pane)
@@ -326,13 +332,7 @@
             (stack-frame #1=(car back) #1#))
            ((or (null back)
                 (= (frame-no stack-frame)
-                   (shown-frames pane)))
-            (when back
-              (formatting-row (pane)
-                (formatting-cell (pane))
-                (formatting-cell (pane)
-                  (with-text-face (pane :bold)
-                    (present pane 'more-type :stream pane))))))
+                   (shown-frames pane))))
         (with-output-as-presentation
             (pane stack-frame 'stack-frame :single-box t)
           (formatting-row (pane)
@@ -392,12 +392,6 @@
                                             &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
   (with-text-face (stream :bold) (princ (restart-name object) stream)))
-
-(define-presentation-method present (object (type more-type) stream
-                                            (view textual-view)
-                                            &key acceptably for-context-type)
-  (declare (ignore acceptably for-context-type))
-  (with-text-face (stream :bold) (write-string "--- MORE ---" stream)))
 
 (define-presentation-method present (object (type inspectable) stream
                                             (view textual-view)
