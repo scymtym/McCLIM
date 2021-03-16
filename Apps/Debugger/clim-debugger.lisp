@@ -306,8 +306,9 @@
                 ((null restarts) t)
              (with-output-as-presentation (pane r 'restart :single-box t)
                (formatting-row (pane)
-                 (formatting-cell (pane)
-                   (with-text-face (pane :bold) (princ n pane)))
+                 (formatting-cell (pane :align-y :top)
+                   (climi::format-keyboard-gesture
+                    `(:keyboard ,(digit-char n) 0) :stream pane))
                  (formatting-cell (pane)
                    (with-drawing-options (pane :ink +dark-violet+)
                      (princ (restart-name r) pane)))
