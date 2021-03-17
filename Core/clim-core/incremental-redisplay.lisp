@@ -461,8 +461,7 @@ updating-output-parent above this one in the tree.")
 
 (defmethod print-object ((obj standard-updating-output-record) stream)
   (print-unreadable-object (obj stream :type t :identity t)
-    (with-standard-rectangle (x1 y1 x2 y2)
-	obj
+    (with-standard-rectangle* (x1 y1 x2 y2) obj
       (format stream "X ~S:~S Y ~S:~S " x1 x2 y1 y2))
     (when (slot-boundp obj 'unique-id)
       (let ((*print-length* 10)

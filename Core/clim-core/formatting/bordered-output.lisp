@@ -5,6 +5,7 @@
 ;;;  (c) copyright 2002 Alexey Dejneka <adejneka@comail.ru>
 ;;;  (c) copyright 2007 Andy Hefner <ahefner@gmail.com>
 ;;;  (c) copyright 2017 Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -179,8 +180,7 @@
         (if move-cursor
             ;; move-cursor is true, move cursor to lower-right corner
             ;; of output.
-            (with-bounding-rectangle* (left top right bottom) border
-              (declare (ignore left top))
+            (with-bounding-rectangle* (nil nil right bottom) border
               (setf (stream-cursor-position stream) (values right bottom)))
             ;; move-cursor is false, preserve the cursor position from
             ;; after the output (I think this is right, it's useful
@@ -436,8 +436,7 @@
                (loop for child across (output-record-children record)
                      do (typecase child
                           (text-displayed-output-record
-                           (with-bounding-rectangle* (left top right bottom) child
-                             (declare (ignore top))
+                           (with-bounding-rectangle* (nil nil right bottom) child
                              (draw-line* stream left bottom right bottom
                                          :ink ink
                                          :line-style line-style)))
@@ -457,11 +456,10 @@
                (loop for child across (output-record-children record)
                      do (typecase child
                           (text-displayed-output-record
-                           (with-bounding-rectangle* (left top right bottom) child
-                             (let ((middle (/ (+ bottom top) 2)))
-                               (draw-line* stream left middle right middle
-                                           :ink ink
-                                           :line-style line-style))))
+                           (with-bounding-rectangle* (left top right bottom :center-y middle) child
+                             (draw-line* stream left middle right middle
+                                         :ink ink
+                                         :line-style line-style)))
                           (updating-output-record nil)
                           (compound-output-record (fn child))))))
       (fn record))))

@@ -685,8 +685,7 @@ are the old dimensions of the display of `view' in device units."
           (return)
           (progn (setf (stroke-start-offset stroke) nil)
                  (invalidate-stroke stroke :modified t)))))
-  (with-bounding-rectangle* (x1 y1 x2 y2) view
-    (declare (ignore x2))
+  (with-bounding-rectangle* (x1 y1 nil y2) view
     (when (> old-height (- y2 y1))
       (clear-rectangle* pane x1 y2 (+ x1 old-width) (+ y1 old-height)))))
 
@@ -1000,8 +999,7 @@ the end of the buffer."))
                              (stroke-dimensions stroke) x1 y1 x2 y2)
                             (setf (stroke-dirty stroke) t)
                             (setf (stroke-modified stroke) t))))))))
-        (with-bounding-rectangle* (vx1 vy1 vx2 vy2) view
-          (declare (ignore vy1 vx2 vy2))
+        (with-bounding-rectangle* (vx1) view
           (setf (max-line-width view)
                 (max (max-line-width view)
                      (- x2 vx1))))))))
@@ -1032,10 +1030,8 @@ the end of the buffer."))
                 (y2 (line-dimensions last-line))))))
 
 (defmethod bounding-rectangle-width ((view drei-buffer-view))
-  (multiple-value-bind (x1 y1 x2)
-      (bounding-rectangle* view)
-    (declare (ignore y1))
-    (- x2 x1)))
+  (with-bounding-rectangle* (:width width) view
+    width))
 
 (defun drei-bounding-rectangle* (drei-instance)
   "Return the bounding rectangle of the visual appearance of

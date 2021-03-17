@@ -2,19 +2,19 @@
 ;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
 ;;; ---------------------------------------------------------------------------
 ;;;
-;;;  (c) copyright 1998-2001 by Michael McDonald <mikemac@mikemac.com>
-;;;  (c) copyright 2000 by Iban Hatchondo <hatchond@emi.u-bordeaux.fr>
-;;;  (c) copyright 2000 by Julien Boninfante <boninfan@emi.u-bordeaux.fr>
-;;;  (c) copyright 2001 by Lionel Salabartan <salabart@emi.u-bordeaux.fr>
-;;;  (c) copyright 2001 by Arnaud Rouanet <rouanet@emi.u-bordeaux.fr>
-;;;  (c) copyright 2001-2002, 2014 by Robert Strandh <robert.strandh@gmail.com>
-;;;  (c) copyright 2002-2003 by Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
-;;;  (c) copyright 2020 by Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 1998-2001 Michael McDonald <mikemac@mikemac.com>
+;;;  (c) copyright 2000 Iban Hatchondo <hatchond@emi.u-bordeaux.fr>
+;;;  (c) copyright 2000 Julien Boninfante <boninfan@emi.u-bordeaux.fr>
+;;;  (c) copyright 2001 Lionel Salabartan <salabart@emi.u-bordeaux.fr>
+;;;  (c) copyright 2001 Arnaud Rouanet <rouanet@emi.u-bordeaux.fr>
+;;;  (c) copyright 2001-2002,2014 Robert Strandh <robert.strandh@gmail.com>
+;;;  (c) copyright 2002-2003 Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
+;;;  (c) copyright 2020 Daniel Kochmański <daniel@turtleware.eu>
+;;;  (c) copyright 2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
 ;;; Implementation of the 29.4 CLIM Stream Panes.
-;;;
 
 (in-package :clim-internals)
 
@@ -156,13 +156,12 @@
                         (stream-output-history pane)
                         (with-output-to-output-record (pane)
                           (invoke-display-function *application-frame* pane)))))
-              (with-bounding-rectangle* (min-x min-y max-x max-y) record
-                (declare (ignore min-x min-y))
+              (with-bounding-rectangle* (nil nil max-x max-y) record
                 (values max-x max-y)))
           (unless (> width 0) (setf width 1))
           (unless (> height 0) (setf height 1))
-          (setf (stream-width pane) width)
-          (setf (stream-height pane) height)
+          (setf (stream-width pane) width
+                (stream-height pane) height)
           ;; overwrite the user preferences which value is :compute
           (letf (((%pane-user-width pane)
                   (compute (pane-user-width pane) width))
@@ -185,17 +184,15 @@
 ;;; change in more places.
 (defmethod compose-space ((pane clim-stream-pane) &key width height)
   (declare (ignorable width height))
-  (let* ((w (bounding-rectangle-max-x (stream-output-history pane)))
-         (h (bounding-rectangle-max-y (stream-output-history pane)))
-         (width (max w (stream-width pane)))
-         (height (max h (stream-height pane))))
-    (make-space-requirement
-     :min-width (clamp w 0 width)
-     :width width
-     :max-width +fill+
-     :min-height (clamp h 0 height)
-     :height height
-     :max-height +fill+)))
+  (with-bounding-rectangle* (nil nil x2 y2) (stream-output-history pane)
+    (let ((width (max x2 (stream-width pane)))
+          (height (max y2 (stream-height pane))))
+      (make-space-requirement :min-width  (clamp x2 0 width)
+                              :width      width
+                              :max-width  +fill+
+                              :min-height (clamp y2 0 height)
+                              :height     height
+                              :max-height +fill+))))
 
 (defmethod window-clear ((pane clim-stream-pane))
   (stream-close-text-output-record pane)
@@ -232,8 +229,7 @@
     (draw-rectangle* (sheet-medium pane) x1 y1 x2 y2 :ink +background-ink+)))
 
 (defmethod window-viewport-position ((pane clim-stream-pane))
-  (multiple-value-bind (x y) (bounding-rectangle* (stream-output-history pane))
-    (values x y)))
+  (bounding-rectangle-position (stream-output-history pane)))
 
 (defmethod* (setf window-viewport-position) (x y (pane clim-stream-pane))
   (scroll-extent pane x y)
@@ -250,19 +246,16 @@
                    pointer-button-press-handler))
   (force-output stream)
   ;; make the output visible
-  (let ((w (bounding-rectangle-max-x (stream-output-history stream)))
-        (h (bounding-rectangle-max-y (stream-output-history stream))))
+  (with-bounding-rectangle* (nil nil x2 y2) (stream-output-history stream)
     (unless (region-contains-region-p (sheet-region stream)
-                                      (make-rectangle* 0 0 w h))
+                                      (make-rectangle* 0 0 x2 y2))
       (change-space-requirements stream)
       (redisplay-frame-pane *application-frame* stream))))
 
-(defmethod redisplay-frame-pane ((frame application-frame)
-                                 (pane symbol)
+(defmethod redisplay-frame-pane ((frame application-frame) (pane symbol)
                                  &key force-p)
-  (let ((actual-pane (get-frame-pane frame pane)))
-    (when actual-pane
-      (redisplay-frame-pane frame actual-pane :force-p force-p))))
+  (when-let ((actual-pane (get-frame-pane frame pane)))
+    (redisplay-frame-pane frame actual-pane :force-p force-p)))
 
 (define-presentation-method presentation-type-history-for-stream
     ((type t) (stream clim-stream-pane))
@@ -326,15 +319,13 @@
 
 (defmethod display-title (frame (pane title-pane))
   (declare (ignore frame))
-  (let* ((title-string (title-string pane))
-         (a (text-style-ascent (pane-text-style pane) pane))
-         (tw (text-size pane title-string)))
-    (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
-      (declare (ignore y2))
-      (multiple-value-bind (tx ty)
-          (values (- (/ (- x2 x1) 2) (/ tw 2))
-                  (+ y1 2 a))
-        (draw-text* pane title-string tx ty)))))
+  (with-bounding-rectangle* (x1 y1 x2 :center-x center-x) (sheet-region pane)
+    (let* ((title-string (title-string pane))
+           (a (text-style-ascent (pane-text-style pane) pane))
+           (tw (text-size pane title-string))
+           (tx (- center-x (/ tw 2)))
+           (ty (+ y1 2 a)))
+      (draw-text* pane title-string tx ty))))
 
 ;;; Pointer Documentation Pane
 

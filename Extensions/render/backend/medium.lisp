@@ -78,8 +78,8 @@
       (cond ((not filled)
              (%medium-stroke-paths medium (list (path))))
             ((rectanglep region)
-             (with-bounding-rectangle* (x1 y1 x2 y2) region
-               (%medium-fill-image medium x1 y1 (- x2 x1) (- y2 y1))))
+             (with-bounding-rectangle* (x1 y1 :width width :height height) region
+               (%medium-fill-image medium x1 y1 width height)))
             (t
              (%medium-fill-paths medium (list (path))))))))
 
@@ -158,7 +158,7 @@
         (sheet-transformation (medium-sheet to-drawable))
         (untransform-distance (medium-transformation from-drawable)
                               width height))
-    (clim:with-bounding-rectangle* (min-x min-y max-x max-y)
+    (with-bounding-rectangle* (min-x min-y max-x max-y)
         (region-intersection
          (climi::medium-device-region to-drawable)
          (transform-region
@@ -190,7 +190,7 @@
         (multiple-value-bind (w h)
             (transform-distance (sheet-transformation to-drawable)
                                 w2 h2)
-          (clim:with-bounding-rectangle* (min-x min-y max-x max-y)
+          (with-bounding-rectangle* (min-x min-y max-x max-y)
               (region-intersection
                (climi::sheet-native-region to-drawable)
                (transform-region
@@ -223,7 +223,7 @@
             (sheet-transformation to-sheet)
             (untransform-distance
              (medium-transformation (sheet-medium from-drawable)) width height))
-        (clim:with-bounding-rectangle* (min-x min-y max-x max-y)
+        (with-bounding-rectangle* (min-x min-y max-x max-y)
             (region-intersection
              (climi::medium-device-region to-drawable)
              (transform-region

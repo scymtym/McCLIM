@@ -4,6 +4,7 @@
 ;;;
 ;;;  (c) copyright 2001 Alexey Dejneka <adejneka@comail.ru>
 ;;;  (c) copyright 2003 Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
+;;;  (c) copyright 2021 Jan Moringen <jmoringe@techfak.uni-bielefeld.de>
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;;
@@ -284,8 +285,8 @@
      (replay table stream)
      (setf (stream-cursor-position stream)
            (if move-cursor
-               (values (bounding-rectangle-max-x table)
-                       (bounding-rectangle-max-y table))
+               (with-bounding-rectangle* (nil nil x2 y2) table
+                 (values x2 y2))
                (values cursor-old-x cursor-old-y))))))
 
 (defgeneric row-or-column-output-record-p (object)
@@ -393,8 +394,8 @@
            (stream-cursor-position stream))
      (setf (stream-cursor-position stream)
            (if move-cursor
-               (values (bounding-rectangle-max-x item-list)
-                       (bounding-rectangle-max-y item-list))
+               (with-bounding-rectangle* (nil nil x2 y2) item-list
+                 (values x2 y2))
                (values cursor-old-x cursor-old-y)))
      (replay item-list stream)
      item-list)))
@@ -509,15 +510,15 @@
                        ;; we have cell at row i col j at hand.
                        ;; width:
                        when cell
-                       do (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* cell)
+                       do (with-bounding-rectangle* (:width width :height height) cell
                             (maxf (aref widthen j)
-                                  (max (- x2 x1) (cell-min-width cell)))
+                                  (max width (cell-min-width cell)))
                             (maxf (aref heights i)
-                                  (max (- y2 y1) (cell-min-height cell)))
+                                  (max height (cell-min-height cell)))
                             (when (eq (cell-align-y cell) :baseline)
                               (multiple-value-bind (baseline) (output-record-baseline cell)
                                 (maxf (aref ascents i) baseline)
-                                (maxf (aref descents i) (- y2 y1 baseline)))))))
+                                (maxf (aref descents i) (- height baseline)))))))
 
         ;; Baseline aligned cells can force the row to be taller.
         (loop for i from 0 below nrows
@@ -595,9 +596,9 @@
       ;;
       (loop for item in items
             for i from 0
-            do (with-bounding-rectangle* (x1 y1 x2 y2) item
-                 (maxf width (- x2 x1))
-                 (setf (aref heights i) (- y2 y1))))
+            do (with-bounding-rectangle* (:width width* :height height*) item
+                 (maxf width width*)
+                 (setf (aref heights i) height*)))
       ;; Now figure out the number of rows and the number of columns to
       ;; layout to.
       (let ((stream-width (- (stream-text-margin stream) (stream-cursor-position stream)
@@ -642,10 +643,10 @@
                                     for x = (if initial-spacing (floor x-spacing 2) 0)
                                     then (+ x width x-spacing)
                                     while items
-                                    do (let ((item (pop items)))
-                                         (maxf h (bounding-rectangle-height item))
-                                         (adjust-cell* item x y width
-                                                       (bounding-rectangle-height item)
+                                    do (let* ((item (pop items))
+                                              (height (bounding-rectangle-height item)))
+                                         (maxf h height)
+                                         (adjust-cell* item x y width height
                                                        (output-record-baseline item))))
                               (incf y (+ h y-spacing))))))
                 (t

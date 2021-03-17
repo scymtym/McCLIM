@@ -230,8 +230,7 @@ account, and create a list of menu buttons."
      :min-height height :height height :max-height height)))
 
 (defmethod handle-repaint ((pane menu-divider-leaf-pane) region)
-  (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
-    (declare (ignore y2))
+  (with-bounding-rectangle* (x1 y1 x2) (sheet-region pane)
     (if-let ((label (slot-value pane 'label)))
       (multiple-value-bind (width height fx fy baseline)
           (text-size pane label :text-style *labelled-divider-text-style*)
@@ -244,7 +243,6 @@ account, and create a list of menu buttons."
       (progn
         (draw-line* pane x1 (1+ y1) x2 (1+ y1) :ink *3d-dark-color*)
         (draw-line* pane x1 (+ 2 y1) x2 (+ 2 y1) :ink *3d-light-color*)))))
-
 
 ;;; Menu creation from command tables
 

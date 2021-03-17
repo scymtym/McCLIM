@@ -56,8 +56,7 @@
         (make-rectangle* 0 0 width height))))
 
 (defun make-postscript-transformation (page output scale-to-fit)
-  (with-bounding-rectangle* (left top right bottom) page
-    (declare (ignore left top))
+  (with-bounding-rectangle* (nil nil right bottom) page
     (let ((drawing-region (make-rectangle* 0 0 right bottom)))
       (cond
         (scale-to-fit

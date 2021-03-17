@@ -96,8 +96,7 @@
 
 (clim-sys:defmethod* (setf output-record-position) :around
                      (nx ny (record draw-bezier-design-output-record))
-  (climi::with-standard-rectangle* (:x1 x1 :y1 y1)
-      record
+  (climi::with-standard-rectangle* (x1 y1) record
     (let ((dx (- nx x1))
           (dy (- ny y1)))
       (let ((current-translation (or (output-record-translation record)

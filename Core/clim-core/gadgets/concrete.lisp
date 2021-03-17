@@ -148,15 +148,15 @@
   (declare (ignore region))
   (when (sheet-grafted-p pane)
     (with-slots (armed) pane
-      (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region pane))
+      (with-bounding-rectangle* (x1 y1 x2 y2 :center-y cy) (sheet-region pane)
         (draw-rectangle* pane x1 y1 x2 y2 :ink (effective-gadget-background pane))
         (let* ((as (text-style-ascent (pane-text-style pane) pane))
-               (ds (text-style-descent (pane-text-style pane) pane)) )
+               (ds (text-style-descent (pane-text-style pane) pane)))
           (multiple-value-bind (tx1 ty1 tx2 ty2)
               (values (+ x1 (pane-x-spacing pane))
-                      (- (/ (+ y1 y2) 2) (/ (+ as ds) 2))
+                      (- cy (/ (+ as ds) 2))
                       (+ x1 (pane-x-spacing pane) (+ as ds))
-                      (+ (/ (+ y1 y2) 2) (/ (+ as ds) 2)))
+                      (+ cy (/ (+ as ds) 2)))
             (draw-toggle-button-indicator pane (toggle-button-indicator-type pane) (gadget-value pane)
                                           tx1 ty1 tx2 ty2)
             (draw-label* pane (+ tx2 (pane-x-spacing pane)) y1 x2 y2
@@ -185,18 +185,17 @@
 (defmethod handle-repaint ((pane menu-button-pane) region)
   (declare (ignore region))
   (with-slots (x-spacing y-spacing) pane
-    (let ((region (sheet-region pane)))
-      (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* region)
-        (draw-rectangle* pane x1 y1 x2 y2
-                         :ink (effective-gadget-background pane)
-                         :filled t)
-        (cond ((slot-value pane 'armed)
-               (draw-bordered-rectangle* pane x1 y1 x2 y2 :style :outset :border-width *3d-border-thickness*))
-              (t))
-        (multiple-value-bind (x1 y1 x2 y2)
-            (values (+ x1 x-spacing) (+ y1 y-spacing)
-                    (- x2 x-spacing) (- y2 y-spacing))
-          (draw-label* pane x1 y1 x2 y2 :ink (effective-gadget-foreground pane)))))))
+    (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region pane)
+      (draw-rectangle* pane x1 y1 x2 y2
+                       :ink (effective-gadget-background pane)
+                       :filled t)
+      (cond ((slot-value pane 'armed)
+             (draw-bordered-rectangle* pane x1 y1 x2 y2 :style :outset :border-width *3d-border-thickness*))
+            (t))
+      (multiple-value-bind (x1 y1 x2 y2)
+          (values (+ x1 x-spacing) (+ y1 y-spacing)
+                  (- x2 x-spacing) (- y2 y-spacing))
+        (draw-label* pane x1 y1 x2 y2 :ink (effective-gadget-foreground pane))))))
 
 (defmethod compose-space ((gadget menu-button-pane) &key width height)
   (declare (ignore width height))
@@ -275,9 +274,10 @@
     ;; redraw up arrow
     (unless (and (not all-new-p) (eql up-state old-up-state))
       (with-drawing-options (scroll-bar :transformation (scroll-bar-transformation scroll-bar))
-        (with-bounding-rectangle* (x1 y1 x2 y2) (scroll-bar-up-region scroll-bar)
+        (with-bounding-rectangle* (x1 y1 x2 y2 :center-x cx)
+            (scroll-bar-up-region scroll-bar)
           (draw-rectangle* scroll-bar x1 y1 x2 y2 :ink *3d-inner-color*)
-          (let ((pg (list (make-point (/ (+ x1 x2) 2) y1)
+          (let ((pg (list (make-point cx y1)
                           (make-point x1 y2)
                           (make-point x2 y2))))
             (case up-state
@@ -290,9 +290,10 @@
     ;; redraw dn arrow
     (unless (and (not all-new-p) (eql dn-state old-dn-state))
       (with-drawing-options (scroll-bar :transformation (scroll-bar-transformation scroll-bar))
-        (with-bounding-rectangle* (x1 y1 x2 y2) (scroll-bar-down-region scroll-bar)
+        (with-bounding-rectangle* (x1 y1 x2 y2 :center-x cx)
+            (scroll-bar-down-region scroll-bar)
           (draw-rectangle* scroll-bar x1 y1 x2 y2 :ink *3d-inner-color*)
-          (let ((pg (list (make-point (/ (+ x1 x2) 2) y2)
+          (let ((pg (list (make-point cx y2)
                           (make-point x1 y1)
                           (make-point x2 y1))))
             (case dn-state
@@ -313,9 +314,8 @@
                   (numberp tb-y2) (numberp old-tb-y2)
                   (= (- tb-y2 tb-y1) (- old-tb-y2 old-tb-y1)))
              ;; Thumb is just moving, compute old and new region
-             (multiple-value-bind (x1 ignore.1 x2 ignore.2)
-                 (bounding-rectangle* (scroll-bar-thumb-bed-region scroll-bar))
-               (declare (ignore ignore.1 ignore.2))
+             (with-bounding-rectangle* (x1 nil x2)
+                 (scroll-bar-thumb-bed-region scroll-bar)
                ;; compute new and old region
                (with-sheet-medium (medium scroll-bar)
                  (with-drawing-options (medium :transformation (scroll-bar-transformation scroll-bar))
@@ -331,7 +331,8 @@
              ;; redraw whole thumb bed and thumb all anew
              (with-drawing-options (scroll-bar :transformation (scroll-bar-transformation scroll-bar))
                (with-bounding-rectangle* (bx1 by1 bx2 by2) (scroll-bar-thumb-bed-region scroll-bar)
-                 (with-bounding-rectangle* (x1 y1 x2 y2) (scroll-bar-thumb-region scroll-bar value)
+                 (with-bounding-rectangle* (x1 y1 x2 y2 :center-y cy)
+                     (scroll-bar-thumb-region scroll-bar value)
                    (draw-rectangle* scroll-bar bx1 by1 bx2 y1 :ink *3d-inner-color*)
                    (draw-rectangle* scroll-bar bx1 y2 bx2 by2 :ink *3d-inner-color*)
                    (draw-rectangle* scroll-bar x1 y1 x2 y2 :ink *3d-normal-color*)
@@ -339,20 +340,18 @@
                                           (polygon-points (make-rectangle* x1 y1 x2 y2))
                                           :style :outset
                                           :border-width 2)
-                    ;;;;;;
-                   (let ((y (/ (+ y1 y2) 2)))
-                     (draw-bordered-polygon scroll-bar
-                                            (polygon-points (make-rectangle* (+ x1 3) (- y 1) (- x2 3) (+ y 1)))
-                                            :style :inset
-                                            :border-width 1)
-                     (draw-bordered-polygon scroll-bar
-                                            (polygon-points (make-rectangle* (+ x1 3) (- y 4) (- x2 3) (- y 2)))
-                                            :style :inset
-                                            :border-width 1)
-                     (draw-bordered-polygon scroll-bar
-                                            (polygon-points (make-rectangle* (+ x1 3) (+ y 4) (- x2 3) (+ y 2)))
-                                            :style :inset
-                                            :border-width 1))))))))
+                   (draw-bordered-polygon scroll-bar
+                                          (polygon-points (make-rectangle* (+ x1 3) (- cy 1) (- x2 3) (+ cy 1)))
+                                          :style :inset
+                                          :border-width 1)
+                   (draw-bordered-polygon scroll-bar
+                                          (polygon-points (make-rectangle* (+ x1 3) (- cy 4) (- x2 3) (- cy 2)))
+                                          :style :inset
+                                          :border-width 1)
+                   (draw-bordered-polygon scroll-bar
+                                          (polygon-points (make-rectangle* (+ x1 3) (+ cy 4) (- x2 3) (+ cy 2)))
+                                          :style :inset
+                                          :border-width 1)))))))
     (setf old-up-state up-state
           old-dn-state dn-state
           old-tb-state tb-state
@@ -361,13 +360,12 @@
           all-new-p nil) ))
 
 (defun scroll-bar/compute-display (scroll-bar value)
-  (with-slots (up-state dn-state tb-state tb-y1 tb-y2
-               event-state) scroll-bar
+  (with-slots (up-state dn-state tb-state tb-y1 tb-y2 event-state) scroll-bar
     (setf up-state (if (eq event-state :up-armed) :armed nil))
     (setf dn-state (if (eq event-state :dn-armed) :armed nil))
     (setf tb-state nil)                 ;we have no armed display yet
-    (with-bounding-rectangle* (x1 y1 x2 y2) (scroll-bar-thumb-region scroll-bar value)
-      (declare (ignore x1 x2))
+    (with-bounding-rectangle* (nil y1 nil y2)
+        (scroll-bar-thumb-region scroll-bar value)
       (setf tb-y1 y1
             tb-y2 y2))))
 
@@ -423,16 +421,14 @@
 (defparameter +minimum-thumb-size-in-pixels+ 30)
 
 (defmethod scroll-bar-up-region ((sb scroll-bar-pane))
-  (with-bounding-rectangle* (minx miny maxx maxy) (transform-region (scroll-bar-transformation sb)
+  (with-bounding-rectangle* (minx miny maxx) (transform-region (scroll-bar-transformation sb)
                                                                     (pane-inner-region sb))
-    (declare (ignore maxy))
     (make-rectangle* minx miny
                      maxx (+ miny (- maxx minx)))))
 
 (defmethod scroll-bar-down-region ((sb scroll-bar-pane))
-  (with-bounding-rectangle* (minx miny maxx maxy) (transform-region (scroll-bar-transformation sb)
-                                                                    (pane-inner-region sb))
-    (declare (ignore miny))
+  (with-bounding-rectangle* (minx nil maxx maxy) (transform-region (scroll-bar-transformation sb)
+                                                                   (pane-inner-region sb))
     (make-rectangle* minx (- maxy (- maxx minx))
                      maxx maxy)))
 
@@ -455,9 +451,8 @@
              y3)))))))
 
 (defmethod scroll-bar-thumb-bed-region ((sb scroll-bar-pane))
-  (with-bounding-rectangle* (minx miny maxx maxy) (transform-region (scroll-bar-transformation sb)
-                                                                    (pane-inner-region sb))
-    (declare (ignore miny maxy))
+  (with-bounding-rectangle* (minx nil maxx) (transform-region (scroll-bar-transformation sb)
+                                                              (pane-inner-region sb))
     (multiple-value-bind (y1 y2 y3) (scroll-bar/thumb-bed* sb)
       (declare (ignore y2))
       (make-rectangle* minx y1
@@ -476,8 +471,7 @@
       (round (translate-range-value v minv maxv y1 y2 y1)))))
 
 (defmethod scroll-bar-thumb-region ((sb scroll-bar-pane) &optional (value (gadget-value sb)))
-  (with-bounding-rectangle* (x1 y1 x2 y2) (scroll-bar-thumb-bed-region sb)
-    (declare (ignore y1 y2))
+  (with-bounding-rectangle* (x1 nil x2) (scroll-bar-thumb-bed-region sb)
     (multiple-value-bind (y1 y2 y3) (scroll-bar/thumb-bed* sb)
       (declare (ignore y1))
       (let ((y4 (scroll-bar/map-value-to-coordinate sb value)))
@@ -695,11 +689,12 @@
                (draw-label* pane x y x y :label   text
                                          :align-x :left
                                          :align-y :baseline))))
-      (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region pane))
-        (display-gadget-background pane background-color 0 0 (- x2 x1) (- y2 y1))
+      (with-bounding-rectangle* (x1 y1 x2 y2 :width width :height height)
+          (sheet-region pane)
+        (display-gadget-background pane background-color 0 0 width height)
         (ecase (gadget-orientation pane)
           ((:vertical)
-           (let ((middle (round (- x2 x1) 2)))
+           (let ((middle (round width 2)))
              (draw-bordered-polygon pane
                                     (polygon-points
                                      (make-rectangle*
@@ -712,7 +707,7 @@
                (draw-value (+ middle 10.0)
                            (- y2 slider-button-short-dim)))))
           ((:horizontal)
-           (let ((middle (round (- y2 y1) 2)))
+           (let ((middle (round height 2)))
              (draw-bordered-polygon pane
                                     (polygon-points
                                      (make-rectangle*
@@ -726,7 +721,7 @@
                            (- middle 10.0))))))))))
 
 (flet ((compute-dims (slider)
-         (multiple-value-bind (x1 y1 x2 y2) (bounding-rectangle* (sheet-region slider))
+         (with-bounding-rectangle* (x1 y1 x2 y2) (sheet-region slider)
            ;; Offset is the distance from the bounding region to the
            ;; slider's "rail" and then some, so the knob doesn't go
            ;; beyond the rail too much.
@@ -1012,8 +1007,7 @@ response to scroll wheel events."))
   (generic-list-pane-item-height pane))
 
 (defmethod handle-repaint ((pane generic-list-pane) region)
-  (with-bounding-rectangle* (sx0 sy0 sx1 sy1) (sheet-region pane)
-    (declare (ignore sx1 sy1))
+  (with-bounding-rectangle* (sx0 sy0) (sheet-region pane)
     (with-bounding-rectangle* (rx0 ry0 rx1 ry1)
         (if (bounding-rectangle-p region)
             region
@@ -1116,8 +1110,7 @@ Returns :select or :deselect, depending on what action was performed."
   "Given a pointer event, determine what item in the pane it has fallen upon.
 Returns two values, the item itself, and the index within the item list."
   (declare (ignore mx))
-  (with-bounding-rectangle* (sx0 sy0 sx1 sy1)  (sheet-region pane)
-    (declare (ignorable sx0 sx1 sy1))
+  (with-bounding-rectangle* (nil sy0) (sheet-region pane)
     (with-slots (items) pane
       (let* ((item-height (generic-list-pane-item-height pane))
              (number-of-items (generic-list-pane-items-length pane))
@@ -1375,12 +1368,11 @@ if INVOKE-CALLBACK is given."))
 (defgeneric generic-option-pane-draw-widget (pane))
 
 (defmethod generic-option-pane-draw-widget (pane)
-  (with-bounding-rectangle* (x0 y0 x1 y1) pane
-    (declare (ignore x0))
+  (with-bounding-rectangle* (:x2 x2 :center-y center) pane
     (multiple-value-bind (widget-width widget-height)
         (generic-option-pane-widget-size pane)
       (let* ((activep (gadget-active-p pane))
-             (center (floor (/ (- y1 y0) 2)))
+             (center (floor center))
              (height/2 (/ widget-height 2))
              (foreground (pane-foreground pane))
              (background (pane-background pane))
@@ -1392,11 +1384,11 @@ if INVOKE-CALLBACK is given."))
                                foreground
                                *3d-dark-color*)))
         (draw-engraved-vertical-separator pane
-                                          (- x1 widget-width -1)
+                                          (- x2 widget-width -1)
                                           (- center height/2)
                                           (+ center height/2)
                                           highlight-color shadow-color)
-        (let* ((x (+ (- x1 widget-width) (/ widget-width 2)))
+        (let* ((x (+ (- x2 widget-width) (/ widget-width 2)))
                (frob-x (+ (floor x) 0)))
           (draw-vertical-arrow pane frob-x (- center 6) :up widget-color)
           (draw-vertical-arrow pane frob-x (+ center 6) :down widget-color))))))
@@ -1456,7 +1448,7 @@ if INVOKE-CALLBACK is given."))
                                (list :value (gadget-value parent))))))
     (multiple-value-bind (scroll-p position height)
         (popup-compute-height parent list-pane)
-      (with-bounding-rectangle* (cx0 cy0 cx1 cy1) parent
+      (with-bounding-rectangle* (cx0 cy0 cx1 cy1 :width cwidth) parent
         (multiple-value-bind (x0 y0 x1 y1)
             (multiple-value-call #'values
               (transform-position (sheet-delta-transformation parent nil) cx0 cy0)
@@ -1474,7 +1466,7 @@ if INVOKE-CALLBACK is given."))
                  (topmost-pane    (outlining (:thickness 1) topmost-pane))
                  (composed-height (space-requirement-height (compose-space topmost-pane :width (- x1 x0) :height height)))
                  (menu-frame      (make-menu-frame topmost-pane
-                                                   :min-width (bounding-rectangle-width parent)
+                                                   :min-width cwidth
                                                    :left x0
                                                    :top (if (eq position :below)
                                                             y1
@@ -1604,7 +1596,7 @@ if INVOKE-CALLBACK is given."))
   (setf (output-record-position record) (values x y)))
 
 (defmethod note-output-record-got-sheet ((record gadget-output-record) sheet)
-  (multiple-value-bind (x y)  (output-record-position record)
+  (multiple-value-bind (x y) (output-record-position record)
     (sheet-adopt-child sheet (gadget record))
     (allocate-space (gadget record)
                     (rectangle-width record)
@@ -1643,9 +1635,9 @@ if INVOKE-CALLBACK is given."))
       (when t ; :move-cursor t
         ;; Almost like LWW, except baseline of text should align with bottom
         ;; of gadget? FIXME
-        (setf (stream-cursor-position sheet)
-              (values (+ x (bounding-rectangle-width record))
-                      (+ y (bounding-rectangle-height record))))))))
+        (with-bounding-rectangle* (:width width :height height) record
+          (setf (stream-cursor-position sheet)
+                (values (+ x width) (+ y height))))))))
 
 ;; The CLIM 2.0 spec does not really say what this macro should return.
 ;; Existing code written for "Real CLIM" assumes it returns the gadget pane

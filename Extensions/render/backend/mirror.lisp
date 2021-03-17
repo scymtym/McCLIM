@@ -21,18 +21,15 @@
 (defun %make-image (mirror sheet)
   (check-type mirror image-mirror-mixin)
   (with-slots (image resize-image-p) mirror
-    (clim:with-bounding-rectangle* (min-x min-y max-x max-y)
-        (sheet-region sheet)
-      (let ((width (ceiling (- max-x min-x)))
-            (height (ceiling (- max-y min-y))))
-        (%create-mirror-image mirror (1+ width) (1+ height))))))
+    (with-bounding-rectangle* (:width width :height height) (sheet-region sheet)
+      (%create-mirror-image mirror (1+ (ceiling width)) (1+ (ceiling height))))))
 
 (defun %set-image-region (mirror region)
   (check-type mirror image-mirror-mixin)
   (with-slots (image resize-image-p) mirror
-    (with-bounding-rectangle* (min-x min-y max-x max-y) region
-      (let ((width (1+ (ceiling (- max-x min-x))))
-            (height (1+ (ceiling (- max-y min-y)))))
+    (with-bounding-rectangle* (:width width :height height) region
+      (let ((width (1+ (ceiling width)))
+            (height (1+ (ceiling height))))
         (if (and resize-image-p
                  (or (null image)
                      (/= width (pattern-width image))
@@ -94,7 +91,7 @@
     (with-slots (image-lock state) mirror
       (clim-sys:with-lock-held (image-lock)
         (let ((reg (aa-fill-paths image ink paths state transformation region)))
-          (clim:with-bounding-rectangle* (min-x min-y max-x max-y) reg
+          (with-bounding-rectangle* (min-x min-y max-x max-y) reg
             (%notify-image-updated mirror (make-rectangle* (floor min-x) (floor min-y)
                                                            (ceiling max-x) (ceiling max-y)))))))))
 
@@ -104,6 +101,6 @@
     (with-slots (image-lock state) mirror
       (clim-sys:with-lock-held (image-lock)
         (let ((reg (aa-stroke-paths medium image ink paths line-style state transformation region)))
-          (clim:with-bounding-rectangle* (min-x min-y max-x max-y) reg
+          (with-bounding-rectangle* (min-x min-y max-x max-y) reg
             (%notify-image-updated mirror (make-rectangle* (floor min-x) (floor min-y)
                                                            (ceiling max-x) (ceiling max-y)))))))))

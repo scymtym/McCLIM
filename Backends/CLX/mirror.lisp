@@ -62,8 +62,7 @@
       (%mirror-install-icons mirror icon)))
 
 (defmethod port-set-mirror-region ((port clx-basic-port) mirror mirror-region)
-  (with-bounding-rectangle* (x1 y1 x2 y2) mirror-region
-    (declare (ignore x1 y1))
+  (with-bounding-rectangle* (nil nil x2 y2) mirror-region
     (setf (xlib:drawable-width mirror) (round-coordinate x2)
           (xlib:drawable-height mirror) (round-coordinate y2))))
 
