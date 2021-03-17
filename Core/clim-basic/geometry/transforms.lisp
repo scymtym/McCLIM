@@ -1,32 +1,17 @@
-;;; -*- Mode: Lisp; Syntax: Common-Lisp; Package: CLIM-INTERNALS; -*-
-;;; --------------------------------------------------------------------------
-;;;     Title: The CLIM Transformations
-;;;   Created: 1998-09-29
-;;;    Author: Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
-;;;   License: LGPL (See file COPYING for details).
-;;;       $Id: transforms.lisp,v 1.33 2006/03/10 21:58:13 tmoore Exp $
-;;; --------------------------------------------------------------------------
-;;;  (c) copyright 1998,1999,2003 by Gilbert Baumann
-;;;  (c) copyright 2000, 2014 by 
-;;;           Robert Strandh (robert.strandh@gmail.com)
-
-;;; This library is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU Library General Public
-;;; License as published by the Free Software Foundation; either
-;;; version 2 of the License, or (at your option) any later version.
+;;; ---------------------------------------------------------------------------
+;;;   License: LGPL-2.1+ (See file 'Copyright' for details).
+;;; ---------------------------------------------------------------------------
 ;;;
-;;; This library is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; Library General Public License for more details.
+;;;  (c) copyright 1998-2005 Gilbert Baumann <unk6@rz.uni-karlsruhe.de>
+;;;  (c) copyright 1998-2000 Michael McDonald <mikemac@mikemac.com>
+;;;  (c) copyright 2000,2014 Robert Strandh <robert.strandh@gmail.com>
+;;;  (c) copyright 2001,2002 Alexey Dejneka
+;;;  (c) copyright 2018,2019 Daniel Kochmański <daniel@turtleware.eu>
 ;;;
-;;; You should have received a copy of the GNU Library General Public
-;;; License along with this library; if not, write to the 
-;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
-;;; Boston, MA  02111-1307  USA.
-
-(in-package :clim-internals)
-
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Transformation classes and methods.
+;;;
 ;;; The CLIM 2 spec says:
 ;;;
 ;;;    "Implementations are encouraged to allow transformations that
@@ -34,7 +19,7 @@
 ;;;    to be TRANSFORMATION-EQUAL. An appropriate level of 'fuzziness'
 ;;;    is single-float-epsilon, or some small multiple of
 ;;;    single-float-epsilon."
-
+;;;
 ;;; Note: All the predicates like RIGID-TRANSFORMATION-P,
 ;;; RECTILINEAR-TRANSFORMATION-P etc. inherit the "fuzziness" defined
 ;;; by COORDINATE-EPSILON. An implementation of a medium probably
@@ -43,15 +28,13 @@
 ;;; they have to use an own implementation, which may be much slower,
 ;;; since individual pixels may have to be transferred. So I trade
 ;;; speed for precision here.
-
+;;;
 ;;; Of course it would be better to assume some reasonable maximal
 ;;; device coordinate for instance 40" * 2400dpi. Now two
 ;;; transformations could be said to be practically equal, if the
 ;;; (rounded) images of any point within that range are equal.
 
-;;;; -------------------------------------------------------------------------
-;;;;  Transformations
-;;;;
+(in-package #:clim-internals)
 
 (defclass standard-transformation (transformation)
   ()
@@ -75,7 +58,8 @@ transformation protocol."))
             :initform nil
             :documentation "Cached inverse transformation.")))
 
-(defclass standard-hairy-transformation (standard-transformation cached-inverse-transformation-mixin)
+(defclass standard-hairy-transformation (standard-transformation
+                                         cached-inverse-transformation-mixin)
   ((mxx :type coordinate :initarg :mxx)
    (mxy :type coordinate :initarg :mxy)
    (myx :type coordinate :initarg :myx)
@@ -129,7 +113,8 @@ transformation protocol."))
 
 (defgeneric get-transformation (transformation)
   (:documentation
-   "Get the values of the transformation matrix as multiple values. This is not an exported function!"))
+   "Get the values of the transformation matrix as multiple values.
+This is not an exported function!"))
 
 (defmethod get-transformation ((transformation standard-identity-transformation))
   (values 1 0 0 1 0 0))
@@ -169,20 +154,20 @@ transformation protocol."))
       (when (coordinate= c -1) (setq c -1))
       ;; We pretend to be stupid here:
       (make-3-point-transformation* origin-x origin-y
-				    (+ origin-x 1) origin-y
-				    origin-x (+ origin-y 1)
+                                    (+ origin-x 1) origin-y
+                                    origin-x (+ origin-y 1)
                                     origin-x origin-y
-				    (+ origin-x c) (+ origin-y s)
-				    (- origin-x s) (+ origin-y c)))))
+                                    (+ origin-x c) (+ origin-y s)
+                                    (- origin-x s) (+ origin-y c)))))
 
 (defun make-scaling-transformation (scale-x scale-y &optional origin)
-  "MAKE-SCALING-TRANSFORMATION returns a transformation that multiplies 
-the x-coordinate distance of every point from origin by SCALE-X and the 
-y-coordinate distance of every point from origin by SCALE-Y.  SCALE-X and 
-SCALE-Y must be real numbers.  If ORIGIN is supplied it must be a point; 
-if not supplied it defaults to (0, 0).  ORIGIN-X and ORIGIN-Y must be 
+  "MAKE-SCALING-TRANSFORMATION returns a transformation that multiplies
+the x-coordinate distance of every point from origin by SCALE-X and the
+y-coordinate distance of every point from origin by SCALE-Y.  SCALE-X and
+SCALE-Y must be real numbers.  If ORIGIN is supplied it must be a point;
+if not supplied it defaults to (0, 0).  ORIGIN-X and ORIGIN-Y must be
 real numbers, and default to 0."
-  (make-scaling-transformation* scale-x scale-y 
+  (make-scaling-transformation* scale-x scale-y
                                 (if origin (point-x origin) 0)
                                 (if origin (point-y origin) 0)))
 
@@ -192,11 +177,11 @@ real numbers, and default to 0."
     (make-transformation scale-x 0
                          0 scale-y
                          (- origin-x (* scale-x origin-x))
-			 (- origin-y (* scale-y origin-y)))) )
+                         (- origin-y (* scale-y origin-y)))))
 
 (defun make-reflection-transformation (point1 point2)
   (make-reflection-transformation* (point-x point1) (point-y point1)
-				   (point-x point2) (point-y point2)))
+                                   (point-x point2) (point-y point2)))
 
 (defun make-reflection-transformation* (x1 y1 x2 y2)
   (let ((dx (- x2 x1))
@@ -207,7 +192,7 @@ real numbers, and default to 0."
         (error 'reflection-underspecified :why c :coords (list x1 y1 x2 y2))))))
 
 (defun make-3-point-transformation (point-1 point-2 point-3
-				    point-1-image point-2-image point-3-image)
+                                    point-1-image point-2-image point-3-image)
   (make-3-point-transformation* (point-x point-1) (point-y point-1)
                                 (point-x point-2) (point-y point-2)
                                 (point-x point-3) (point-y point-3)
@@ -216,93 +201,92 @@ real numbers, and default to 0."
                                 (point-x point-3-image) (point-y point-3-image)))
 
 (defun make-3-point-transformation* (x1 y1 x2 y2 x3 y3
-				     x1-image y1-image
-				     x2-image y2-image
-				     x3-image y3-image)
+                                     x1-image y1-image
+                                     x2-image y2-image
+                                     x3-image y3-image)
   ;; Find a transformation matrix, which transforms each of the three
   ;; points (x_i, y_i) to its image (y_i_image, y_i_image)
-  ;; 
+  ;;
   ;; Therefore, we have to solve these two linear equations:
-  ;; 
+  ;;
   ;;      / x1 y1 1 \        / mxx \   / x1-image \          / myx \   / y1-image \
   ;;  A:= | x2 y2 1 | ;   A  | mxy | = | x2-image |   and A  | myy | = | y2-image |  ;
   ;;      \ x3 y3 1 /        \ tx  /   \ x3-image /          \ ty  /   \ y3-image /
   ;;
   ;; These matrices are small enough to simply calculate A^-1 = |A|^-1 (adj A).
-  ;; 
   (let ((det (+ (* x1 y2) (* y1 x3) (* x2 y3)
-		(- (* y2 x3)) (- (* y1 x2)) (- (* x1 y3)))))
+                (- (* y2 x3)) (- (* y1 x2)) (- (* x1 y3)))))
     (if (coordinate/= 0 det)
         (let* ((/det (/ det))
-               ;; a thru' i is (adj A) 
-               (a (- y2 y3))                (b (- y3 y1))               (c (- y1 y2))               
-               (d (- x3 x2))                (e (- x1 x3))               (f (- x2 x1))               
+               ;; a thru' i is (adj A)
+               (a (- y2 y3))                (b (- y3 y1))               (c (- y1 y2))
+               (d (- x3 x2))                (e (- x1 x3))               (f (- x2 x1))
                (g (- (* x2 y3) (* x3 y2)))  (h (- (* x3 y1) (* x1 y3))) (i (- (* x1 y2) (* x2 y1)))
-               ;; calculate 1/|A| * (adj A) * (x1-image x2-image x3-image)^t 
+               ;; calculate 1/|A| * (adj A) * (x1-image x2-image x3-image)^t
                (mxx (* /det (+ (* a x1-image) (* b x2-image) (* c x3-image))))
                (mxy (* /det (+ (* d x1-image) (* e x2-image) (* f x3-image))))
                (tx  (* /det (+ (* g x1-image) (* h x2-image) (* i x3-image))))
-               ;; finally 1/|A| * (adj A) * (y1-image y2-image y3-image)^t 
+               ;; finally 1/|A| * (adj A) * (y1-image y2-image y3-image)^t
                (myx (* /det (+ (* a y1-image) (* b y2-image) (* c y3-image))))
                (myy (* /det (+ (* d y1-image) (* e y2-image) (* f y3-image))))
                (ty  (* /det (+ (* g y1-image) (* h y2-image) (* i y3-image)))))
           ;; We're done.
-          (make-transformation mxx mxy myx myy tx ty) )
+          (make-transformation mxx mxy myx myy tx ty))
       ;; Determinant was zero, so signal error.
       (error 'transformation-underspecified
              :coords (list x1 y1 x2 y2 x3 y3
-			   x1-image y1-image
-			   x2-image y2-image
-			   x3-image y3-image)) )))
+                           x1-image y1-image
+                           x2-image y2-image
+                           x3-image y3-image)))))
 
 (define-condition transformation-error (error)
   ())
 
 (define-condition transformation-underspecified (transformation-error)
   ((coords :initarg :coords
-	   :reader transformation-error-coords))
+           :reader transformation-error-coords))
   (:report
    (lambda (transformation sink)
      (apply #'format sink
-	    "The three points (~D,~D), (~D,~D), and (~D,~D) are propably collinear."
-	    (subseq (transformation-error-coords transformation) 0 6)))))
+            "The three points (~D,~D), (~D,~D), and (~D,~D) are propably collinear."
+            (subseq (transformation-error-coords transformation) 0 6)))))
 
 (define-condition reflection-underspecified (transformation-error)
   ((coords :initarg :coords
-	   :reader transformation-error-coords)
+           :reader transformation-error-coords)
    (why :initarg :why :initform nil
-	:reader transformation-error-why))
+        :reader transformation-error-why))
   (:report (lambda (transformation sink)
-	     (apply #'format sink
-		    "The two points (~D,~D) and (~D,~D) are coincident."
-		    (transformation-error-coords transformation))
-	     (when (transformation-error-why transformation)
-	       (format sink " (That was determined by the following error:~%~A)"
-		       (transformation-error-why transformation))))))
+             (apply #'format sink
+                    "The two points (~D,~D) and (~D,~D) are coincident."
+                    (transformation-error-coords transformation))
+             (when (transformation-error-why transformation)
+               (format sink " (That was determined by the following error:~%~A)"
+                       (transformation-error-why transformation))))))
 
-(define-condition singular-transformation (transformation-error) 
+(define-condition singular-transformation (transformation-error)
   ((transformation :initarg :transformation
-		   :reader transformation-error-transformation)
+                   :reader transformation-error-transformation)
    (why :initarg :why :initform nil
-	:reader transformation-error-why))
+        :reader transformation-error-why))
   (:report (lambda (transformation sink)
-	     (format sink
-		     "Attempt to invert the probably singular transformation ~S."
-		     (transformation-error-transformation transformation))
-	     (when (transformation-error-why transformation)
-	       (format sink
-		       "~%Another error occurred while computing the inverse:~%    ~A"
-		       (transformation-error-why transformation))))))
+             (format sink
+                     "Attempt to invert the probably singular transformation ~S."
+                     (transformation-error-transformation transformation))
+             (when (transformation-error-why transformation)
+               (format sink
+                       "~%Another error occurred while computing the inverse:~%    ~A"
+                       (transformation-error-why transformation))))))
 
 (define-condition rectangle-transformation-error (transformation-error)
   ((transformation :initarg :transformation
-		   :reader transformation-error-transformation)
+                   :reader transformation-error-transformation)
    (rect :initarg :rect
-	 :reader transformation-error-rect))
+         :reader transformation-error-rect))
   (:report (lambda (transformation sink)
-	     (format sink "Attempt to transform the rectangle ~S through the non-rectilinear transformation ~S."
-		     (transformation-error-rect transformation)
-		     (transformation-error-transformation transformation)))))
+             (format sink "Attempt to transform the rectangle ~S through the non-rectilinear transformation ~S."
+                     (transformation-error-rect transformation)
+                     (transformation-error-transformation transformation)))))
 
 (defmethod transformation-equal ((transformation1 standard-transformation)
                                  (transformation2 standard-transformation))
@@ -321,7 +305,7 @@ real numbers, and default to 0."
 (defmethod identity-transformation-p ((transformation standard-transformation))
   nil)
 
-;;; Same for translations, but +identity-transformation+ is a translation too.
+;;; Same for translations, but +IDENTITY-TRANSFORMATION+ is a translation too.
 
 (defmethod translation-transformation-p ((transformation standard-translation))
   t)
@@ -398,7 +382,7 @@ real numbers, and default to 0."
                            (+ (* d2 a1) (* e2 d1))
                            (+ (* d2 b1) (* e2 e1))
                            (+ (* a2 c1) (* b2 f1) c2)
-                           (+ (* d2 c1) (* e2 f1) f2) ))))
+                           (+ (* d2 c1) (* e2 f1) f2)))))
 
 (defmethod invert-transformation :around ((transformation cached-inverse-transformation-mixin))
   (with-slots (inverse) transformation
@@ -435,53 +419,53 @@ real numbers, and default to 0."
 
 (defun compose-translation-with-transformation (transformation dx dy)
   (compose-transformations transformation
-			   (make-translation-transformation dx dy)))
+                           (make-translation-transformation dx dy)))
 
 (defun compose-scaling-with-transformation (transformation sx sy &optional origin)
   (compose-transformations transformation
-			   (make-scaling-transformation sx sy origin)))
+                           (make-scaling-transformation sx sy origin)))
 
 (defun compose-rotation-with-transformation (transformation angle &optional origin)
   (compose-transformations transformation
-			   (make-rotation-transformation angle origin)))
+                           (make-rotation-transformation angle origin)))
 
 (defun compose-transformation-with-translation (transformation dx dy)
   (compose-transformations (make-translation-transformation dx dy)
-			   transformation))
+                           transformation))
 
 (defun compose-transformation-with-scaling (transformation sx sy &optional origin)
   (compose-transformations (make-scaling-transformation sx sy origin)
-			   transformation))
+                           transformation))
 
 (defun compose-transformation-with-rotation (transformation angle &optional origin)
   (compose-transformations (make-rotation-transformation angle origin)
-			   transformation))
+                           transformation))
 
 (defmacro with-translation ((medium dx dy) &body body)
   `(with-drawing-options (,medium
-			  :transformation
-			  (make-translation-transformation ,dx ,dy))
+                          :transformation
+                          (make-translation-transformation ,dx ,dy))
      ,@body))
 
 (defmacro with-scaling ((medium sx &optional sy origin) &body body)
   (if sy
       `(with-drawing-options (,medium
-			      :transformation
-			      (make-scaling-transformation
-			       ,sx ,sy ,@(if origin (list origin) nil)))
+                              :transformation
+                              (make-scaling-transformation
+                               ,sx ,sy ,@(if origin (list origin) nil)))
          ,@body)
     (let ((sx-var (make-symbol "SX")))
       `(let* ((,sx-var ,sx))
-         (with-drawing-options (,medium 
+         (with-drawing-options (,medium
                                 :transformation
-				(make-scaling-transformation ,sx-var ,sx-var))
-           ,@body)) )))
+                                (make-scaling-transformation ,sx-var ,sx-var))
+           ,@body)))))
 
 (defmacro with-rotation ((medium angle &optional origin) &body body)
-  `(with-drawing-options (,medium 
+  `(with-drawing-options (,medium
                           :transformation
-			  (make-rotation-transformation
-			   ,angle ,@(if origin (list origin) nil)))
+                          (make-rotation-transformation
+                           ,angle ,@(if origin (list origin) nil)))
      ,@body))
 
 (defmacro with-identity-transformation ((medium) &body body)
@@ -626,7 +610,7 @@ real numbers, and default to 0."
                           (declare (type list coord-seq))
                         (do-on-list)))
                      (t
-                      (error "~S is not a sequence." coord-seq)) )))))))
+                      (error "~S is not a sequence." coord-seq)))))))))
 
 (defun transform-position-sequence (seq-type transformation coord-seq)
   (cond ((subtypep seq-type 'vector)
@@ -651,16 +635,16 @@ real numbers, and default to 0."
 
 ;;; The generic function TRANSFORMATION-TRANSFORMATOR is not part of
 ;;; the CLIM II specification.  It appears to be used nowhere and the
-;;; only methods defined on it are the two methods below.  
+;;; only methods defined on it are the two methods below.
 ;;;
 ;;; In order to avoid a style warning by some Common Lisp compilers,
-;;; we include an explicit DEFGENERIC form here.  
+;;; we include an explicit DEFGENERIC form here.
 ;;;
 ;;; FIXME: Contact Gilbert Baumann and ask him what action to take:
 ;;;
 ;;;  * remove this function entirely because it is not used.
 ;;;  * keep it because it might be used one day, but rename it to
-;;;    the more idiomatic TRANSFORMATION-TRANSFORMER. 
+;;;    the more idiomatic TRANSFORMATION-TRANSFORMER.
 ;;;  * keep it with its current name perhaps because this file is
 ;;;    also used in software other than McCLIM.
 (defgeneric transformation-transformator (transformation &optional input-type))
@@ -692,7 +676,7 @@ real numbers, and default to 0."
                                (if (coordinate/= 0 tx) (list tx) nil)))
                    ,(s+ (nconc (s* myx 'x)
                                (s* myy 'y)
-                               (if (coordinate/= 0 ty) (list ty) nil))))) ))))
+                               (if (coordinate/= 0 ty) (list ty) nil)))))))))
 
 (defmethod transformation-transformator ((transformation transformation) &optional (input-type 'real))
   (declare (ignore input-type))
@@ -723,7 +707,7 @@ real numbers, and default to 0."
     (when (reflection-transformation-p transformation)
       (setq rotations  (ffloor (- phi) (* 2 pi))))
     (multiple-value-bind (ix iy)
-	(transform-distance transformation (cos remainder) (sin remainder))
+        (transform-distance transformation (cos remainder) (sin remainder))
       (multiple-value-bind (x0 y0) (transform-distance transformation 1 0)
         (let ((my-angle (atan* ix iy))
               (null-angle (atan* x0 y0)))
@@ -734,7 +718,7 @@ real numbers, and default to 0."
     (when (reflection-transformation-p transformation)
       (setq rotations  (ffloor (- phi) (* 2 pi))))
     (multiple-value-bind (ix iy)
-	(untransform-distance transformation (cos remainder) (sin remainder))
+        (untransform-distance transformation (cos remainder) (sin remainder))
       (multiple-value-bind (x0 y0) (untransform-distance transformation 1 0)
         (let ((my-angle (atan* ix iy))
               (null-angle (atan* x0 y0)))
